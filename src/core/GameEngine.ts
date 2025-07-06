@@ -5,13 +5,16 @@ import { GameConfig } from "../config/GameConfig";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "managers/CreepManager";
 import { BehaviorManager } from "../managers/BehaviorManager";
+import { ServiceContainer } from "./ServiceContainer";
 
 /**
  * 游戏引擎 - 整个系统的核心控制器
+ * 使用ServiceContainer进行依赖注入
  */
 export class GameEngine {
-  private eventBus: EventBus;
-  private stateManager: StateManager;
+  private serviceContainer: ServiceContainer;
+  private eventBus!: EventBus;
+  private stateManager!: StateManager;
   private managers: Map<string, BaseManager> = new Map();
   private isInitialized: boolean = false;
   private lastRunTick: number = 0;
@@ -19,9 +22,7 @@ export class GameEngine {
   private maxErrorRecoveryAttempts: number = GameConfig.SYSTEM.ERROR_RECOVERY_ATTEMPTS;
 
   constructor() {
-    this.eventBus = new EventBus();
-    this.stateManager = new StateManager();
-
+    this.serviceContainer = new ServiceContainer();
     this.initialize();
   }
 
@@ -34,11 +35,22 @@ export class GameEngine {
     }
 
     try {
+      // 初始化服务容器
+      this.serviceContainer.initializeCore();
+
+      // 获取核心服务
+      this.eventBus = this.serviceContainer.get('eventBus');
+      this.stateManager = this.serviceContainer.get('stateManager');
+
       // 初始化状态管理器
       this.stateManager.initialize();
 
+      // 初始化所有服务
+      this.serviceContainer.initializeServices();
+
       // 初始化管理器
-      this.initializeManagers();
+      this.serviceContainer.initializeManagers();
+      this.managers = this.serviceContainer.getAllManagers();
 
       // 设置全局引用
       this.setupGlobalReferences();
@@ -48,6 +60,7 @@ export class GameEngine {
 
       this.isInitialized = true;
       console.log(`游戏引擎已初始化 - Tick: ${Game.time}`);
+      console.log('服务容器状态:', this.serviceContainer.getServiceStats());
 
     } catch (error) {
       console.log('游戏引擎初始化失败:', error);
@@ -56,41 +69,12 @@ export class GameEngine {
   }
 
   /**
-  * 初始化管理器
-  */
-  private initializeManagers(): void {
-    // 按依赖顺序初始化管理器
-    const roomManager = new RoomManager(this.eventBus);
-    this.registerManager('room', roomManager);
-
-    // 其他管理器将在后续创建
-    // this.registerManager('resource', new ResourceManager(this.eventBus));
-    const creepManager = new CreepManager(this.eventBus, roomManager);
-    this.registerManager('creep', creepManager);
-
-    const behaviorManager = new BehaviorManager(this.eventBus);
-    this.registerManager('behavior', behaviorManager);
-    // this.registerManager('construction', new ConstructionManager(this.eventBus));
-    // this.registerManager('military', new MilitaryManager(this.eventBus));
-    // this.registerManager('expansion', new ExpansionManager(this.eventBus));
-
-    console.log('游戏引擎: 管理器已初始化');
-  }
-
-  /**
-   * 注册管理器
-   */
-  private registerManager(name: string, manager: BaseManager): void {
-    this.managers.set(name, manager);
-    console.log(`管理器已注册: ${name}`);
-  }
-
-  /**
    * 设置全局引用
    */
   private setupGlobalReferences(): void {
     // 设置全局引用以便其他模块访问
     global.gameEngine = this;
+    (global as any).serviceContainer = this.serviceContainer;
   }
 
   /**
@@ -198,7 +182,7 @@ export class GameEngine {
     // 通知各管理器进行清理
     for (const [name, manager] of this.managers) {
       try {
-        if (manager.isActive() && typeof (manager as any).cleanup === 'function') {
+        if (typeof (manager as any).cleanup === 'function') {
           (manager as any).cleanup();
         }
       } catch (error) {
@@ -333,57 +317,78 @@ export class GameEngine {
   }
 
   /**
-   * 公共接口
+   * 获取服务容器
    */
-  public getEventBus(): EventBus {
-    return this.eventBus;
+  public getServiceContainer(): ServiceContainer {
+    return this.serviceContainer;
   }
 
-  public getStateManager(): StateManager {
-    return this.stateManager;
+  /**
+   * 获取特定服务
+   */
+  public getService<T>(name: string): T {
+    return this.serviceContainer.get<T>(name);
   }
 
-  public getManager<T extends BaseManager>(name: string): T | undefined {
-    return this.managers.get(name) as T;
-  }
-
+  /**
+   * 获取游戏统计信息
+   */
   public getGameStats(): any {
-    return {
-      initialized: this.isInitialized,
-      lastRunTick: this.lastRunTick,
-      errorRecoveryAttempts: this.errorRecoveryAttempts,
-      managersCount: this.managers.size,
-      activeManagers: Array.from(this.managers.entries())
-        .filter(([_, manager]) => manager.isActive())
-        .map(([name, _]) => name),
-      eventBusStats: {
-        pendingEvents: this.eventBus.getPendingEventCount(),
-        processedEvents: this.eventBus.getProcessedEventCount()
+    const baseStats = {
+      tick: Game.time,
+      cpu: {
+        used: Game.cpu.getUsed(),
+        limit: Game.cpu.limit,
+        bucket: Game.cpu.bucket
       },
-      stateManagerStats: this.stateManager.getGameStats()
+      memory: {
+        used: JSON.stringify(Memory).length,
+        limit: 2048000 // 2MB limit
+      },
+      gcl: {
+        level: Game.gcl.level,
+        progress: Game.gcl.progress,
+        progressTotal: Game.gcl.progressTotal
+      }
+    };
+
+    // 添加服务容器统计
+    const serviceStats = this.serviceContainer.getServiceStats();
+
+    // 添加管理器统计
+    const managerStats: any = {};
+    for (const [name, manager] of this.managers) {
+      if (typeof (manager as any).getStats === 'function') {
+        managerStats[name] = (manager as any).getStats();
+      }
+    }
+
+    return {
+      ...baseStats,
+      services: serviceStats,
+      managers: managerStats
     };
   }
 
+  /**
+   * 获取引擎初始化状态
+   */
   public isEngineInitialized(): boolean {
     return this.isInitialized;
   }
 
+  /**
+   * 获取引擎状态
+   */
   public getEngineStatus(): string {
     if (!this.isInitialized) {
-      return 'initializing';
+      return 'NOT_INITIALIZED';
     }
 
     if (this.errorRecoveryAttempts > 0) {
-      return 'recovering';
+      return 'RECOVERING';
     }
 
-    const errorManagers = Array.from(this.managers.values())
-      .filter(manager => manager.hasError());
-
-    if (errorManagers.length > 0) {
-      return 'degraded';
-    }
-
-    return 'normal';
+    return 'RUNNING';
   }
 }

@@ -1,0 +1,336 @@
+import { EventBus } from "../core/EventBus";
+import { GameConfig } from "../config/GameConfig";
+import { CreepState } from "../types";
+import { CreepProductionService } from "./CreepProductionService";
+
+/**
+ * Creep生命周期服务 - 处理所有Creep的生命周期管理
+ * 从CreepManager中提取出来，保持原有逻辑不变
+ */
+export class CreepLifecycleService {
+  private eventBus: EventBus;
+  private productionService: CreepProductionService;
+
+  constructor(eventBus: EventBus, productionService: CreepProductionService) {
+    this.eventBus = eventBus;
+    this.productionService = productionService;
+  }
+
+  /**
+   * 发送事件到事件总线
+   */
+  private emit(eventType: string, data: any): void {
+    this.eventBus.emit(eventType, data);
+  }
+
+  /**
+   * 初始化creepStates内存
+   */
+  public initializeCreepStatesMemory(): void {
+    if (!Memory.creepStates) {
+      Memory.creepStates = {};
+    }
+  }
+
+  /**
+   * 获取creepStates（从Memory中获取）
+   */
+  private get creepStates(): { [creepName: string]: CreepState } {
+    if (!Memory.creepStates) {
+      Memory.creepStates = {};
+    }
+    return Memory.creepStates;
+  }
+
+  /**
+   * 设置单个creep状态
+   */
+  private setCreepState(creepName: string, state: CreepState): void {
+    if (!Memory.creepStates) {
+      Memory.creepStates = {};
+    }
+    Memory.creepStates[creepName] = state;
+  }
+
+  /**
+   * 删除creep状态
+   */
+  private deleteCreepState(creepName: string): void {
+    if (Memory.creepStates && Memory.creepStates[creepName]) {
+      delete Memory.creepStates[creepName];
+    }
+  }
+
+  /**
+   * 更新所有Creep的状态
+   */
+  public updateCreepStates(): void {
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+      this.updateCreepState(creep);
+    }
+  }
+
+  /**
+   * 更新单个Creep的状态
+   */
+  public updateCreepState(creep: Creep): void {
+    const ticksToLive = creep.ticksToLive || GameConfig.SYSTEM.CREEP_LIFETIME;
+    const lifePercent = ticksToLive / GameConfig.SYSTEM.CREEP_LIFETIME;
+
+    let phase: 'young' | 'mature' | 'aging';
+    if (lifePercent > 0.7) {
+      phase = 'young';
+    } else if (lifePercent > 0.3) {
+      phase = 'mature';
+    } else {
+      phase = 'aging';
+    }
+
+    const state: CreepState = {
+      name: creep.name,
+      phase,
+      ticksToLive,
+      lifePercent,
+      needsReplacement: ticksToLive < GameConfig.THRESHOLDS.CREEP_REPLACEMENT_TIME
+    };
+
+    this.setCreepState(creep.name, state);
+
+    // 检查是否需要替换 - 委托给生产服务
+    if (state.needsReplacement) {
+      this.productionService.requestCreepReplacement(creep);
+    }
+  }
+
+  /**
+   * 计算Creep效率
+   */
+  public calculateCreepEfficiency(creep: Creep): number {
+    const workParts = creep.body.filter(part => part.type === WORK).length;
+    const moveParts = creep.body.filter(part => part.type === MOVE).length;
+    const carryParts = creep.body.filter(part => part.type === CARRY).length;
+
+    let efficiency = 1.0;
+
+    // 如果没有移动部件，效率降低
+    if (moveParts === 0) efficiency *= GameConfig.THRESHOLDS.EFFICIENCY_PENALTY_NO_MOVE;
+
+    // 根据角色调整效率
+    switch (creep.memory.role) {
+      case GameConfig.ROLES.HARVESTER:
+        efficiency *= workParts > 0 ? 1.0 : GameConfig.THRESHOLDS.EFFICIENCY_PENALTY_NO_TOOL;
+        break;
+      case GameConfig.ROLES.TRANSPORTER:
+        efficiency *= carryParts > 0 ? 1.0 : GameConfig.THRESHOLDS.EFFICIENCY_PENALTY_NO_TOOL;
+        break;
+      case GameConfig.ROLES.BUILDER:
+        efficiency *= workParts > 0 ? 1.0 : GameConfig.THRESHOLDS.EFFICIENCY_PENALTY_NO_TOOL;
+        break;
+    }
+
+    return efficiency;
+  }
+
+  /**
+   * 处理Creep死亡事件
+   */
+  public handleCreepDeath(data: any): void {
+    const creepName = data.creepName;
+    const role = data.role;
+    const roomName = data.roomName;
+
+    console.log(`💀 [CreepLifecycleService] Creep ${creepName} (${role}) 死亡，房间: ${roomName}`);
+
+    // 清理状态
+    this.deleteCreepState(creepName);
+
+    // 清理内存
+    if (Memory.creeps[creepName]) {
+      delete Memory.creeps[creepName];
+    }
+
+    // 如果是重要角色，立即请求替换
+    if (role === GameConfig.ROLES.HARVESTER || role === GameConfig.ROLES.TRANSPORTER) {
+      const room = Game.rooms[roomName];
+      if (room && room.controller?.my) {
+        const availableEnergy = room.energyAvailable;
+        // 委托给生产服务
+        this.productionService.addProductionNeed(roomName, role, GameConfig.PRIORITIES.HIGH, availableEnergy);
+      }
+    }
+  }
+
+  /**
+   * 清理已死亡的Creep
+   */
+  public cleanupDeadCreeps(): void {
+    // 清理Memory中已死亡的creep
+    for (const name in Memory.creeps) {
+      if (!(name in Game.creeps)) {
+        delete Memory.creeps[name];
+      }
+    }
+
+    // 清理状态中已死亡的creep
+    for (const name in this.creepStates) {
+      if (!(name in Game.creeps)) {
+        this.deleteCreepState(name);
+      }
+    }
+  }
+
+  /**
+   * 获取Creep统计信息
+   */
+  public getCreepStats(): any {
+    const stats = {
+      totalCreeps: Object.keys(Game.creeps).length,
+      byRole: {} as { [role: string]: number },
+      byRoom: {} as { [roomName: string]: number },
+      byPhase: {
+        young: 0,
+        mature: 0,
+        aging: 0
+      },
+      efficiency: {
+        average: 0,
+        total: 0
+      }
+    };
+
+    let totalEfficiency = 0;
+    let creepCount = 0;
+
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+      const role = creep.memory.role;
+      const roomName = creep.room.name;
+
+      // 统计角色
+      stats.byRole[role] = (stats.byRole[role] || 0) + 1;
+
+      // 统计房间
+      stats.byRoom[roomName] = (stats.byRoom[roomName] || 0) + 1;
+
+      // 统计生命阶段
+      const state = this.creepStates[name];
+      if (state) {
+        stats.byPhase[state.phase]++;
+      }
+
+      // 计算效率
+      const efficiency = this.calculateCreepEfficiency(creep);
+      totalEfficiency += efficiency;
+      creepCount++;
+    }
+
+    stats.efficiency.average = creepCount > 0 ? totalEfficiency / creepCount : 0;
+    stats.efficiency.total = totalEfficiency;
+
+    return stats;
+  }
+
+  /**
+   * 获取指定creep的状态
+   */
+  public getCreepState(creepName: string): CreepState | undefined {
+    return this.creepStates[creepName];
+  }
+
+  /**
+   * 获取所有creep状态
+   */
+  public getAllCreepStates(): { [creepName: string]: CreepState } {
+    return { ...this.creepStates };
+  }
+
+  /**
+   * 检查creep是否需要替换
+   */
+  public needsReplacement(creepName: string): boolean {
+    const state = this.creepStates[creepName];
+    return state ? state.needsReplacement : false;
+  }
+
+  /**
+   * 获取指定阶段的creep列表
+   */
+  public getCreepsByPhase(phase: 'young' | 'mature' | 'aging'): string[] {
+    const creepNames: string[] = [];
+
+    for (const [name, state] of Object.entries(this.creepStates)) {
+      if (state.phase === phase && Game.creeps[name]) {
+        creepNames.push(name);
+      }
+    }
+
+    return creepNames;
+  }
+
+  /**
+   * 获取指定房间的creep统计
+   */
+  public getRoomCreepStats(roomName: string): any {
+    const stats = {
+      totalCreeps: 0,
+      byRole: {} as { [role: string]: number },
+      byPhase: {
+        young: 0,
+        mature: 0,
+        aging: 0
+      },
+      efficiency: {
+        average: 0,
+        total: 0
+      }
+    };
+
+    let totalEfficiency = 0;
+    let creepCount = 0;
+
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+
+      // 只统计指定房间的creep
+      if (creep.room.name !== roomName) {
+        continue;
+      }
+
+      const role = creep.memory.role;
+      stats.totalCreeps++;
+
+      // 统计角色
+      stats.byRole[role] = (stats.byRole[role] || 0) + 1;
+
+      // 统计生命阶段
+      const state = this.creepStates[name];
+      if (state) {
+        stats.byPhase[state.phase]++;
+      }
+
+      // 计算效率
+      const efficiency = this.calculateCreepEfficiency(creep);
+      totalEfficiency += efficiency;
+      creepCount++;
+    }
+
+    stats.efficiency.average = creepCount > 0 ? totalEfficiency / creepCount : 0;
+    stats.efficiency.total = totalEfficiency;
+
+    return stats;
+  }
+
+  /**
+   * 重置时的清理工作
+   */
+  public onReset(): void {
+    // 清理内存
+    Memory.creepStates = {};
+    if (Memory.creeps) {
+      for (const name in Memory.creeps) {
+        delete Memory.creeps[name];
+      }
+    }
+  }
+}
