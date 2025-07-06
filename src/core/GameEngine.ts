@@ -3,6 +3,8 @@ import { StateManager } from "./StateManager";
 import { BaseManager } from "./BaseManager";
 import { GameConfig } from "../config/GameConfig";
 import { RoomManager } from "../managers/RoomManager";
+import { CreepManager } from "managers/CreepManager";
+import { BehaviorManager } from "../managers/BehaviorManager";
 
 /**
  * 游戏引擎 - 整个系统的核心控制器
@@ -58,11 +60,15 @@ export class GameEngine {
    */
   private initializeManagers(): void {
     // 按依赖顺序初始化管理器
-    this.registerManager('room', new RoomManager(this.eventBus));
+    const roomManager = new RoomManager(this.eventBus);
+    this.registerManager('room', roomManager);
 
     // 其他管理器将在后续创建
     // this.registerManager('resource', new ResourceManager(this.eventBus));
-    // this.registerManager('creep', new CreepManager(this.eventBus));
+    const creepManager = new CreepManager(this.eventBus, roomManager);
+    this.registerManager('creep', creepManager);
+
+    this.registerManager('behavior', new BehaviorManager(this.eventBus));
     // this.registerManager('construction', new ConstructionManager(this.eventBus));
     // this.registerManager('military', new MilitaryManager(this.eventBus));
     // this.registerManager('expansion', new ExpansionManager(this.eventBus));

@@ -81,6 +81,9 @@ declare global {
     rooms: { [roomName: string]: RoomMemory };
     creepProduction: CreepProductionMemory;
     intelligence: IntelligenceMemory;
+    creepStates: { [creepName: string]: CreepState };
+    behaviorStats: { [role: string]: BehaviorStats };
+    eventBus: EventBusMemory;
     gameEngine?: {
       initialized: boolean;
       lastTick: number;
@@ -95,9 +98,16 @@ declare global {
     task?: Task;
     state?: string;
     targetId?: string;
+    targetSourceId?: string;
     assignedRoom?: string;
     lastTask?: string;
     efficiency?: number;
+    // Defender专用内存
+    target?: string;           // 当前攻击目标ID
+    patrolPoint?: { x: number; y: number; roomName: string }; // 巡逻点
+    lastEnemySeen?: number;    // 最后发现敌人的时间
+    combatState?: 'patrolling' | 'engaging' | 'retreating' | 'healing';
+    enemyMemory?: { [enemyId: string]: number }; // 敌人记忆，存储最后见到的时间
   }
 
   interface RoomMemory {
@@ -107,6 +117,7 @@ declare global {
     defenseLevel: number;
     lastAnalysis: number;
     needsAttention: boolean;
+    lastEnemyActivity?: number; // 最近敌人活动时间
   }
 
   interface CreepProductionMemory {
@@ -120,6 +131,20 @@ declare global {
     threats: ThreatInfo[];
     opportunities: OpportunityInfo[];
     lastUpdate: number;
+  }
+
+  interface BehaviorStats {
+    executions: number;
+    successes: number;
+    failures: number;
+    lastExecution: number;
+    averageExecutionTime: number;
+  }
+
+  interface EventBusMemory {
+    eventQueue: GameEvent[];
+    processedEvents: GameEvent[];
+    lastProcessTime: number;
   }
 
   namespace NodeJS {

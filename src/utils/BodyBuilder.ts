@@ -174,6 +174,18 @@ export class BodyBuilder {
           { priority: 2, part: CARRY, maxCount: 2 },
           { priority: 3, part: MOVE, ratio: 0.4 }
         ]
+      },
+      [GameConfig.ROLES.DEFENDER]: {
+        name: GameConfig.ROLES.DEFENDER,
+        minConfig: [MOVE, TOUGH, RANGED_ATTACK],
+        standardConfig: [MOVE, MOVE, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK],
+        maxConfig: [MOVE, MOVE, MOVE, MOVE, TOUGH, TOUGH, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, HEAL, HEAL],
+        scalingRules: [
+          { priority: 1, part: RANGED_ATTACK, maxCount: 5 },
+          { priority: 2, part: TOUGH, maxCount: 8 },
+          { priority: 3, part: MOVE, ratio: 0.5 },
+          { priority: 4, part: HEAL, maxCount: 2 }
+        ]
       }
     };
 
@@ -230,6 +242,21 @@ export class BodyBuilder {
         const buildCapacity = buildCarryParts * 50;
         return ((buildRate + buildCapacity) * lifespan) / cost;
 
+      case GameConfig.ROLES.DEFENDER:
+        const attackParts = body.filter(p => p === RANGED_ATTACK).length;
+        const toughParts = body.filter(p => p === TOUGH).length;
+        const healParts = body.filter(p => p === HEAL).length;
+        const defenderMoveParts = body.filter(p => p === MOVE).length;
+
+        const attackPower = attackParts * 10; // 每个RANGED_ATTACK部件10攻击力
+        const durability = toughParts * 100; // 每个TOUGH部件100血量
+        const healPower = healParts * 12; // 每个HEAL部件12治疗力
+        const defenderMobility = defenderMoveParts / body.length;
+
+        // 综合战斗效率：攻击力 + 耐久性 + 治疗力 + 机动性
+        const combatEfficiency = (attackPower + durability * 0.1 + healPower + defenderMobility * 100) * lifespan;
+        return combatEfficiency / cost;
+
       default:
         return 1;
     }
@@ -258,7 +285,7 @@ export class BodyBuilder {
     roomEnergyCapacity: number
   ): BodyPartConstant[] {
     // 根据房间能量容量调整目标预算
-    const targetBudget = Math.min(availableEnergy, roomEnergyCapacity * 0.8);
+    const targetBudget = Math.min(availableEnergy, roomEnergyCapacity * GameConfig.THRESHOLDS.BODY_BUDGET_RATIO);
 
     return this.generateOptimalBody(role, targetBudget);
   }

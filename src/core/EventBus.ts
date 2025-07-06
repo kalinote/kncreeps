@@ -5,9 +5,74 @@ import { GameEvent } from "../types";
  */
 export class EventBus {
   private listeners: Map<string, Function[]> = new Map();
-  private eventQueue: GameEvent[] = [];
-  private processedEvents: GameEvent[] = [];
   private isProcessing: boolean = false;
+
+  constructor() {
+    this.initializeEventBusMemory();
+  }
+
+  /**
+   * 初始化EventBus内存
+   */
+  private initializeEventBusMemory(): void {
+    if (!Memory.eventBus) {
+      Memory.eventBus = {
+        eventQueue: [],
+        processedEvents: [],
+        lastProcessTime: Game.time
+      };
+    }
+  }
+
+  /**
+   * 获取事件队列（从Memory中获取）
+   */
+  private get eventQueue(): GameEvent[] {
+    if (!Memory.eventBus) {
+      this.initializeEventBusMemory();
+    }
+    return Memory.eventBus.eventQueue;
+  }
+
+  /**
+   * 获取已处理事件（从Memory中获取）
+   */
+  private get processedEvents(): GameEvent[] {
+    if (!Memory.eventBus) {
+      this.initializeEventBusMemory();
+    }
+    return Memory.eventBus.processedEvents;
+  }
+
+  /**
+   * 添加事件到队列
+   */
+  private addEventToQueue(event: GameEvent): void {
+    if (!Memory.eventBus) {
+      this.initializeEventBusMemory();
+    }
+    Memory.eventBus.eventQueue.push(event);
+  }
+
+  /**
+   * 从队列中移除事件
+   */
+  private removeEventFromQueue(): GameEvent | undefined {
+    if (!Memory.eventBus) {
+      this.initializeEventBusMemory();
+    }
+    return Memory.eventBus.eventQueue.shift();
+  }
+
+  /**
+   * 添加到已处理事件
+   */
+  private addProcessedEvent(event: GameEvent): void {
+    if (!Memory.eventBus) {
+      this.initializeEventBusMemory();
+    }
+    Memory.eventBus.processedEvents.push(event);
+  }
 
   /**
    * 注册事件监听器
@@ -36,7 +101,7 @@ export class EventBus {
    * 发送事件到队列
    */
   public emit(eventType: string, data?: any): void {
-    this.eventQueue.push({
+    this.addEventToQueue({
       type: eventType,
       data,
       timestamp: Game.time
@@ -71,9 +136,9 @@ export class EventBus {
       const maxEvents = 100; // 防止事件处理过多导致CPU超时
 
       while (this.eventQueue.length > 0 && processedCount < maxEvents) {
-        const event = this.eventQueue.shift()!;
+        const event = this.removeEventFromQueue()!;
         this.processEvent(event);
-        this.processedEvents.push(event);
+        this.addProcessedEvent(event);
         processedCount++;
       }
 
@@ -120,9 +185,13 @@ export class EventBus {
    * 清理已处理的事件
    */
   public clearProcessedEvents(): void {
+    if (!Memory.eventBus) {
+      this.initializeEventBusMemory();
+    }
+
     // 保留最近的事件用于调试
-    if (this.processedEvents.length > 100) {
-      this.processedEvents = this.processedEvents.slice(-50);
+    if (Memory.eventBus.processedEvents.length > 100) {
+      Memory.eventBus.processedEvents = Memory.eventBus.processedEvents.slice(-50);
     }
   }
 

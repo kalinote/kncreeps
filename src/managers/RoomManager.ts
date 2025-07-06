@@ -1,6 +1,7 @@
 import { BaseManager } from "../core/BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
+import { clear } from "console";
 
 /**
  * 房间管理器 - 管理所有房间的状态和操作
@@ -49,7 +50,7 @@ export class RoomManager extends BaseManager {
    */
   private scanRooms(): void {
     // 每10个tick扫描一次房间
-    if (Game.time - this.lastRoomScan < 10) {
+    if (Game.time - this.lastRoomScan < GameConfig.UPDATE_FREQUENCIES.ROOM_ANALYSIS) {
       return;
     }
 
@@ -96,6 +97,12 @@ export class RoomManager extends BaseManager {
     // 检查敌对威胁
     const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
     if (hostileCreeps.length > 0) {
+      // 记录敌人活动到房间内存
+      if (!room.memory.lastEnemyActivity) {
+        room.memory.lastEnemyActivity = Game.time;
+      }
+      room.memory.lastEnemyActivity = Game.time;
+
       this.emit(GameConfig.EVENTS.ROOM_UNDER_ATTACK, {
         roomName,
         hostileCount: hostileCreeps.length,
@@ -116,7 +123,8 @@ export class RoomManager extends BaseManager {
     for (const [roomName, room] of this.rooms) {
       const alerts = this.analyzeRoomConditions(room);
 
-      if (alerts.length > 0) {
+      // TODO 暂时写死10个tick报告一次
+      if (alerts.length > 0 && Game.time % 10 == 0) {
         console.log(`房间 ${roomName} 警报:`, alerts);
 
         // 发送房间需要注意的事件
@@ -142,7 +150,7 @@ export class RoomManager extends BaseManager {
 
     // 检查建筑损坏
     const damagedStructures = room.find(FIND_STRUCTURES, {
-      filter: (structure) => structure.hits < structure.hitsMax * 0.5
+              filter: (structure) => structure.hits < structure.hitsMax * GameConfig.THRESHOLDS.EMERGENCY_REPAIR_THRESHOLD
     });
     if (damagedStructures.length > 0) {
       alerts.push(`${damagedStructures.length} 个建筑受损`);
@@ -223,6 +231,100 @@ export class RoomManager extends BaseManager {
    */
   public getRoomNames(): string[] {
     return Array.from(this.rooms.keys());
+  }
+
+  /**
+   * 检查房间是否有敌人威胁
+   */
+  public hasEnemyThreat(roomName: string): boolean {
+    const room = this.rooms.get(roomName);
+    if (!room) {
+      return false;
+    }
+
+    // 检查是否有敌对creep
+    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+    if (hostileCreeps.length > 0) {
+      return true;
+    }
+
+    // 检查是否有敌对建筑
+    const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+    if (hostileStructures.length > 0) {
+      return true;
+    }
+
+    // 检查最近是否有敌人活动的记录
+    if (room.memory.lastEnemyActivity &&
+        Game.time - room.memory.lastEnemyActivity < GameConfig.THRESHOLDS.ENEMY_MEMORY_DURATION) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * 获取房间威胁级别
+   */
+  public getRoomThreatLevel(roomName: string): 'none' | 'low' | 'medium' | 'high' | 'critical' {
+    const room = this.rooms.get(roomName);
+    if (!room) {
+      return 'none';
+    }
+
+    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+    if (hostileCreeps.length === 0) {
+      // 检查最近是否有威胁记录
+      if (room.memory.lastEnemyActivity &&
+          Game.time - room.memory.lastEnemyActivity < GameConfig.THRESHOLDS.ENEMY_MEMORY_DURATION) {
+        return 'low';  // 最近有威胁但现在没有
+      }
+      return 'none';
+    }
+
+    // 计算威胁分数
+    let threatScore = 0;
+    for (const hostile of hostileCreeps) {
+      threatScore += hostile.getActiveBodyparts(ATTACK) * 10;
+      threatScore += hostile.getActiveBodyparts(RANGED_ATTACK) * 8;
+      threatScore += hostile.getActiveBodyparts(WORK) * 5;
+      threatScore += hostile.getActiveBodyparts(HEAL) * 6;
+    }
+
+    if (threatScore >= 50) return 'critical';
+    if (threatScore >= 30) return 'high';
+    if (threatScore >= 10) return 'medium';
+    return 'low';
+  }
+
+  /**
+   * 获取房间详细威胁信息
+   */
+  public getRoomThreatDetails(roomName: string): any {
+    const room = this.rooms.get(roomName);
+    if (!room) {
+      return null;
+    }
+
+    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+    const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+
+    return {
+      roomName,
+      threatLevel: this.getRoomThreatLevel(roomName),
+      hostileCreepCount: hostileCreeps.length,
+      hostileStructureCount: hostileStructures.length,
+      lastEnemyActivity: room.memory.lastEnemyActivity,
+      hasActiveThreats: hostileCreeps.length > 0 || hostileStructures.length > 0,
+      hostileCreeps: hostileCreeps.map(creep => ({
+        name: creep.name,
+        owner: creep.owner.username,
+        pos: creep.pos,
+        attackParts: creep.getActiveBodyparts(ATTACK),
+        rangedAttackParts: creep.getActiveBodyparts(RANGED_ATTACK),
+        healParts: creep.getActiveBodyparts(HEAL)
+      }))
+    };
   }
 
   /**

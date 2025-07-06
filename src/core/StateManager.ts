@@ -75,6 +75,22 @@ export class StateManager {
       };
     }
 
+    if (!Memory.creepStates) {
+      Memory.creepStates = {};
+    }
+
+    if (!Memory.behaviorStats) {
+      Memory.behaviorStats = {};
+    }
+
+    if (!Memory.eventBus) {
+      Memory.eventBus = {
+        eventQueue: [],
+        processedEvents: [],
+        lastProcessTime: Game.time
+      };
+    }
+
     // 为每个房间初始化内存
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
