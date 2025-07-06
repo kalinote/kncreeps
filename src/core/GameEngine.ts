@@ -55,9 +55,9 @@ export class GameEngine {
     }
   }
 
-      /**
-   * 初始化管理器
-   */
+  /**
+  * 初始化管理器
+  */
   private initializeManagers(): void {
     // 按依赖顺序初始化管理器
     const roomManager = new RoomManager(this.eventBus);
@@ -68,7 +68,8 @@ export class GameEngine {
     const creepManager = new CreepManager(this.eventBus, roomManager);
     this.registerManager('creep', creepManager);
 
-    this.registerManager('behavior', new BehaviorManager(this.eventBus));
+    const behaviorManager = new BehaviorManager(this.eventBus);
+    this.registerManager('behavior', behaviorManager);
     // this.registerManager('construction', new ConstructionManager(this.eventBus));
     // this.registerManager('military', new MilitaryManager(this.eventBus));
     // this.registerManager('expansion', new ExpansionManager(this.eventBus));
