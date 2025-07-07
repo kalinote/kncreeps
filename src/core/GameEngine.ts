@@ -59,7 +59,7 @@ export class GameEngine {
       this.setupEventListeners();
 
       this.isInitialized = true;
-      console.log(`游戏引擎已初始化 - Tick: ${Game.time}`);
+      console.log(`游戏引擎初始化完成 - Tick: ${Game.time}`);
       console.log('服务容器状态:', this.serviceContainer.getServiceStats());
 
     } catch (error) {

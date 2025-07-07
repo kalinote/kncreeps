@@ -241,7 +241,6 @@ export class StateManager {
    * 清理过期数据
    */
   private cleanupExpiredData(): void {
-    // 每100个tick清理一次
     if (Game.time % GameConfig.UPDATE_FREQUENCIES.CLEANUP === 0) {
       this.cleanupIntelligenceData();
       this.cleanupProductionQueue();

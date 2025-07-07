@@ -1,5 +1,4 @@
 import { EventBus } from "../core/EventBus";
-import { GameConfig } from "../config/GameConfig";
 import { EnergyService, EnergySourceConfig, EnergySourceStrategy } from "../services/EnergyService";
 
 /**

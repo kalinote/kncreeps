@@ -5,19 +5,6 @@ export interface GameEvent {
   timestamp: number;
 }
 
-// 任务类型
-export interface Task {
-  id: string;
-  type: string;
-  priority: number;
-  roomName: string;
-  targetId?: string;
-  assignedCreep?: string;
-  status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'failed';
-  createdAt: number;
-  deadline?: number;
-}
-
 // 生产需求类型
 export interface ProductionNeed {
   roomName: string;
@@ -95,18 +82,13 @@ declare global {
     room: string;
     working: boolean;
     // 扩展creep内存
-    task?: Task;
     state?: string;
     targetId?: string;
-    targetSourceId?: string;
-    assignedRoom?: string;
-    lastTask?: string;
-    efficiency?: number;
-    // Defender专用内存
+    targetSourceId?: string;    // 后续合并到task中
+    // Defender专用内存(后续合并到task中)
     target?: string;           // 当前攻击目标ID
     patrolPoint?: { x: number; y: number; roomName: string }; // 巡逻点
     lastEnemySeen?: number;    // 最后发现敌人的时间
-    combatState?: 'patrolling' | 'engaging' | 'retreating' | 'healing';
     enemyMemory?: { [enemyId: string]: number }; // 敌人记忆，存储最后见到的时间
   }
 

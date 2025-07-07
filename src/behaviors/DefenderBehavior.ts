@@ -82,7 +82,7 @@ export class DefenderBehavior extends BaseBehavior {
         }
 
         // 触发发现敌人事件
-        this.eventBus.emit(GameConfig.EVENTS.ENEMY_SPOTTED, {
+        this.eventBus.emit(GameConfig.EVENTS.COMBAT_ENEMY_SPOTTED, {
           defenderName: creep.name,
           enemyName: bestTarget.name,
           roomName: creep.room.name,
@@ -155,7 +155,7 @@ export class DefenderBehavior extends BaseBehavior {
         }
 
         // 触发发现敌人事件
-        this.eventBus.emit(GameConfig.EVENTS.ENEMY_SPOTTED, {
+        this.eventBus.emit(GameConfig.EVENTS.COMBAT_ENEMY_SPOTTED, {
           defenderName: creep.name,
           enemyName: bestTarget.name,
           roomName: creep.room.name,
@@ -230,7 +230,7 @@ export class DefenderBehavior extends BaseBehavior {
    */
   private handleRetreating(creep: Creep): BehaviorResult {
     // 触发撤退事件
-    this.eventBus.emit(GameConfig.EVENTS.DEFENDER_RETREATING, {
+    this.eventBus.emit(GameConfig.EVENTS.COMBAT_DEFENDER_RETREATING, {
       defenderName: creep.name,
       roomName: creep.room.name,
       currentHealth: creep.hits,
@@ -379,7 +379,7 @@ export class DefenderBehavior extends BaseBehavior {
         const attackResult = creep.rangedAttack(target);
         if (attackResult === OK) {
           // 触发交战事件
-          this.eventBus.emit(GameConfig.EVENTS.DEFENDER_ENGAGED, {
+          this.eventBus.emit(GameConfig.EVENTS.COMBAT_DEFENDER_ENGAGED, {
             defenderName: creep.name,
             targetName: target.name,
             roomName: creep.room.name,
@@ -408,7 +408,7 @@ export class DefenderBehavior extends BaseBehavior {
     if (creep.getActiveBodyparts(ATTACK) > 0 && range <= 1) {
       const attackResult = creep.attack(target);
       if (attackResult === OK) {
-        this.eventBus.emit(GameConfig.EVENTS.DEFENDER_ENGAGED, {
+        this.eventBus.emit(GameConfig.EVENTS.COMBAT_DEFENDER_ENGAGED, {
           defenderName: creep.name,
           targetName: target.name,
           roomName: creep.room.name,

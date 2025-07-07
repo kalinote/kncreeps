@@ -146,7 +146,11 @@ export class ServiceContainer {
   public getAllManagers(): Map<string, BaseManager> {
     const managers = new Map<string, BaseManager>();
 
-    const managerNames = ['roomManager', 'creepManager', 'behaviorManager'];
+    const managerNames = [
+      'roomManager',
+      'creepManager',
+      'behaviorManager'
+    ];
     for (const name of managerNames) {
       if (this.singletons.has(name)) {
         managers.set(name, this.singletons.get(name) as BaseManager);

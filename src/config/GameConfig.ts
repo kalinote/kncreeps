@@ -5,33 +5,32 @@ import { EventConfig } from "./EventConfig";
 import { EnergyConfig } from "./EnergyConfig";
 
 /**
- * 游戏配置常量 - 重构后的统一配置接口
- * 保持向后兼容性，重新导出所有配置模块
+ * 统一配置接口
  */
 export class GameConfig {
-  // 重新导出角色相关配置
+  // 导出角色相关配置
   public static readonly ROLES = RoleConfig.ROLES;
   public static readonly PRIORITIES = RoleConfig.PRIORITIES;
   public static readonly ROLE_PERMISSIONS = RoleConfig.ROLE_PERMISSIONS;
   public static readonly ROLE_LIMITS = RoleConfig.ROLE_LIMITS;
 
-  // 重新导出阈值配置
+  // 导出阈值配置
   public static readonly THRESHOLDS = ThresholdConfig.THRESHOLDS;
 
-  // 重新导出系统配置
+  // 导出系统配置
   public static readonly SYSTEM = SystemConfig.SYSTEM;
   public static readonly UPDATE_FREQUENCIES = SystemConfig.UPDATE_FREQUENCIES;
   public static readonly ROOM_PHASES = SystemConfig.ROOM_PHASES;
 
-  // 重新导出事件配置
+  // 导出事件配置
   public static readonly EVENTS = EventConfig.EVENTS;
 
-  // 重新导出能量配置
+  // 导出能量配置
   public static readonly BODY_PART_COSTS = EnergyConfig.BODY_PART_COSTS;
   public static readonly ENERGY_CAPACITY = EnergyConfig.ENERGY_CAPACITY;
   public static readonly STRUCTURE_CATEGORIES = EnergyConfig.STRUCTURE_CATEGORIES;
 
-  // 重新导出所有方法以保持向后兼容
+  // 导出所有方法以保持向后兼容
 
   // 角色相关方法
   public static getRoleLimits = RoleConfig.getRoleLimits;
