@@ -1,0 +1,299 @@
+import { TaskExecutorRegistry } from "../task/TaskExecutorRegistry";
+import { EventBus } from "../core/EventBus";
+import { Task, TaskType, TaskStatus, TaskPriority, TaskSystemMemory } from "../types";
+import { BaseManager } from "./BaseManager";
+import { TaskGenerator } from "../task/TaskGenerator";
+import { TaskScheduler } from "../task/TaskScheduler";
+
+/**
+ * 任务管理器 - 管理所有任务的生命周期
+ */
+export class TaskManager extends BaseManager {
+  private isEnabled: boolean = true;
+  private executorRegistry: TaskExecutorRegistry;
+  private taskGenerator: TaskGenerator;
+  private taskScheduler: TaskScheduler;
+
+  constructor(eventBus: EventBus) {
+    super(eventBus);
+    this.executorRegistry = new TaskExecutorRegistry();
+    this.taskGenerator = new TaskGenerator(this);
+    this.taskScheduler = new TaskScheduler(this);
+    this.initializeMemory();
+  }
+
+  /**
+   * 初始化任务系统内存
+   */
+  private initializeMemory(): void {
+    if (!Memory.tasks) {
+      Memory.tasks = {
+        enabled: true,
+        taskQueue: [],
+        creepTasks: {},
+        completedTasks: [],
+        lastCleanup: Game.time,
+        stats: {
+          tasksCreated: 0,
+          tasksCompleted: 0,
+          tasksFailed: 0,
+          averageExecutionTime: 0
+        }
+      };
+    }
+  }
+
+  /**
+   * 更新方法 - 被 GameEngine 调用
+   */
+  public update(): void {
+    if (!this.shouldUpdate()) return;
+
+    this.safeExecute(() => {
+      if (this.isSystemEnabled()) {
+        // 1. 生成新任务
+        this.generateTasks();
+
+        // 2. 分配任务给空闲creep
+        this.scheduleTasks();
+
+        // 3. 清理完成的任务
+        this.cleanup();
+
+        // 4. 输出调试信息
+        if (Game.time % 20 === 0) {
+          this.logTaskStats();
+        }
+      }
+    }, 'TaskManager.update');
+
+    this.updateCompleted();
+  }
+
+  /**
+   * 生成任务
+   */
+  private generateTasks(): void {
+    // 为每个房间生成任务
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      this.taskGenerator.generateTasksForRoom(room);
+    }
+  }
+
+  /**
+   * 调度任务
+   */
+  private scheduleTasks(): void {
+    this.taskScheduler.assignTasks();
+  }
+
+  /**
+   * 输出任务统计信息
+   */
+  private logTaskStats(): void {
+    const stats = this.getStats();
+    console.log(`[TaskManager] 任务统计 - 待处理:${stats.pendingTasks}, 总计:${stats.totalTasks}, 已创建:${stats.tasksCreated}, 已完成:${stats.tasksCompleted}`);
+
+    // 输出当前任务分配情况
+    if (Memory.tasks?.creepTasks) {
+      const assignments = Object.keys(Memory.tasks.creepTasks).length;
+      console.log(`[TaskManager] 已分配任务的creep数量: ${assignments}`);
+    }
+  }
+
+  /**
+   * 获取任务执行器
+   */
+  public getTaskExecutor(taskType: TaskType) {
+    return this.executorRegistry.getExecutor(taskType);
+  }
+
+  /**
+   * 启用/禁用任务系统
+   */
+  public setEnabled(enabled: boolean): void {
+    this.isEnabled = enabled;
+    if (Memory.tasks) {
+      Memory.tasks.enabled = enabled;
+    }
+    console.log(`任务系统${enabled ? '已启用' : '已禁用'}`);
+  }
+
+  /**
+   * 检查任务系统是否启用
+   */
+  public isSystemEnabled(): boolean {
+    return this.isEnabled && Memory.tasks?.enabled || false;
+  }
+
+  /**
+   * 创建新任务
+   */
+  public createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'retryCount'>): string {
+    const taskId = this.generateTaskId();
+    const newTask: Task = {
+      ...task,
+      id: taskId,
+      status: TaskStatus.PENDING,
+      createdAt: Game.time,
+      updatedAt: Game.time,
+      retryCount: 0,
+      maxRetries: 3
+    } as Task;
+
+    if (Memory.tasks) {
+      Memory.tasks.taskQueue.push(newTask);
+      Memory.tasks.stats.tasksCreated++;
+    }
+
+    console.log(`创建任务: ${task.type} (${taskId})`);
+    return taskId;
+  }
+
+  /**
+   * 获取待分配的任务
+   */
+  public getPendingTasks(): Task[] {
+    if (!Memory.tasks) return [];
+    return Memory.tasks.taskQueue.filter(task => task.status === TaskStatus.PENDING);
+  }
+
+  /**
+   * 获取活跃的任务（包括待分配、已分配、进行中的任务）
+   */
+  public getActiveTasks(): Task[] {
+    if (!Memory.tasks) return [];
+    return Memory.tasks.taskQueue.filter(task =>
+      task.status === TaskStatus.PENDING ||
+      task.status === TaskStatus.ASSIGNED ||
+      task.status === TaskStatus.IN_PROGRESS
+    );
+  }
+
+  /**
+   * 分配任务给creep
+   */
+  public assignTask(taskId: string, creepName: string): boolean {
+    if (!Memory.tasks) return false;
+
+    const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+    if (!task || task.status !== TaskStatus.PENDING) {
+      return false;
+    }
+
+    task.assignedCreep = creepName;
+    task.status = TaskStatus.ASSIGNED;
+    task.updatedAt = Game.time;
+
+    Memory.tasks.creepTasks[creepName] = taskId;
+
+    console.log(`任务 ${taskId} 分配给 ${creepName}`);
+    return true;
+  }
+
+  /**
+   * 获取creep的当前任务
+   */
+  public getCreepTask(creepName: string): Task | null {
+    if (!Memory.tasks) return null;
+
+    const taskId = Memory.tasks.creepTasks[creepName];
+    if (!taskId) return null;
+
+    return Memory.tasks.taskQueue.find(t => t.id === taskId) || null;
+  }
+
+  /**
+   * 更新任务状态
+   */
+  public updateTaskStatus(taskId: string, status: TaskStatus): void {
+    if (!Memory.tasks) return;
+
+    const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+    if (!task) return;
+
+    task.status = status;
+    task.updatedAt = Game.time;
+
+    if (status === TaskStatus.IN_PROGRESS && !task.startedAt) {
+      task.startedAt = Game.time;
+    }
+
+    if (status === TaskStatus.COMPLETED || status === TaskStatus.FAILED) {
+      task.completedAt = Game.time;
+      if (task.assignedCreep) {
+        delete Memory.tasks.creepTasks[task.assignedCreep];
+      }
+
+      // 更新统计信息
+      if (status === TaskStatus.COMPLETED) {
+        Memory.tasks.stats.tasksCompleted++;
+      } else {
+        Memory.tasks.stats.tasksFailed++;
+      }
+
+      // 添加到完成列表等待清理
+      Memory.tasks.completedTasks.push(taskId);
+    }
+  }
+
+  /**
+   * 清理完成的任务
+   */
+  public cleanup(): void {
+    if (!Memory.tasks) return;
+
+    // 每100tick清理一次
+    if (Game.time - Memory.tasks.lastCleanup < 100) return;
+
+    // 清理完成的任务（保留最近50个）
+    const completedToKeep = Memory.tasks.completedTasks.slice(-50);
+    const tasksToRemove = Memory.tasks.completedTasks.slice(0, -50);
+
+    Memory.tasks.taskQueue = Memory.tasks.taskQueue.filter(task =>
+      !tasksToRemove.includes(task.id)
+    );
+
+    Memory.tasks.completedTasks = completedToKeep;
+    Memory.tasks.lastCleanup = Game.time;
+
+    // 清理死亡creep的任务分配
+    for (const creepName in Memory.tasks.creepTasks) {
+      if (!(creepName in Game.creeps)) {
+        delete Memory.tasks.creepTasks[creepName];
+      }
+    }
+  }
+
+  /**
+   * 生成任务ID
+   */
+  private generateTaskId(): string {
+    return `task_${Game.time}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * 获取任务统计信息
+   */
+  public getStats(): any {
+    if (!Memory.tasks) return {};
+
+    return {
+      enabled: this.isSystemEnabled(),
+      pendingTasks: this.getPendingTasks().length,
+      totalTasks: Memory.tasks.taskQueue.length,
+      ...Memory.tasks.stats
+    };
+  }
+
+  /**
+   * 重置时的清理工作
+   */
+  protected onReset(): void {
+    this.isEnabled = false;
+    if (Memory.tasks) {
+      Memory.tasks.enabled = false;
+    }
+  }
+}

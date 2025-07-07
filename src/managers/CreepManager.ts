@@ -1,5 +1,5 @@
 // src/managers/CreepManager.ts - 重构后的协调器实现
-import { BaseManager } from "../core/BaseManager";
+import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { ProductionNeed, CreepState } from "../types";

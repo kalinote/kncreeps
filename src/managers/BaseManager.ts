@@ -1,4 +1,4 @@
-import { EventBus } from "./EventBus";
+import { EventBus } from "../core/EventBus";
 
 /**
  * 基础管理器类 - 所有管理器的基类

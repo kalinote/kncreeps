@@ -1,4 +1,4 @@
-import { BaseManager } from "../core/BaseManager";
+import { BaseManager } from "../managers/BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { clear } from "console";

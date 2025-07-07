@@ -1,6 +1,6 @@
 import { EventBus } from "./EventBus";
-import { StateManager } from "./StateManager";
-import { BaseManager } from "./BaseManager";
+import { StateManager } from "../managers/StateManager";
+import { BaseManager } from "../managers/BaseManager";
 import { GameConfig } from "../config/GameConfig";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "managers/CreepManager";

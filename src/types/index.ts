@@ -71,6 +71,7 @@ declare global {
     creepStates: { [creepName: string]: CreepState };
     behaviorStats: { [role: string]: BehaviorStats };
     eventBus: EventBusMemory;
+    tasks?: TaskSystemMemory;
     gameEngine?: {
       initialized: boolean;
       lastTick: number;
@@ -133,8 +134,132 @@ declare global {
     interface Global {
       log: any;
       gameEngine?: any; // 避免循环引用，使用any类型
+      taskDebug?: any; // 添加任务调试工具
     }
   }
 }
 
-export {};
+// ==================== 任务系统类型定义 ====================
+
+// 任务类型枚举
+export enum TaskType {
+  HARVEST = 'harvest',
+  TRANSPORT = 'transport',
+  BUILD = 'build',
+  REPAIR = 'repair',
+  UPGRADE = 'upgrade',
+  DEFEND = 'defend'
+}
+
+// 任务状态枚举
+export enum TaskStatus {
+  PENDING = 'pending',
+  ASSIGNED = 'assigned',
+  IN_PROGRESS = 'in_progress',
+  PAUSED = 'paused',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled'
+}
+
+// 任务优先级枚举
+export enum TaskPriority {
+  EMERGENCY = 100,
+  CRITICAL = 80,
+  HIGH = 60,
+  NORMAL = 40,
+  LOW = 20,
+  BACKGROUND = 10
+}
+
+// 任务基础接口
+export interface BaseTask {
+  id: string;
+  type: TaskType;
+  priority: TaskPriority;
+  status: TaskStatus;
+  roomName: string;
+  assignedCreep?: string;
+  createdAt: number;
+  updatedAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  retryCount: number;
+  maxRetries: number;
+}
+
+// 采集任务参数
+export interface HarvestTaskParams {
+  sourceId: string;
+  targetId?: string;  // 存储目标，为空则丢在地上
+  targetPos?: { x: number; y: number; roomName: string }; // 目标位置
+}
+
+// 运输任务参数
+export interface TransportTaskParams {
+  sourceId?: string;  // 源建筑ID
+  sourcePos?: { x: number; y: number; roomName: string }; // 源位置（拾取地面资源）
+  targetId?: string;  // 目标建筑ID
+  targetPos?: { x: number; y: number; roomName: string }; // 目标位置（丢弃）
+  resourceType: ResourceConstant;
+  amount?: number;
+}
+
+// 具体任务接口
+export interface HarvestTask extends BaseTask {
+  type: TaskType.HARVEST;
+  params: HarvestTaskParams;
+}
+
+export interface TransportTask extends BaseTask {
+  type: TaskType.TRANSPORT;
+  params: TransportTaskParams;
+}
+
+// 联合类型
+export type Task = HarvestTask | TransportTask;
+
+// 任务执行结果
+export interface TaskResult {
+  success: boolean;
+  completed: boolean;
+  message?: string;
+  nextState?: string;
+}
+
+// 能力要求
+export interface CapabilityRequirement {
+  bodyPart: BodyPartConstant;
+  minCount: number;
+  weight: number;
+}
+
+// 任务执行器接口
+export interface TaskExecutor {
+  canExecute(creep: Creep, task: Task): boolean;
+  execute(creep: Creep, task: Task): TaskResult;
+  getRequiredCapabilities(): CapabilityRequirement[];
+}
+
+// 在全局Memory接口中添加任务系统内存
+declare global {
+  interface Memory {
+    // ... 现有属性 ...
+    tasks?: TaskSystemMemory;
+  }
+}
+
+// 任务系统内存
+export interface TaskSystemMemory {
+  enabled: boolean;
+  taskQueue: Task[];
+  creepTasks: { [creepName: string]: string }; // creep -> taskId 映射
+  completedTasks: string[]; // 已完成的任务ID列表（用于清理）
+  lastCleanup: number;
+  stats: {
+    tasksCreated: number;
+    tasksCompleted: number;
+    tasksFailed: number;
+    averageExecutionTime: number;
+  };
+}

@@ -1,4 +1,4 @@
-import { BaseManager } from "../core/BaseManager";
+import { BaseManager } from "../managers/BaseManager";
 import { EventBus } from "../core/EventBus";
 import { BaseBehavior, BehaviorResult } from "../behaviors/BaseBehavior";
 import { HarvesterBehavior } from "../behaviors/HarvesterBehavior";
@@ -7,18 +7,22 @@ import { BuilderBehavior } from "../behaviors/BuilderBehavior";
 import { UpgraderBehavior } from "../behaviors/UpgraderBehavior";
 import { DefenderBehavior } from "../behaviors/DefenderBehavior";
 import { GameConfig } from "../config/GameConfig";
+import { TaskManager } from "./TaskManager";
+import { Task, TaskStatus } from "types";
 
 /**
  * 行为管理器 - 管理所有creep的行为执行
  */
 export class BehaviorManager extends BaseManager {
   private behaviors: Map<string, BaseBehavior> = new Map();
+  taskManager: TaskManager;
 
-  constructor(eventBus: EventBus) {
+  constructor(eventBus: EventBus, taskManager: TaskManager) {
     super(eventBus);
     this.initializeBehaviorStatsMemory();
     this.initializeBehaviors();
     this.setupEventListeners();
+    this.taskManager = taskManager;
   }
 
   /**
@@ -146,6 +150,20 @@ export class BehaviorManager extends BaseManager {
    * 运行单个creep的行为
    */
   private runCreepBehavior(creep: Creep): BehaviorResult {
+    // 先尝试使用任务系统
+    if (this.taskManager.isSystemEnabled()) {
+      const task = this.taskManager.getCreepTask(creep.name);
+      if (task) {
+        // 只在第一次分配任务时输出日志
+        if (task.status === TaskStatus.ASSIGNED) {
+          console.log(`[BehaviorManager] ${creep.name} 开始执行任务: ${task.type}(${task.id})`);
+        }
+        return this.executeTask(creep, task);
+      }
+    }
+
+
+    // 任务系统执行失败，使用原有的行为系统，后续删除
     const role = creep.memory.role;
     const behavior = this.behaviors.get(role);
 
@@ -241,6 +259,32 @@ export class BehaviorManager extends BaseManager {
    */
   public hasBehavior(role: string): boolean {
     return this.behaviors.has(role);
+  }
+
+  /**
+   * 执行任务
+   */
+  private executeTask(creep: Creep, task: Task): BehaviorResult {
+    const executor = this.taskManager.getTaskExecutor(task.type);
+    if (!executor) {
+      return { success: false, message: `未找到任务执行器: ${task.type}` };
+    }
+
+    const result = executor.execute(creep, task);
+
+    // 更新任务状态
+    if (result.completed) {
+      this.taskManager.updateTaskStatus(task.id,
+        result.success ? TaskStatus.COMPLETED : TaskStatus.FAILED);
+    } else if (task.status !== TaskStatus.IN_PROGRESS) {
+      this.taskManager.updateTaskStatus(task.id, TaskStatus.IN_PROGRESS);
+    }
+
+    return {
+      success: result.success,
+      message: result.message,
+      nextState: result.nextState
+    };
   }
 
   protected onReset(): void {

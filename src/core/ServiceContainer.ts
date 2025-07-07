@@ -1,12 +1,14 @@
 import { EventBus } from "./EventBus";
-import { StateManager } from "./StateManager";
-import { BaseManager } from "./BaseManager";
+import { StateManager } from "../managers/StateManager";
+import { BaseManager } from "../managers/BaseManager";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "../managers/CreepManager";
 import { BehaviorManager } from "../managers/BehaviorManager";
 import { CreepProductionService } from "../services/CreepProductionService";
 import { CreepLifecycleService } from "../services/CreepLifecycleService";
 import { EnergyService } from "../services/EnergyService";
+import { TaskManager } from "../managers/TaskManager";
+import { HarvestTaskExecutor } from "task/executors/HarvestTaskExecutor";
 
 /**
  * 服务容器 - 管理所有服务和依赖注入
@@ -37,6 +39,9 @@ export class ServiceContainer {
       new CreepLifecycleService(this.get('eventBus'), this.get('creepProductionService'))
     );
 
+    // 注册任务系统
+    this.registerSingleton('taskManager', () => new TaskManager(this.get('eventBus')));
+
     // 注册管理器
     this.registerSingleton('roomManager', () => new RoomManager(this.get('eventBus')));
     this.registerSingleton('creepManager', () =>
@@ -47,7 +52,12 @@ export class ServiceContainer {
         this.get('roomManager')
       )
     );
-    this.registerSingleton('behaviorManager', () => new BehaviorManager(this.get('eventBus')));
+    this.registerSingleton('behaviorManager', () =>
+      new BehaviorManager(this.get('eventBus'), this.get('taskManager'))
+    );
+
+    // 注册任务执行器（可选，因为现在通过 TaskExecutorRegistry 管理）
+    this.registerSingleton('harvestTaskExecutor', () => new HarvestTaskExecutor());
   }
 
   /**
@@ -121,6 +131,7 @@ export class ServiceContainer {
    */
   public initializeManagers(): void {
     // 按依赖顺序初始化管理器
+    this.get('taskManager');
     this.get('roomManager');
     this.get('creepManager');
     this.get('behaviorManager');
@@ -147,10 +158,12 @@ export class ServiceContainer {
     const managers = new Map<string, BaseManager>();
 
     const managerNames = [
+      'taskManager',
       'roomManager',
       'creepManager',
       'behaviorManager'
     ];
+
     for (const name of managerNames) {
       if (this.singletons.has(name)) {
         managers.set(name, this.singletons.get(name) as BaseManager);
