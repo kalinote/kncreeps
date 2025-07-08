@@ -43,37 +43,37 @@ export class RoleConfig {
     // 按房间控制器等级的角色数量限制（提高上限以支持任务驱动生产）
     BY_RCL: {
       1: {
-        [RoleConfig.ROLES.WORKER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       2: {
-        [RoleConfig.ROLES.WORKER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.HIGH },
         [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       3: {
-        [RoleConfig.ROLES.WORKER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 10, priority: RoleConfig.PRIORITIES.HIGH },
         [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 6, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       4: {
-        [RoleConfig.ROLES.WORKER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 10, priority: RoleConfig.PRIORITIES.HIGH },
         [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 6, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       5: {
-        [RoleConfig.ROLES.WORKER]: { min: 3, max: 10, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.WORKER]: { min: 3, max: 12, priority: RoleConfig.PRIORITIES.HIGH },
         [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       6: {
-        [RoleConfig.ROLES.WORKER]: { min: 3, max: 10, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.WORKER]: { min: 3, max: 12, priority: RoleConfig.PRIORITIES.HIGH },
         [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 6, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       7: {
-        [RoleConfig.ROLES.WORKER]: { min: 4, max: 12, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.WORKER]: { min: 4, max: 14, priority: RoleConfig.PRIORITIES.HIGH },
         [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 10, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 8, priority: RoleConfig.PRIORITIES.MINIMAL }
       },

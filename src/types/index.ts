@@ -189,6 +189,7 @@ export interface BaseTask {
 // 采集任务参数
 export interface HarvestTaskParams {
   sourceId: string;
+  harvestPosition?: { x: number; y: number; roomName: string }; // 指定的采集位置
   targetId?: string;  // 存储目标，为空则丢在地上
   targetPos?: { x: number; y: number; roomName: string }; // 目标位置
 }

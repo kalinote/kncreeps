@@ -1,5 +1,6 @@
 import { TaskManager } from "../managers/TaskManager";
 import { HarvestTask, TransportTask, UpgradeTask, BuildTask, AttackTask, TaskPriority, TaskType } from "../types";
+import { SourceAnalyzer } from "../utils/SourceAnalyzer";
 
 /**
  * 任务生成器 - 根据房间状态自动创建任务
@@ -30,31 +31,55 @@ export class TaskGenerator {
     const existingHarvestTasks = this.taskManager.getActiveTasks()
       .filter(task => task.type === TaskType.HARVEST && task.roomName === room.name);
 
-    console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${sources.length} 个源, 现有 ${existingHarvestTasks.length} 个活跃采集任务`);
+    // 获取房间的source统计信息
+    const sourceStats = SourceAnalyzer.getRoomSourceStats(room);
 
-    // 为每个源创建采集任务（如果还没有）
-    // 前两个source保持高优先级，超过两个的source设置为低优先级
-    for (let i = 0; i < sources.length; i++) {
-      const source = sources[i];
-      const hasTask = existingHarvestTasks.some(task =>
-        (task as HarvestTask).params.sourceId === source.id
-      );
+    console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${sourceStats.totalSources} 个源, 总共 ${sourceStats.totalHarvestPositions} 个可采集位置, 现有 ${existingHarvestTasks.length} 个活跃采集任务`);
 
-      if (!hasTask) {
-        // 前两个source使用高优先级，其余使用低优先级
-        const priority = i < 2 ? TaskPriority.HIGH : TaskPriority.LOW;
-        const taskId = this.taskManager.createTask({
-          type: TaskType.HARVEST,
-          priority: priority,
-          roomName: room.name,
-          maxRetries: 3,
-          params: {
-            sourceId: source.id
-          }
+    // 为每个source的每个可采集位置创建任务
+    for (let sourceIndex = 0; sourceIndex < sourceStats.sourceDetails.length; sourceIndex++) {
+      const sourceDetail = sourceStats.sourceDetails[sourceIndex];
+      const source = sources[sourceIndex];
+
+      // 为每个可采集位置创建任务
+      for (let posIndex = 0; posIndex < sourceDetail.positions.length; posIndex++) {
+        const harvestPosition = sourceDetail.positions[posIndex];
+
+        // 检查是否已有针对此source和位置的任务
+        const hasTask = existingHarvestTasks.some(task => {
+          const harvestTask = task as HarvestTask;
+          if (harvestTask.params.sourceId !== source.id) return false;
+
+          // 如果没有指定harvestPosition，说明是旧版本的任务，需要检查
+          if (!harvestTask.params.harvestPosition) return true;
+
+          // 检查位置是否匹配
+          return harvestTask.params.harvestPosition.x === harvestPosition.x &&
+                 harvestTask.params.harvestPosition.y === harvestPosition.y &&
+                 harvestTask.params.harvestPosition.roomName === harvestPosition.roomName;
         });
-        console.log(`[TaskGenerator] 为源 ${source.id} 创建采集任务: ${taskId} (优先级: ${priority})`);
-      } else {
-        console.log(`[TaskGenerator] 源 ${source.id} 已有活跃任务，跳过创建`);
+
+        if (!hasTask) {
+          // 前两个source使用高优先级，其余使用低优先级
+          const priority = sourceIndex < 2 ? TaskPriority.HIGH : TaskPriority.LOW;
+          const taskId = this.taskManager.createTask({
+            type: TaskType.HARVEST,
+            priority: priority,
+            roomName: room.name,
+            maxRetries: 3,
+            params: {
+              sourceId: source.id,
+              harvestPosition: {
+                x: harvestPosition.x,
+                y: harvestPosition.y,
+                roomName: harvestPosition.roomName
+              }
+            }
+          });
+          console.log(`[TaskGenerator] 为源 ${source.id} 位置 (${harvestPosition.x}, ${harvestPosition.y}) 创建采集任务: ${taskId} (优先级: ${priority})`);
+        } else {
+          console.log(`[TaskGenerator] 源 ${source.id} 位置 (${harvestPosition.x}, ${harvestPosition.y}) 已有活跃任务，跳过创建`);
+        }
       }
     }
   }

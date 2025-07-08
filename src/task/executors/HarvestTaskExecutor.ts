@@ -40,6 +40,25 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
       return this.handleStorage(creep, task);
     }
 
+    // 检查是否需要移动到指定的采集位置
+    if (task.params.harvestPosition) {
+      const targetPos = new RoomPosition(
+        task.params.harvestPosition.x,
+        task.params.harvestPosition.y,
+        task.params.harvestPosition.roomName
+      );
+
+      // 如果不在指定位置，先移动到指定位置
+      if (!creep.pos.isEqualTo(targetPos)) {
+        const moveResult = creep.moveTo(targetPos);
+        if (moveResult === OK || moveResult === ERR_TIRED) {
+          return { success: true, completed: false, message: '移动到指定采集位置' };
+        } else {
+          return { success: false, completed: false, message: `移动到采集位置失败: ${moveResult}` };
+        }
+      }
+    }
+
     // 执行采集
     const harvestResult = creep.harvest(source);
 
@@ -48,8 +67,20 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
         return { success: true, completed: false, message: '正在采集' };
 
       case ERR_NOT_IN_RANGE:
-        this.moveToTarget(creep, source);
-        return { success: true, completed: false, message: '移动到源点' };
+        // 如果没有指定采集位置，移动到source位置
+        if (!task.params.harvestPosition) {
+          this.moveToTarget(creep, source);
+          return { success: true, completed: false, message: '移动到源点' };
+        } else {
+          // 如果指定了采集位置但不在范围内，说明位置可能被占用，尝试重新移动到指定位置
+          const targetPos = new RoomPosition(
+            task.params.harvestPosition.x,
+            task.params.harvestPosition.y,
+            task.params.harvestPosition.roomName
+          );
+          creep.moveTo(targetPos);
+          return { success: true, completed: false, message: '重新移动到指定采集位置' };
+        }
 
       case ERR_NOT_ENOUGH_RESOURCES:
         // 源暂时枯竭，等待恢复
