@@ -4,6 +4,7 @@ import { Task, TaskType, TaskStatus, TaskPriority, TaskSystemMemory } from "../t
 import { BaseManager } from "./BaseManager";
 import { TaskGenerator } from "../task/TaskGenerator";
 import { TaskScheduler } from "../task/TaskScheduler";
+import { TaskRoleMapping } from "../config/TaskConfig";
 
 /**
  * 任务管理器 - 管理所有任务的生命周期
@@ -61,7 +62,7 @@ export class TaskManager extends BaseManager {
         this.cleanup();
 
         // 4. 输出调试信息
-        if (Game.time % 20 === 0) {
+        if (TaskRoleMapping.shouldPerformCleanup(Game.time, 'STATS_OUTPUT')) {
           this.logTaskStats();
         }
       }
@@ -244,12 +245,18 @@ export class TaskManager extends BaseManager {
   public cleanup(): void {
     if (!Memory.tasks) return;
 
-    // 每100tick清理一次
-    if (Game.time - Memory.tasks.lastCleanup < 100) return;
+    // 使用配置的清理周期
+    if (!TaskRoleMapping.shouldPerformCleanup(Memory.tasks.lastCleanup, 'MAIN_CLEANUP')) {
+      return;
+    }
 
-    // 清理完成的任务（保留最近50个）
-    const completedToKeep = Memory.tasks.completedTasks.slice(-50);
-    const tasksToRemove = Memory.tasks.completedTasks.slice(0, -50);
+    // 清理完成的任务（保留配置的数量）
+    const completedToKeep = Memory.tasks.completedTasks.slice(
+      -TaskRoleMapping.getCleanupConfig('COMPLETED_TASKS_TO_KEEP')
+    );
+    const tasksToRemove = Memory.tasks.completedTasks.slice(
+      0, -TaskRoleMapping.getCleanupConfig('COMPLETED_TASKS_TO_KEEP')
+    );
 
     Memory.tasks.taskQueue = Memory.tasks.taskQueue.filter(task =>
       !tasksToRemove.includes(task.id)
@@ -259,10 +266,59 @@ export class TaskManager extends BaseManager {
     Memory.tasks.lastCleanup = Game.time;
 
     // 清理死亡creep的任务分配
+    this.cleanupDeadCreepTasks();
+
+    // 清理过期任务
+    this.cleanupExpiredTasks();
+
+    console.log(`[TaskManager] 清理完成: 移除 ${tasksToRemove.length} 个已完成任务`);
+  }
+
+  /**
+   * 清理死亡creep的任务分配
+   */
+  private cleanupDeadCreepTasks(): void {
+    if (!Memory.tasks) return;
+
+    let cleanedCount = 0;
     for (const creepName in Memory.tasks.creepTasks) {
       if (!(creepName in Game.creeps)) {
         delete Memory.tasks.creepTasks[creepName];
+        cleanedCount++;
       }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`[TaskManager] 清理了 ${cleanedCount} 个死亡creep的任务分配`);
+    }
+  }
+
+  /**
+   * 清理过期任务
+   */
+  private cleanupExpiredTasks(): void {
+    if (!Memory.tasks) return;
+
+    const originalCount = Memory.tasks.taskQueue.length;
+    Memory.tasks.taskQueue = Memory.tasks.taskQueue.filter(task => {
+      // 检查任务是否过期
+      if (TaskRoleMapping.isTaskExpired(task.createdAt)) {
+        console.log(`[TaskManager] 移除过期任务: ${task.id} (${task.type})`);
+        return false;
+      }
+
+      // 检查任务执行是否超时
+      if (task.startedAt && TaskRoleMapping.isTaskExecutionTimeout(task.startedAt)) {
+        console.log(`[TaskManager] 移除超时任务: ${task.id} (${task.type})`);
+        return false;
+      }
+
+      return true;
+    });
+
+    const removedCount = originalCount - Memory.tasks.taskQueue.length;
+    if (removedCount > 0) {
+      console.log(`[TaskManager] 清理了 ${removedCount} 个过期/超时任务`);
     }
   }
 

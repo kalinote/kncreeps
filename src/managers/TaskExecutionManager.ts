@@ -3,6 +3,7 @@ import { EventBus } from "../core/EventBus";
 import { TaskManager } from "./TaskManager";
 import { Task, TaskStatus } from "types";
 import { GameConfig } from "../config/GameConfig";
+import { TaskRoleMapping } from "../config/TaskConfig";
 
 /**
  * 任务执行管理器 - 管理所有creep的任务执行
@@ -76,7 +77,7 @@ export class TaskExecutionManager extends BaseManager {
     const executionTime = Game.cpu.getUsed() - startTime;
 
     // 定期输出统计信息
-    if (Game.time % GameConfig.UPDATE_FREQUENCIES.CLEANUP === 0) {
+    if (TaskRoleMapping.shouldPerformCleanup(Game.time, 'STATS_OUTPUT')) {
       console.log(`[TaskExecutionManager] 执行了 ${executedCount} 个任务, 成功: ${successCount}, CPU: ${executionTime.toFixed(2)}`);
     }
   }

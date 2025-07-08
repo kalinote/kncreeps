@@ -1,6 +1,6 @@
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
-import { TaskRoleMapping } from "../config/TaskRoleMapping";
+import { TaskRoleMapping } from "../config/TaskConfig";
 import { BodyBuilder } from "../utils/BodyBuilder";
 import { ProductionNeed, Task, TaskType, TaskStatus } from "../types";
 

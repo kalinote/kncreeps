@@ -39,6 +39,36 @@ export class TaskRoleMapping {
     [TaskType.ATTACK]: GameConfig.PRIORITIES.HIGH           // 攻击高优先级
   } as const;
 
+  // 任务系统清理周期配置
+  public static readonly TASK_CLEANUP_FREQUENCIES = {
+    MAIN_CLEANUP: 30,                    // 任务系统主要清理周期（ticks）
+    DEAD_CREEP_CLEANUP: 50,              // 死亡creep任务分配清理周期
+    COMPLETED_TASK_CLEANUP: 20,         // 已完成任务清理周期
+    DUPLICATE_TASK_CLEANUP: 30,        // 重复任务检测和清理周期
+    EXPIRED_TASK_CLEANUP: 500,           // 过期任务清理周期
+    STATS_OUTPUT: 20,                    // 任务统计信息输出频率
+    ASSIGNMENT_RETRY: 10,                // 任务分配重试周期
+    EXECUTION_TIMEOUT_CHECK: 30          // 任务执行超时检查周期
+  } as const;
+
+  // 任务清理相关配置
+  public static readonly TASK_CLEANUP_CONFIG = {
+    // 保留的已完成任务数量
+    COMPLETED_TASKS_TO_KEEP: 50,
+
+    // 任务执行超时时间（ticks）
+    TASK_EXECUTION_TIMEOUT: 1000,
+
+    // 任务重试次数
+    MAX_TASK_RETRIES: 3,
+
+    // 重复任务检测阈值
+    DUPLICATE_DETECTION_THRESHOLD: 5,
+
+    // 任务过期时间（ticks）
+    TASK_EXPIRATION_TIME: 2000
+  } as const;
+
   /**
    * 获取任务类型对应的角色列表
    */
@@ -81,5 +111,46 @@ export class TaskRoleMapping {
     } else {
       return 'low';
     }
+  }
+
+  /**
+   * 获取清理周期配置
+   */
+  public static getCleanupFrequency(type: keyof typeof TaskRoleMapping.TASK_CLEANUP_FREQUENCIES): number {
+    return TaskRoleMapping.TASK_CLEANUP_FREQUENCIES[type];
+  }
+
+  /**
+   * 获取清理配置
+   */
+  public static getCleanupConfig(type: keyof typeof TaskRoleMapping.TASK_CLEANUP_CONFIG): number {
+    return TaskRoleMapping.TASK_CLEANUP_CONFIG[type];
+  }
+
+  /**
+   * 检查是否应该执行清理
+   */
+  public static shouldPerformCleanup(
+    lastCleanupTime: number,
+    cleanupType: keyof typeof TaskRoleMapping.TASK_CLEANUP_FREQUENCIES
+  ): boolean {
+    const frequency = TaskRoleMapping.getCleanupFrequency(cleanupType);
+    return Game.time - lastCleanupTime >= frequency;
+  }
+
+  /**
+   * 检查任务是否过期
+   */
+  public static isTaskExpired(taskCreatedAt: number): boolean {
+    const expirationTime = TaskRoleMapping.getCleanupConfig('TASK_EXPIRATION_TIME');
+    return Game.time - taskCreatedAt > expirationTime;
+  }
+
+  /**
+   * 检查任务执行是否超时
+   */
+  public static isTaskExecutionTimeout(taskStartedAt: number): boolean {
+    const timeout = TaskRoleMapping.getCleanupConfig('TASK_EXECUTION_TIMEOUT');
+    return Game.time - taskStartedAt > timeout;
   }
 }

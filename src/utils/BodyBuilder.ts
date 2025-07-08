@@ -148,9 +148,9 @@ export class BodyBuilder {
         standardConfig: [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
         maxConfig: [WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
         scalingRules: [
-          { priority: 1, part: WORK, maxCount: 5 },
-          { priority: 2, part: CARRY, maxCount: 3 },
-          { priority: 3, part: MOVE, ratio: 0.5 }
+          { priority: 3, part: WORK, maxCount: 15 },
+          { priority: 1, part: CARRY, maxCount: 10 },
+          { priority: 2, part: MOVE, ratio: 0.5 }
         ]
       },
       [GameConfig.ROLES.TRANSPORTER]: {
@@ -159,7 +159,7 @@ export class BodyBuilder {
         standardConfig: [CARRY, CARRY, MOVE, MOVE],
         maxConfig: [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
         scalingRules: [
-          { priority: 1, part: CARRY, maxCount: 8 },
+          { priority: 1, part: CARRY, maxCount: 15 },
           { priority: 2, part: MOVE, ratio: 0.5 }
         ]
       },
