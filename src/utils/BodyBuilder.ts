@@ -165,14 +165,13 @@ export class BodyBuilder {
       },
       [GameConfig.ROLES.SHOOTER]: {
         name: GameConfig.ROLES.SHOOTER,
-        minConfig: [MOVE, TOUGH, RANGED_ATTACK],
-        standardConfig: [MOVE, MOVE, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK],
-        maxConfig: [MOVE, MOVE, MOVE, MOVE, TOUGH, TOUGH, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, HEAL, HEAL],
+        minConfig: [MOVE, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, RANGED_ATTACK],
+        standardConfig: [MOVE, MOVE, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK],
+        maxConfig: [MOVE, MOVE, MOVE, MOVE, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK],
         scalingRules: [
           { priority: 1, part: RANGED_ATTACK, maxCount: 5 },
-          { priority: 2, part: TOUGH, maxCount: 8 },
-          { priority: 3, part: MOVE, ratio: 0.5 },
-          { priority: 4, part: HEAL, maxCount: 2 }
+          { priority: 2, part: TOUGH, maxCount: 20 },
+          { priority: 3, part: MOVE, ratio: 0.5 }
         ]
       }
     };

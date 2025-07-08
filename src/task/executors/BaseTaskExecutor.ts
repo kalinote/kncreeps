@@ -1,4 +1,5 @@
 import { Task, TaskResult, CapabilityRequirement } from "../../types";
+import { EnergyConfig } from "../../config/EnergyConfig";
 
 /**
  * 任务执行器基类
@@ -201,5 +202,103 @@ export abstract class BaseTaskExecutor {
         message: `执行错误: ${error}`
       };
     }
+  }
+
+  /**
+   * 安全地从建筑中取用能量，确保spawn保留足够能量
+   */
+  protected withdrawEnergySafely(creep: Creep, structure: Structure, amount?: number): ScreepsReturnCode {
+    // 检查是否是spawn
+    if (structure.structureType === STRUCTURE_SPAWN) {
+      const spawn = structure as StructureSpawn;
+      const currentEnergy = spawn.store.getUsedCapacity(RESOURCE_ENERGY);
+      const spawnCapacity = spawn.store.getCapacity(RESOURCE_ENERGY);
+      const requestAmount = amount || creep.store.getFreeCapacity(RESOURCE_ENERGY);
+      const minReserve = EnergyConfig.SPAWN_ENERGY_RESERVE.MIN_RESERVE;
+
+      // 如果spawn接近满能量，允许正常取用
+      if (currentEnergy >= spawnCapacity * EnergyConfig.SPAWN_ENERGY_RESERVE.FULL_CAPACITY_THRESHOLD) {
+        return creep.withdraw(spawn, RESOURCE_ENERGY, amount);
+      }
+
+      // 如果取用后剩余能量少于最小保留量，调整取用量
+      if (currentEnergy - requestAmount < minReserve) {
+        const availableAmount = Math.max(0, currentEnergy - minReserve);
+        if (availableAmount <= 0) {
+          return ERR_NOT_ENOUGH_RESOURCES;
+        }
+        // 使用调整后的取用量
+        return creep.withdraw(spawn, RESOURCE_ENERGY, availableAmount);
+      }
+    }
+
+    // 非spawn建筑，正常取用
+    return creep.withdraw(structure, RESOURCE_ENERGY, amount);
+  }
+
+  /**
+   * 从建筑列表中安全地获取能量，优先从非spawn建筑获取
+   */
+  protected getEnergyFromStructures(creep: Creep, structures: Structure[]): { success: boolean; message: string } {
+    // 分离spawn和非spawn建筑
+    const spawns = structures.filter(s => s.structureType === STRUCTURE_SPAWN);
+    const otherStructures = structures.filter(s => s.structureType !== STRUCTURE_SPAWN);
+
+    // 优先从非spawn建筑获取能量
+    for (const structure of otherStructures) {
+      if ('store' in structure) {
+        const storeStructure = structure as any;
+        if (storeStructure.store && storeStructure.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+          const withdrawResult = creep.withdraw(structure, RESOURCE_ENERGY);
+
+          switch (withdrawResult) {
+            case OK:
+              return { success: true, message: `正在从${structure.structureType}获取能量` };
+            case ERR_NOT_IN_RANGE:
+              this.moveToTarget(creep, structure);
+              return { success: true, message: `移动到${structure.structureType}` };
+            case ERR_NOT_ENOUGH_RESOURCES:
+              continue; // 尝试下一个建筑
+            case ERR_FULL:
+              return { success: true, message: 'creep已满' };
+            default:
+              continue; // 尝试下一个建筑
+          }
+        }
+      }
+    }
+
+    // 如果非spawn建筑都没有能量，尝试从spawn获取（使用安全取用）
+    for (const spawn of spawns) {
+      if ('store' in spawn) {
+        const storeStructure = spawn as any;
+        const spawnEnergy = storeStructure.store.getUsedCapacity(RESOURCE_ENERGY);
+        const spawnCapacity = storeStructure.store.getCapacity(RESOURCE_ENERGY);
+
+        // 检查spawn是否有足够的能量（考虑保留量）
+        const hasEnoughEnergy = spawnEnergy > EnergyConfig.SPAWN_ENERGY_RESERVE.MIN_RESERVE ||
+                               spawnEnergy >= spawnCapacity * EnergyConfig.SPAWN_ENERGY_RESERVE.FULL_CAPACITY_THRESHOLD;
+
+        if (storeStructure.store && spawnEnergy > 0 && hasEnoughEnergy) {
+          const withdrawResult = this.withdrawEnergySafely(creep, spawn);
+
+          switch (withdrawResult) {
+            case OK:
+              return { success: true, message: '正在从spawn安全获取能量' };
+            case ERR_NOT_IN_RANGE:
+              this.moveToTarget(creep, spawn);
+              return { success: true, message: '移动到spawn' };
+            case ERR_NOT_ENOUGH_RESOURCES:
+              continue; // 尝试下一个spawn
+            case ERR_FULL:
+              return { success: true, message: 'creep已满' };
+            default:
+              continue; // 尝试下一个spawn
+          }
+        }
+      }
+    }
+
+    return { success: false, message: '所有建筑都没有可用能量' };
   }
 }

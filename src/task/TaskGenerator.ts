@@ -1,5 +1,5 @@
 import { TaskManager } from "../managers/TaskManager";
-import { HarvestTask, TransportTask, UpgradeTask, BuildTask, TaskPriority, TaskType } from "../types";
+import { HarvestTask, TransportTask, UpgradeTask, BuildTask, AttackTask, TaskPriority, TaskType } from "../types";
 
 /**
  * 任务生成器 - 根据房间状态自动创建任务
@@ -21,6 +21,7 @@ export class TaskGenerator {
     this.generateTransportTasks(room);
     this.generateBuildTasks(room);
     this.generateUpgradeTasks(room);
+    this.generateAttackTasks(room);
     // 后续添加其他任务类型
   }
 
@@ -200,6 +201,196 @@ export class TaskGenerator {
         console.log(`[TaskGenerator] 建筑工地 ${site.id} 已有活跃任务，跳过创建`);
       }
     }
+  }
+
+  /**
+   * 生成攻击任务
+   */
+  private generateAttackTasks(room: Room): void {
+    // 查找敌对单位
+    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+    const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+
+    if (hostileCreeps.length === 0 && hostileStructures.length === 0) {
+      return; // 没有敌对目标
+    }
+
+    const existingAttackTasks = this.taskManager.getActiveTasks()
+      .filter(task => task.type === TaskType.ATTACK && task.roomName === room.name) as AttackTask[];
+
+    console.log(`[TaskGenerator] 房间 ${room.name}: 发现 ${hostileCreeps.length} 个敌对creep, ${hostileStructures.length} 个敌对建筑, 现有 ${existingAttackTasks.length} 个活跃攻击任务`);
+
+    // 为敌对creep创建攻击任务
+    this.createAttackTasksForHostileCreeps(room, hostileCreeps, existingAttackTasks);
+
+    // 为敌对建筑创建攻击任务
+    this.createAttackTasksForHostileStructures(room, hostileStructures, existingAttackTasks);
+  }
+
+  /**
+   * 为敌对creep创建攻击任务
+   */
+  private createAttackTasksForHostileCreeps(room: Room, hostileCreeps: Creep[], existingTasks: AttackTask[]): void {
+    for (const hostile of hostileCreeps) {
+      // 检查是否已有针对此目标的任务
+      const hasExistingTask = existingTasks.some(task =>
+        task.params.targetId === hostile.id
+      );
+
+      if (!hasExistingTask) {
+        // 检查是否应该创建新的攻击任务
+        if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
+          const priority = this.calculateAttackTaskPriority(hostile);
+          const taskId = this.taskManager.createTask({
+            type: TaskType.ATTACK,
+            priority: priority,
+            roomName: room.name,
+            maxRetries: 3,
+            params: {
+              targetId: hostile.id,
+              targetType: 'creep',
+              attackType: 'auto',
+              maxRange: 3
+            }
+          });
+          console.log(`[TaskGenerator] 为敌对creep ${hostile.name}(${hostile.owner.username}) 创建攻击任务: ${taskId} (优先级: ${priority})`);
+        } else {
+          console.log(`[TaskGenerator] 跳过为敌对creep ${hostile.name} 创建攻击任务 - 已有足够的攻击单位`);
+        }
+      } else {
+        console.log(`[TaskGenerator] 敌对creep ${hostile.name} 已有攻击任务，跳过创建`);
+      }
+    }
+  }
+
+  /**
+   * 为敌对建筑创建攻击任务
+   */
+  private createAttackTasksForHostileStructures(room: Room, hostileStructures: Structure[], existingTasks: AttackTask[]): void {
+    for (const hostile of hostileStructures) {
+      // 检查是否已有针对此目标的任务
+      const hasExistingTask = existingTasks.some(task =>
+        task.params.targetId === hostile.id
+      );
+
+      if (!hasExistingTask) {
+        // 检查是否应该创建新的攻击任务
+        if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
+          const priority = this.calculateAttackTaskPriority(hostile);
+          const taskId = this.taskManager.createTask({
+            type: TaskType.ATTACK,
+            priority: priority,
+            roomName: room.name,
+            maxRetries: 3,
+            params: {
+              targetId: hostile.id,
+              targetType: 'structure',
+              attackType: 'auto',
+              maxRange: 3
+            }
+          });
+          console.log(`[TaskGenerator] 为敌对建筑 ${hostile.structureType}(${hostile.id}) 创建攻击任务: ${taskId} (优先级: ${priority})`);
+        } else {
+          console.log(`[TaskGenerator] 跳过为敌对建筑 ${hostile.structureType} 创建攻击任务 - 已有足够的攻击单位`);
+        }
+      } else {
+        console.log(`[TaskGenerator] 敌对建筑 ${hostile.structureType} 已有攻击任务，跳过创建`);
+      }
+    }
+  }
+
+  /**
+   * 判断是否应该创建攻击任务
+   */
+  private shouldCreateAttackTask(room: Room, target: Creep | Structure, existingTasks: AttackTask[]): boolean {
+    // 获取房间内我方的战斗单位数量
+    const myFighters = this.getMyFightersInRoom(room);
+
+    // 获取房间内敌对单位总数
+    const totalHostiles = room.find(FIND_HOSTILE_CREEPS).length + room.find(FIND_HOSTILE_STRUCTURES).length;
+
+    // 计算当前攻击任务数量
+    const currentAttackTasks = existingTasks.length;
+
+    // 防止创建过多攻击任务的策略：
+    // 1. 如果攻击任务数量已经超过敌对单位数量，不创建新任务
+    if (currentAttackTasks >= totalHostiles) {
+      return false;
+    }
+
+    // 2. 如果我方战斗单位数量已经足够（至少1:1.5的比例），不创建新任务
+    const maxFighters = Math.min(totalHostiles * 1.5, 5); // 最多5个战斗单位
+    if (myFighters.length >= maxFighters) {
+      return false;
+    }
+
+    // 3. 如果当前攻击任务数量已经超过我方战斗单位数量的2倍，不创建新任务
+    if (currentAttackTasks >= myFighters.length * 2) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * 获取房间内我方的战斗单位
+   */
+  private getMyFightersInRoom(room: Room): Creep[] {
+    return room.find(FIND_MY_CREEPS, {
+      filter: creep => {
+        const hasAttack = creep.getActiveBodyparts(ATTACK) > 0;
+        const hasRangedAttack = creep.getActiveBodyparts(RANGED_ATTACK) > 0;
+        return hasAttack || hasRangedAttack;
+      }
+    });
+  }
+
+  /**
+   * 计算攻击任务的优先级
+   */
+  private calculateAttackTaskPriority(target: Creep | Structure): TaskPriority {
+    let priority = TaskPriority.NORMAL;
+
+    if (target instanceof Creep) {
+      // 敌对creep优先级计算
+      const attackParts = target.getActiveBodyparts(ATTACK);
+      const rangedAttackParts = target.getActiveBodyparts(RANGED_ATTACK);
+      const healParts = target.getActiveBodyparts(HEAL);
+      const workParts = target.getActiveBodyparts(WORK);
+      const claimParts = target.getActiveBodyparts(CLAIM);
+
+      // 威胁评分
+      const threatScore = attackParts * 10 + rangedAttackParts * 8 + healParts * 6 + workParts * 4 + claimParts * 12;
+
+      if (threatScore >= 50) {
+        priority = TaskPriority.CRITICAL;
+      } else if (threatScore >= 30) {
+        priority = TaskPriority.HIGH;
+      } else if (threatScore >= 10) {
+        priority = TaskPriority.NORMAL;
+      } else {
+        priority = TaskPriority.LOW;
+      }
+    } else {
+      // 敌对建筑优先级计算
+      switch (target.structureType) {
+        case STRUCTURE_SPAWN:
+          priority = TaskPriority.EMERGENCY;
+          break;
+        case STRUCTURE_TOWER:
+          priority = TaskPriority.CRITICAL;
+          break;
+        case STRUCTURE_EXTENSION:
+        case STRUCTURE_STORAGE:
+        case STRUCTURE_TERMINAL:
+          priority = TaskPriority.HIGH;
+          break;
+        default:
+          priority = TaskPriority.NORMAL;
+      }
+    }
+
+    return priority;
   }
 }
 

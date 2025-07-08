@@ -119,7 +119,11 @@ export class TaskScheduler {
     score += distanceScore * 0.3;
 
     // 当前负载 (20%)
-    const loadScore = creep.store.getFreeCapacity() / creep.store.getCapacity();
+    const totalCapacity = creep.store.getCapacity();
+    let loadScore = 0.5; // 默认评分，适用于没有存储能力的creep
+    if (totalCapacity > 0) {
+      loadScore = creep.store.getFreeCapacity() / totalCapacity;
+    }
     score += loadScore * 0.2;
 
     // TODO 历史效率 (10%)

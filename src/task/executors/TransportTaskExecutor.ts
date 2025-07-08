@@ -67,7 +67,10 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
       if ('store' in source) {
         const storeStructure = source as any;
         if (storeStructure.store && storeStructure.store.getUsedCapacity(params.resourceType) > 0) {
-          const withdrawResult = creep.withdraw(source, params.resourceType);
+          // 使用安全取用方法，确保spawn保留足够能量
+          const withdrawResult = params.resourceType === RESOURCE_ENERGY ?
+            this.withdrawEnergySafely(creep, source, params.amount) :
+            creep.withdraw(source, params.resourceType, params.amount);
 
           switch (withdrawResult) {
             case OK:

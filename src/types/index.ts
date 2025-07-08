@@ -215,6 +215,14 @@ export interface UpgradeTaskParams {
   sourceConstructionIds: string[]; // 从该列表中的建筑拾取资源用于升级，为空则从任意符合条件的建筑中获取
 }
 
+// 攻击任务参数
+export interface AttackTaskParams {
+  targetId: string;                    // 攻击目标ID
+  targetType: 'creep' | 'structure';  // 目标类型
+  attackType?: 'ranged' | 'melee' | 'auto'; // 攻击类型，auto为自动选择
+  maxRange?: number;                   // 最大攻击距离
+}
+
 // 具体任务接口
 export interface HarvestTask extends BaseTask {
   type: TaskType.HARVEST;
@@ -236,8 +244,13 @@ export interface UpgradeTask extends BaseTask {
   params: UpgradeTaskParams;
 }
 
+export interface AttackTask extends BaseTask {
+  type: TaskType.ATTACK;
+  params: AttackTaskParams;
+}
+
 // 联合类型
-export type Task = HarvestTask | TransportTask | BuildTask | UpgradeTask;
+export type Task = HarvestTask | TransportTask | BuildTask | UpgradeTask | AttackTask;
 
 // 任务执行结果
 export interface TaskResult {

@@ -296,6 +296,228 @@ global.taskDebug = {
     const taskManager = gameEngine.getService('taskManager') as TaskManager;
     taskManager.setEnabled(false);
     console.log('任务系统已禁用');
+  },
+
+  // 攻击任务调试工具
+  attackDebug: {
+    // 显示攻击任务状态
+    status: () => {
+      const taskManager = gameEngine.getService('taskManager') as TaskManager;
+      const attackTasks = taskManager.getActiveTasks().filter(task => task.type === 'attack');
+
+      console.log('=== 攻击任务状态 ===');
+      console.log(`攻击任务数量: ${attackTasks.length}`);
+
+      if (attackTasks.length > 0) {
+        console.log('攻击任务详情:');
+        attackTasks.forEach(task => {
+          const attackTask = task as any;
+          console.log(`  ${task.type}(${task.id}): ${task.status} - 目标: ${attackTask.params.targetId} (${attackTask.params.targetType}) - 分配给: ${task.assignedCreep || '未分配'}`);
+        });
+      }
+
+      // 显示战斗单位状态
+      const fighters = Object.values(Game.creeps).filter(creep => {
+        const hasAttack = creep.getActiveBodyparts(ATTACK) > 0;
+        const hasRangedAttack = creep.getActiveBodyparts(RANGED_ATTACK) > 0;
+        return hasAttack || hasRangedAttack;
+      });
+
+      console.log(`战斗单位数量: ${fighters.length}`);
+      fighters.forEach(creep => {
+        const currentTask = taskManager.getCreepTask(creep.name);
+        const attackParts = creep.getActiveBodyparts(ATTACK);
+        const rangedParts = creep.getActiveBodyparts(RANGED_ATTACK);
+        console.log(`  ${creep.name}: ATTACK=${attackParts}, RANGED=${rangedParts} - 任务: ${currentTask ? `${currentTask.type}(${currentTask.id})` : '无任务'}`);
+      });
+    },
+
+    // 显示敌对单位
+    enemies: () => {
+      console.log('=== 敌对单位扫描 ===');
+      for (const roomName in Game.rooms) {
+        const room = Game.rooms[roomName];
+        const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+        const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+
+        if (hostileCreeps.length > 0 || hostileStructures.length > 0) {
+          console.log(`房间 ${roomName}:`);
+
+          if (hostileCreeps.length > 0) {
+            console.log(`  敌对creep (${hostileCreeps.length}个):`);
+            hostileCreeps.forEach(creep => {
+              const attackParts = creep.getActiveBodyparts(ATTACK);
+              const rangedParts = creep.getActiveBodyparts(RANGED_ATTACK);
+              const healParts = creep.getActiveBodyparts(HEAL);
+              console.log(`    ${creep.name}(${creep.owner.username}): ATTACK=${attackParts}, RANGED=${rangedParts}, HEAL=${healParts} - 位置: (${creep.pos.x}, ${creep.pos.y})`);
+            });
+          }
+
+          if (hostileStructures.length > 0) {
+            console.log(`  敌对建筑 (${hostileStructures.length}个):`);
+            hostileStructures.forEach(structure => {
+              console.log(`    ${structure.structureType}(${structure.id}): ${structure.hits}/${structure.hitsMax} HP - 位置: (${structure.pos.x}, ${structure.pos.y})`);
+            });
+          }
+        }
+      }
+    },
+
+    // 强制创建攻击任务
+    createAttackTask: (targetId?: string) => {
+      const taskManager = gameEngine.getService('taskManager') as TaskManager;
+      const room = Object.values(Game.rooms)[0];
+
+      if (!targetId) {
+        // 自动寻找目标
+        const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+        const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+
+        if (hostileCreeps.length > 0) {
+          targetId = hostileCreeps[0].id;
+        } else if (hostileStructures.length > 0) {
+          targetId = hostileStructures[0].id;
+        } else {
+          console.log('没有找到敌对目标');
+          return null;
+        }
+      }
+
+      // 检查目标类型
+      let targetType: 'creep' | 'structure' = 'creep';
+      let target = Game.getObjectById(targetId as any);
+      if (!target) {
+        console.log(`找不到目标: ${targetId}`);
+        return null;
+      }
+
+      if (target instanceof Structure) {
+        targetType = 'structure';
+      }
+
+      const taskId = taskManager.createTask({
+        type: 'attack' as any,
+        priority: TaskPriority.HIGH,
+        roomName: room.name,
+        maxRetries: 3,
+        params: {
+          targetId: targetId,
+          targetType: targetType,
+          attackType: 'auto',
+          maxRange: 3
+        }
+      });
+
+      console.log(`创建攻击任务: 目标 ${targetType} ${targetId}, 任务ID: ${taskId}`);
+      return taskId;
+    },
+
+    // 测试攻击执行器
+    testExecutor: () => {
+      const taskManager = gameEngine.getService('taskManager') as TaskManager;
+      const executor = taskManager.getTaskExecutor('attack' as any);
+
+      if (!executor) {
+        console.log('找不到攻击任务执行器');
+        return;
+      }
+
+      console.log('=== 攻击执行器测试 ===');
+      console.log(`执行器名称: ${executor.getTaskTypeName()}`);
+      console.log('能力要求:');
+      executor.getRequiredCapabilities().forEach(req => {
+        console.log(`  ${req.bodyPart}: 最少${req.minCount}个, 权重${req.weight}`);
+      });
+
+      // 测试creep能力匹配
+      const fighters = Object.values(Game.creeps).filter(creep => {
+        const hasAttack = creep.getActiveBodyparts(ATTACK) > 0;
+        const hasRangedAttack = creep.getActiveBodyparts(RANGED_ATTACK) > 0;
+        return hasAttack || hasRangedAttack;
+      });
+
+      if (fighters.length > 0) {
+        console.log('战斗单位能力测试:');
+        fighters.forEach(creep => {
+          // 创建测试任务
+          const testTask = {
+            id: 'test',
+            type: 'attack' as any,
+            roomName: creep.room.name,
+            status: 'pending' as any,
+            priority: 50,
+            createdAt: Game.time,
+            updatedAt: Game.time,
+            retryCount: 0,
+            maxRetries: 3,
+            params: {
+              targetId: 'dummy',
+              targetType: 'creep' as any
+            }
+          };
+
+          const canExecute = executor.canExecute(creep, testTask);
+          const score = (executor as any).calculateCapabilityScore ? (executor as any).calculateCapabilityScore(creep) : 0;
+
+          const attackParts = creep.getActiveBodyparts(ATTACK);
+          const rangedParts = creep.getActiveBodyparts(RANGED_ATTACK);
+          const moveParts = creep.getActiveBodyparts(MOVE);
+
+          console.log(`  ${creep.name}: ATTACK=${attackParts}, RANGED=${rangedParts}, MOVE=${moveParts} - 可执行=${canExecute}, 能力评分=${score.toFixed(3)}`);
+        });
+      }
+    },
+
+    // 测试单个creep的攻击能力
+    testCreep: (creepName: string) => {
+      const creep = Game.creeps[creepName];
+      if (!creep) {
+        console.log(`找不到creep: ${creepName}`);
+        return;
+      }
+
+      const taskManager = gameEngine.getService('taskManager') as TaskManager;
+      const executor = taskManager.getTaskExecutor('attack' as any);
+
+      if (!executor) {
+        console.log('找不到攻击任务执行器');
+        return;
+      }
+
+      const hasRangedAttack = creep.getActiveBodyparts(RANGED_ATTACK);
+      const hasMeleeAttack = creep.getActiveBodyparts(ATTACK);
+      const hasMove = creep.getActiveBodyparts(MOVE);
+
+      console.log(`=== ${creepName} 攻击能力测试 ===`);
+      console.log(`RANGED_ATTACK: ${hasRangedAttack}`);
+      console.log(`ATTACK: ${hasMeleeAttack}`);
+      console.log(`MOVE: ${hasMove}`);
+
+      // 创建一个测试任务
+      const testTask = {
+        id: 'test',
+        type: 'attack' as any,
+        roomName: creep.room.name,
+        status: 'pending' as any,
+        priority: 50,
+        createdAt: Game.time,
+        updatedAt: Game.time,
+        retryCount: 0,
+        maxRetries: 3,
+        params: {
+          targetId: 'dummy',
+          targetType: 'creep' as any
+        }
+      };
+
+      const canExecute = executor.canExecute(creep, testTask);
+      console.log(`canExecute: ${canExecute}`);
+
+      if ((executor as any).calculateCapabilityScore) {
+        const score = (executor as any).calculateCapabilityScore(creep);
+        console.log(`能力评分: ${score.toFixed(3)}`);
+      }
+    }
   }
 };
 

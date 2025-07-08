@@ -55,27 +55,21 @@ export class BuildTaskExecutor extends BaseTaskExecutor {
 
     // 如果指定了源建筑列表，优先从列表中获取
     if (sourceIds.length > 0) {
+      const sourceStructures: Structure[] = [];
       for (const sourceId of sourceIds) {
         const source = Game.getObjectById<Structure>(sourceId as Id<Structure>);
         if (source && 'store' in source) {
           const storeStructure = source as any;
           if (storeStructure.store && storeStructure.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-            const withdrawResult = creep.withdraw(source, RESOURCE_ENERGY);
-
-            switch (withdrawResult) {
-              case OK:
-                return { success: true, completed: false, message: '正在从指定建筑获取能量' };
-              case ERR_NOT_IN_RANGE:
-                this.moveToTarget(creep, source);
-                return { success: true, completed: false, message: '移动到指定能量源' };
-              case ERR_NOT_ENOUGH_RESOURCES:
-                continue; // 尝试下一个源
-              case ERR_FULL:
-                return { success: true, completed: false, message: 'creep已满，开始建造' };
-              default:
-                continue; // 尝试下一个源
-            }
+            sourceStructures.push(source);
           }
+        }
+      }
+
+      if (sourceStructures.length > 0) {
+        const result = this.getEnergyFromStructures(creep, sourceStructures);
+        if (result.success) {
+          return { success: true, completed: false, message: result.message };
         }
       }
     }
@@ -90,22 +84,9 @@ export class BuildTaskExecutor extends BaseTaskExecutor {
     });
 
     if (energyStructures.length > 0) {
-      // 选择最近的能量建筑
-      const closestStructure = creep.pos.findClosestByPath(energyStructures);
-      if (closestStructure) {
-        const withdrawResult = creep.withdraw(closestStructure, RESOURCE_ENERGY);
-
-        switch (withdrawResult) {
-          case OK:
-            return { success: true, completed: false, message: '正在从建筑获取能量' };
-          case ERR_NOT_IN_RANGE:
-            this.moveToTarget(creep, closestStructure);
-            return { success: true, completed: false, message: '移动到能量建筑' };
-          case ERR_FULL:
-            return { success: true, completed: false, message: 'creep已满，开始建造' };
-          default:
-            return { success: false, completed: false, message: `获取能量失败: ${withdrawResult}` };
-        }
+      const result = this.getEnergyFromStructures(creep, energyStructures);
+      if (result.success) {
+        return { success: true, completed: false, message: result.message };
       }
     }
 

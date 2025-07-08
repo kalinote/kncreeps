@@ -24,6 +24,14 @@ export class EnergyConfig {
     MAX_ROOM_ENERGY: 12900 // RCL 8的最大能量
   } as const;
 
+  // Spawn能量保留配置
+  public static readonly SPAWN_ENERGY_RESERVE = {
+    MIN_RESERVE: 200,           // spawn最少保留200能量
+    EMERGENCY_RESERVE: 150,     // 紧急情况下的最小保留
+    CRITICAL_RESERVE: 100,      // 关键情况下的最小保留
+    FULL_CAPACITY_THRESHOLD: 0.9 // spawn能量超过90%时允许所有角色获取
+  } as const;
+
   // 结构分类配置
   public static readonly STRUCTURE_CATEGORIES = {
     // 军事设施 - 由工程师负责

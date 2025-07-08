@@ -44,7 +44,7 @@ export class RoleConfig {
     BY_RCL: {
       1: {
         [RoleConfig.ROLES.WORKER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       2: {
@@ -53,34 +53,34 @@ export class RoleConfig {
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       3: {
-        [RoleConfig.ROLES.WORKER]: { min: 2, max: 5, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 6, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       4: {
-        [RoleConfig.ROLES.WORKER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 6, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       5: {
-        [RoleConfig.ROLES.WORKER]: { min: 3, max: 8, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 5, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 3, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 3, max: 10, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       6: {
         [RoleConfig.ROLES.WORKER]: { min: 3, max: 10, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 3, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 8, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 6, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       7: {
         [RoleConfig.ROLES.WORKER]: { min: 4, max: 12, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 7, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 10, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 8, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       8: {
-        [RoleConfig.ROLES.WORKER]: { min: 4, max: 15, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 8, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 4, max: 16, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 12, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 8, priority: RoleConfig.PRIORITIES.MINIMAL }
       }
     }
   } as const;
