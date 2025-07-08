@@ -30,6 +30,34 @@ export class GameConfig {
   public static readonly ENERGY_CAPACITY = EnergyConfig.ENERGY_CAPACITY;
   public static readonly STRUCTURE_CATEGORIES = EnergyConfig.STRUCTURE_CATEGORIES;
 
+  // 开局生产配置
+  public static readonly BOOTSTRAP_CONFIG = {
+    // RCL1开局时的最小配置
+    RCL1_MIN_CONFIGS: {
+      [RoleConfig.ROLES.WORKER]: {
+        body: [WORK, CARRY, MOVE], // 1WORK + 1CARRY + 1MOVE = 200能量
+        cost: 200,
+        priority: RoleConfig.PRIORITIES.CRITICAL
+      },
+      [RoleConfig.ROLES.TRANSPORTER]: {
+        body: [CARRY, CARRY, MOVE], // 2CARRY + 1MOVE = 150能量
+        cost: 150,
+        priority: RoleConfig.PRIORITIES.HIGH
+      }
+    },
+    // 开局生产顺序
+    PRODUCTION_ORDER: [
+      RoleConfig.ROLES.WORKER,    // 第一步：生产worker
+      RoleConfig.ROLES.TRANSPORTER // 第二步：生产transporter
+    ],
+    // 开局完成条件
+    COMPLETION_CONDITIONS: {
+      MIN_WORKER_COUNT: 1,
+      MIN_TRANSPORTER_COUNT: 1,
+      MIN_ENERGY_RESERVE: 50  // 保留50能量用于后续生产
+    }
+  } as const;
+
   // 导出所有方法以保持向后兼容
 
   // 角色相关方法
@@ -55,4 +83,25 @@ export class GameConfig {
   public static isEngineerResponsible = EnergyConfig.isEngineerResponsible;
   public static getResponsibleRole = EnergyConfig.getResponsibleRole;
   public static getRoomEnergyCapacity = EnergyConfig.getRoomEnergyCapacity;
+
+  // 开局相关方法
+  public static isBootstrapPhase = (room: Room): boolean => {
+    return room.controller?.level === 1;
+  };
+
+  public static isBootstrapCompleted = (room: Room): boolean => {
+    const workerCount = Object.values(Game.creeps).filter(creep =>
+      creep.room.name === room.name && creep.memory.role === GameConfig.ROLES.WORKER
+    ).length;
+    const transporterCount = Object.values(Game.creeps).filter(creep =>
+      creep.room.name === room.name && creep.memory.role === GameConfig.ROLES.TRANSPORTER
+    ).length;
+
+    return workerCount >= GameConfig.BOOTSTRAP_CONFIG.COMPLETION_CONDITIONS.MIN_WORKER_COUNT &&
+           transporterCount >= GameConfig.BOOTSTRAP_CONFIG.COMPLETION_CONDITIONS.MIN_TRANSPORTER_COUNT;
+  };
+
+  public static getBootstrapConfig = (role: string) => {
+    return GameConfig.BOOTSTRAP_CONFIG.RCL1_MIN_CONFIGS[role as keyof typeof GameConfig.BOOTSTRAP_CONFIG.RCL1_MIN_CONFIGS];
+  };
 }

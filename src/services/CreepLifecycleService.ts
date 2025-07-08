@@ -99,7 +99,16 @@ export class CreepLifecycleService {
 
     // 检查是否需要替换 - 委托给生产服务
     if (state.needsReplacement) {
-      this.productionService.requestCreepReplacement(creep);
+      this.productionService.addProductionNeed(
+        creep.room.name,
+        creep.memory.role,
+        GameConfig.PRIORITIES.HIGH,
+        creep.room.energyAvailable,
+        undefined,
+        undefined,
+        undefined,
+        `Auto replacement: ${creep.name}`
+      );
     }
   }
 
@@ -118,13 +127,13 @@ export class CreepLifecycleService {
 
     // 根据角色调整效率
     switch (creep.memory.role) {
-      case GameConfig.ROLES.HARVESTER:
+      case GameConfig.ROLES.WORKER:
         efficiency *= workParts > 0 ? 1.0 : GameConfig.THRESHOLDS.EFFICIENCY_PENALTY_NO_TOOL;
         break;
       case GameConfig.ROLES.TRANSPORTER:
         efficiency *= carryParts > 0 ? 1.0 : GameConfig.THRESHOLDS.EFFICIENCY_PENALTY_NO_TOOL;
         break;
-      case GameConfig.ROLES.BUILDER:
+      case GameConfig.ROLES.SHOOTER:
         efficiency *= workParts > 0 ? 1.0 : GameConfig.THRESHOLDS.EFFICIENCY_PENALTY_NO_TOOL;
         break;
     }
@@ -151,7 +160,7 @@ export class CreepLifecycleService {
     }
 
     // 如果是重要角色，立即请求替换
-    if (role === GameConfig.ROLES.HARVESTER || role === GameConfig.ROLES.TRANSPORTER) {
+    if (role === GameConfig.ROLES.WORKER || role === GameConfig.ROLES.TRANSPORTER) {
       const room = Game.rooms[roomName];
       if (room && room.controller?.my) {
         const availableEnergy = room.energyAvailable;

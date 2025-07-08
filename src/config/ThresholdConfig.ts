@@ -19,10 +19,9 @@ export class ThresholdConfig {
 
     // 能量门槛
     MIN_ENERGY_FOR_TRANSPORT: 100,
-    MIN_ENERGY_FOR_BUILDER: 250,
-    MIN_ENERGY_FOR_UPGRADER: 200,
-    MIN_ENERGY_FOR_SECOND_HARVESTER: 300,
-    MIN_ENERGY_FOR_DEFENDER: 300, // 防御者最小能量需求
+    MIN_ENERGY_FOR_WORKER: 250,
+    MIN_ENERGY_FOR_SECOND_WORKER: 300,
+    MIN_ENERGY_FOR_SHOOTER: 300, // 战斗单位最小能量需求
 
     // 替换时间门槛
     CREEP_REPLACEMENT_TIME: 300, // creep剩余生命值低于300时需要替换
@@ -43,7 +42,7 @@ export class ThresholdConfig {
 
     // Spawn能量保留配置（按RCL等级）
     SPAWN_ENERGY_RESERVE_BY_RCL: {
-      1: 200,  // RCL1: 保留200能量（可生成基础harvester和transporter）
+      1: 200,  // RCL1: 保留200能量（可生成基础worker和transporter）
       2: 250,  // RCL2: 保留250能量
       3: 300,  // RCL3: 保留300能量
       4: 350,  // RCL4: 保留350能量
@@ -106,8 +105,8 @@ export class ThresholdConfig {
       return true;
     }
 
-    // 关键角色（harvester, transporter）可以使用更多能量
-    if (requestingRole === RoleConfig.ROLES.HARVESTER ||
+    // 关键角色（worker, transporter）可以使用更多能量
+    if (requestingRole === RoleConfig.ROLES.WORKER ||
         requestingRole === RoleConfig.ROLES.TRANSPORTER) {
       const canUse = spawnEnergy > ThresholdConfig.THRESHOLDS.SPAWN_CRITICAL_RESERVE;
       console.log(`[canUseSpawnEnergy] 关键角色，需要 > ${ThresholdConfig.THRESHOLDS.SPAWN_CRITICAL_RESERVE}，结果: ${canUse}`);
@@ -125,20 +124,20 @@ export class ThresholdConfig {
    */
   public static assessRoomEnergyState(room: Room): 'normal' | 'emergency' | 'critical' {
     const creeps = Object.values(Game.creeps).filter(c => c.room.name === room.name);
-    const harvesterCount = creeps.filter(c => c.memory.role === RoleConfig.ROLES.HARVESTER).length;
+    const workerCount = creeps.filter(c => c.memory.role === RoleConfig.ROLES.WORKER).length;
     const transporterCount = creeps.filter(c => c.memory.role === RoleConfig.ROLES.TRANSPORTER).length;
     const roomLevel = room.controller?.level || 1;
 
-    console.log(`[assessRoomEnergyState] 房间 ${room.name}, RCL: ${roomLevel}, harvester: ${harvesterCount}, transporter: ${transporterCount}`);
+    console.log(`[assessRoomEnergyState] 房间 ${room.name}, RCL: ${roomLevel}, worker: ${workerCount}, transporter: ${transporterCount}`);
 
     // 关键状态：缺少基础creep
-    if (harvesterCount === 0 || (roomLevel >= 2 && transporterCount === 0)) {
+    if (workerCount === 0 || (roomLevel >= 2 && transporterCount === 0)) {
       console.log(`[assessRoomEnergyState] 房间状态: critical (缺少基础creep)`);
       return 'critical';
     }
 
     // 紧急状态：基础creep数量不足
-    if (harvesterCount === 1 && transporterCount === 0) {
+    if (workerCount === 1 && transporterCount === 0) {
       console.log(`[assessRoomEnergyState] 房间状态: emergency (基础creep数量不足)`);
       return 'emergency';
     }

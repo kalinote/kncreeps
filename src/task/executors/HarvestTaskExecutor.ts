@@ -25,9 +25,8 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
 
   private executeHarvest(creep: Creep, task: HarvestTask): TaskResult {
     // 获取目标源
-    const source = Game.getObjectById(task.params.sourceId) as Source;
-    if (!source) {
-      // TODO 这里我不确定采集source枯竭是不存在还是值为0，需要进一步检查
+    const source = Game.getObjectById<Source>(task.params.sourceId as Id<Source>);
+    if (!source || source.energy === 0) {
       return { success: false, completed: true, message: '源不存在，任务完成' };
     }
 
@@ -65,15 +64,9 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
   }
 
   private handleStorage(creep: Creep, task: HarvestTask): TaskResult {
-    // 获取目标源，检查是否存在
-    const source = Game.getObjectById(task.params.sourceId) as Source;
-    if (!source) {
-      return { success: false, completed: true, message: '源不存在，任务完成' };
-    }
-
     // 如果指定了存储目标
     if (task.params.targetId) {
-      const target = Game.getObjectById(task.params.targetId) as Structure;
+      const target = Game.getObjectById<Structure>(task.params.targetId as Id<Structure>);
       if (target && 'store' in target) {
         const transferResult = creep.transfer(target, RESOURCE_ENERGY);
 

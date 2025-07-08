@@ -99,10 +99,10 @@ export class EnergyConfig {
    */
   public static getResponsibleRole(structureType: StructureConstant): string {
     if (EnergyConfig.isMilitaryStructure(structureType)) {
-      return RoleConfig.ROLES.ENGINEER;
+      return RoleConfig.ROLES.WORKER; // 军事设施由工作者负责（原工程师）
     }
     if (EnergyConfig.isBasicStructure(structureType)) {
-      return RoleConfig.ROLES.BUILDER;
+      return RoleConfig.ROLES.WORKER; // 基础设施由工作者负责
     }
     return 'unknown';
   }

@@ -79,9 +79,8 @@ export class StateManager {
       Memory.creepStates = {};
     }
 
-    if (!Memory.behaviorStats) {
-      Memory.behaviorStats = {};
-    }
+
+    // 已移除，使用任务系统替代
 
     if (!Memory.eventBus) {
       Memory.eventBus = {

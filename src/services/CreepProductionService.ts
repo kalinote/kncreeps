@@ -1,29 +1,51 @@
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
+import { TaskRoleMapping } from "../config/TaskRoleMapping";
 import { BodyBuilder } from "../utils/BodyBuilder";
-import { ProductionNeed } from "../types";
+import { ProductionNeed, Task, TaskType, TaskStatus } from "../types";
 
 /**
- * Creep生产服务 - 处理所有Creep生产相关的逻辑
- * 从CreepManager中提取出来，保持原有逻辑不变
+ * Creep生产服务 - 基于任务需求的生产系统
  */
 export class CreepProductionService {
   private eventBus: EventBus;
   private lastProductionCheck: number = 0;
+  private lastTaskAnalysis: number = 0;
 
   constructor(eventBus: EventBus) {
     this.eventBus = eventBus;
+    this.setupEventListeners();
   }
 
   /**
-   * 发送事件到事件总线
+   * 设置事件监听器
+   */
+  private setupEventListeners(): void {
+    // 监听任务创建事件
+    this.eventBus.on(GameConfig.EVENTS.TASK_CREATED, (task: Task) => {
+      this.updateProductionDemands();
+    });
+
+    // 监听任务完成事件
+    this.eventBus.on(GameConfig.EVENTS.TASK_COMPLETED, (task: Task) => {
+      this.updateProductionDemands();
+    });
+
+    // 监听任务失败事件
+    this.eventBus.on(GameConfig.EVENTS.TASK_FAILED, (task: Task) => {
+      this.updateProductionDemands();
+    });
+  }
+
+  /**
+   * 发送事件
    */
   private emit(eventType: string, data: any): void {
     this.eventBus.emit(eventType, data);
   }
 
   /**
-   * 评估生产需求 - 核心生产逻辑
+   * 评估生产需求 - 基于任务需求的生产逻辑
    */
   public assessProductionNeeds(): void {
     // 使用配置的生产检查频率
@@ -39,304 +61,307 @@ export class CreepProductionService {
 
     this.lastProductionCheck = Game.time;
 
-    // 分析每个房间的需求
+    // 检查是否需要处理开局生产
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
-      if (room.controller?.my) {
-        this.analyzeRoomNeeds(room);
+      if (room && room.controller?.my && GameConfig.isBootstrapPhase(room)) {
+        if (!GameConfig.isBootstrapCompleted(room)) {
+          this.handleBootstrapProduction(room);
+          return; // 开局阶段优先处理，不执行任务驱动生产
+        }
       }
     }
 
-    // 按优先级排序
-    this.productionQueue.sort((a, b) => b.priority - a.priority);
+    // 基于任务需求更新生产需求
+    this.updateProductionDemands();
+
+    // 处理紧急情况（如房间受到攻击）
+    this.handleEmergencySituations();
   }
 
   /**
-   * 分析房间生产需求 - 基于配置的生产逻辑
+   * 处理开局生产逻辑
    */
-  private analyzeRoomNeeds(room: Room): void {
-    const roomName = room.name;
+  private handleBootstrapProduction(room: Room): void {
+    console.log(`🚀 [Bootstrap] 房间 ${room.name} 处于开局阶段，使用开局生产策略`);
 
-    // 使用统一的统计方法
-    const roleCounts = this.getRoleCountsInRoom(roomName);
-
-    const energyCapacity = GameConfig.getRoomEnergyCapacity(room);
     const availableEnergy = room.energyAvailable;
-    const controllerLevel = room.controller?.level || 1;
+    const spawns = room.find(FIND_MY_SPAWNS);
 
-    // 使用配置系统进行生产决策
-    this.handleRoomProductionByConfig(room, roleCounts, availableEnergy, controllerLevel);
-
-    // 通用检查：需要替换的creep - 只检查当前在房间内的creep
-    const creepsInRoom = Object.values(Game.creeps).filter(creep => creep.room.name === roomName);
-    for (const creep of creepsInRoom) {
-      if (creep.ticksToLive && creep.ticksToLive < GameConfig.THRESHOLDS.CREEP_REPLACEMENT_TIME) {
-        this.addProductionNeed(roomName, creep.memory.role, GameConfig.PRIORITIES.HIGH, availableEnergy);
-      }
-    }
-  }
-
-  /**
-   * 基于配置的房间生产处理
-   */
-  private handleRoomProductionByConfig(room: Room, roleCounts: { [role: string]: number }, availableEnergy: number, controllerLevel: number): void {
-    const roomName = room.name;
-    const totalCreeps = this.getCreepCountInRoom(roomName);
-
-    console.log(`[CreepProductionService] 房间 ${roomName} RCL${controllerLevel} 生产分析:`);
-    console.log(`[CreepProductionService] 当前creep数量:`, roleCounts);
-    console.log(`[CreepProductionService] 总creep数: ${totalCreeps}, 可用能量: ${availableEnergy}`);
-
-    // 特殊处理：开局阶段的生产逻辑
-    if (controllerLevel <= 2) {
-      console.log(`[CreepProductionService] 使用开局生产逻辑 (RCL <= 2)`);
-      const bootstrapNeed = this.handleBootstrapProduction(room, roleCounts, availableEnergy);
-      if (bootstrapNeed) {
-        console.log(`[CreepProductionService] 开局生产需求: ${bootstrapNeed.role} (优先级: ${bootstrapNeed.priority})`);
-        this.addProductionNeed(roomName, bootstrapNeed.role, bootstrapNeed.priority, availableEnergy);
+    if (spawns.length === 0) {
+      console.log(`[Bootstrap] 房间 ${room.name} 没有spawn`);
         return;
       }
-      console.log(`[CreepProductionService] 开局阶段无生产需求`);
+
+    const spawn = spawns[0];
+    if (spawn.spawning) {
+      console.log(`[Bootstrap] spawn正在生产: ${spawn.spawning.name}`);
       return;
     }
 
-    // 获取该房间等级的所有角色配置
-    const roleConfigs = GameConfig.getRoomRoleConfig(controllerLevel);
-    console.log(`[CreepProductionService] RCL${controllerLevel} 角色配置:`, roleConfigs);
+    // 获取当前角色数量
+    const workerCount = Object.values(Game.creeps).filter(creep =>
+      creep.room.name === room.name && creep.memory.role === GameConfig.ROLES.WORKER
+    ).length;
+    const transporterCount = Object.values(Game.creeps).filter(creep =>
+      creep.room.name === room.name && creep.memory.role === GameConfig.ROLES.TRANSPORTER
+    ).length;
 
-    // 创建生产需求数组，按优先级排序
-    const productionNeeds: Array<{ role: string, priority: number, urgency: string }> = [];
+    console.log(`[Bootstrap] 当前数量: worker=${workerCount}, transporter=${transporterCount}`);
 
-    // 遍历所有角色配置
-    for (const [role, config] of Object.entries(roleConfigs)) {
-      const currentCount = roleCounts[role] || 0;
+    // 按开局生产顺序处理
+    for (const role of GameConfig.BOOTSTRAP_CONFIG.PRODUCTION_ORDER) {
+      const config = GameConfig.getBootstrapConfig(role);
+      if (!config) continue;
 
-      console.log(`[CreepProductionService] 检查角色 ${role}: 当前${currentCount}, 最小${config.min}, 最大${config.max}`);
+      const currentCount = role === GameConfig.ROLES.WORKER ? workerCount : transporterCount;
+      const minRequired = role === GameConfig.ROLES.WORKER ?
+        GameConfig.BOOTSTRAP_CONFIG.COMPLETION_CONDITIONS.MIN_WORKER_COUNT :
+        GameConfig.BOOTSTRAP_CONFIG.COMPLETION_CONDITIONS.MIN_TRANSPORTER_COUNT;
 
-      // 检查是否需要生产更多creep
-      if (GameConfig.needsMoreCreeps(controllerLevel, role, currentCount)) {
-        // 必须生产的creep（低于最小值）
-        console.log(`[CreepProductionService] ${role} 低于最小值，添加关键生产需求`);
-        productionNeeds.push({
-          role,
-          priority: GameConfig.PRIORITIES.CRITICAL,
-          urgency: 'critical'
+      if (currentCount < minRequired && availableEnergy >= config.cost) {
+        console.log(`[Bootstrap] 生产开局${role}: 需要${minRequired}, 当前${currentCount}, 成本${config.cost}`);
+
+        // 生成creep名称
+        const creepName = this.generateCreepName(role);
+
+        // 尝试生产creep
+        const result = spawn.spawnCreep([...config.body], creepName, {
+          memory: { role: role, state: 'idle', room: room.name, working: false }
         });
-      } else if (GameConfig.canProduceMoreCreeps(controllerLevel, role, currentCount, totalCreeps)) {
-        // 可以生产的creep（低于最大值但高于最小值）
-        // 需要检查特殊条件
-        if (this.shouldProduceRole(room, role, currentCount, availableEnergy)) {
-          const basePriority = GameConfig.getRolePriority(controllerLevel, role);
-          console.log(`[CreepProductionService] ${role} 可以生产更多，添加普通生产需求 (优先级: ${basePriority})`);
-          productionNeeds.push({
-            role,
-            priority: basePriority,
-            urgency: 'normal'
+
+        if (result === OK) {
+          console.log(`[Bootstrap] 成功生产开局${role}: ${creepName}`);
+
+          // 发送事件
+          this.emit(GameConfig.EVENTS.CREEP_SPAWNED, {
+            creepName,
+            role: role,
+            roomName: room.name,
+            cost: config.cost
           });
+
+          return; // 每次只生产一个
         } else {
-          console.log(`[CreepProductionService] ${role} 不满足特殊生产条件`);
+          console.log(`[Bootstrap] 生产开局${role}失败: ${result}`);
         }
-      } else {
-        console.log(`[CreepProductionService] ${role} 已达到最大值或总creep数超限`);
       }
     }
 
-    // 按优先级排序生产需求
-    productionNeeds.sort((a, b) => b.priority - a.priority);
+    console.log(`[Bootstrap] 开局生产完成或无法生产`);
+  }
 
-    console.log(`[CreepProductionService] 生产需求队列:`, productionNeeds);
+  /**
+   * 更新生产需求 - 基于当前任务状态
+   */
+  private updateProductionDemands(): void {
+    // 获取所有待分配的任务
+    const pendingTasks = this.getPendingTasks();
 
-    // 处理最高优先级的需求
-    if (productionNeeds.length > 0) {
-      const need = productionNeeds[0];
-      console.log(`[CreepProductionService] 选择生产: ${need.role} (优先级: ${need.priority})`);
-      this.addProductionNeed(roomName, need.role, need.priority, availableEnergy);
-    } else {
-      console.log(`[CreepProductionService] 没有生产需求`);
+    if (pendingTasks.length === 0) {
+      console.log(`[updateProductionDemands] 没有待分配的任务`);
+      return;
+    }
+
+    console.log(`[updateProductionDemands] 分析 ${pendingTasks.length} 个待分配任务`);
+
+    // 按房间分组任务
+    const tasksByRoom = this.groupTasksByRoom(pendingTasks);
+
+    // 为每个房间计算生产需求
+    for (const [roomName, tasks] of tasksByRoom) {
+      this.calculateRoomProductionDemands(roomName, tasks);
     }
   }
 
   /**
-   * 处理开局阶段的生产逻辑
+   * 按房间分组任务
    */
-  private handleBootstrapProduction(room: Room, roleCounts: { [role: string]: number }, availableEnergy: number): { role: string, priority: number } | null {
-    // 开局生产顺序：HARVESTER -> TRANSPORTER -> BUILDER（如果需要）-> 第二个HARVESTER
-    const controllerLevel = room.controller?.level || 1;
-    const totalCreeps = this.getCreepCountInRoom(room.name);
+  private groupTasksByRoom(tasks: Task[]): Map<string, Task[]> {
+    const tasksByRoom = new Map<string, Task[]>();
 
-    console.log(`[Bootstrap] RCL${controllerLevel} 房间 ${room.name} 当前creep数量:`, roleCounts);
-
-    // 优先级1: 确保至少有一个采集者
-    const harvesterCount = roleCounts[GameConfig.ROLES.HARVESTER] || 0;
-    if (harvesterCount === 0) {
-      if (GameConfig.canProduceMoreCreeps(controllerLevel, GameConfig.ROLES.HARVESTER, harvesterCount, totalCreeps)) {
-        console.log(`[Bootstrap] 生产关键harvester (${harvesterCount}/max)`);
-        return {
-          role: GameConfig.ROLES.HARVESTER,
-          priority: GameConfig.PRIORITIES.CRITICAL
-        };
+    for (const task of tasks) {
+      if (!tasksByRoom.has(task.roomName)) {
+        tasksByRoom.set(task.roomName, []);
       }
+      tasksByRoom.get(task.roomName)!.push(task);
     }
 
-    // 优先级2: 如果有采集者但没有运输者，且能量充足
-    const transporterCount = roleCounts[GameConfig.ROLES.TRANSPORTER] || 0;
-    if (harvesterCount > 0 &&
-      transporterCount === 0 &&
-      availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_TRANSPORT) {
-
-      if (GameConfig.canProduceMoreCreeps(controllerLevel, GameConfig.ROLES.TRANSPORTER, transporterCount, totalCreeps)) {
-        console.log(`[Bootstrap] 生产transporter (${transporterCount}/max)`);
-        return {
-          role: GameConfig.ROLES.TRANSPORTER,
-          priority: GameConfig.PRIORITIES.HIGH
-        };
-      }
-    }
-
-    // 优先级3: 如果有建造或修复需求，添加建造者
-    const builderCount = roleCounts[GameConfig.ROLES.BUILDER] || 0;
-    if (this.needsBuilder(room) &&
-      builderCount === 0 &&
-      availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_BUILDER) {
-
-      if (GameConfig.canProduceMoreCreeps(controllerLevel, GameConfig.ROLES.BUILDER, builderCount, totalCreeps)) {
-        console.log(`[Bootstrap] 生产builder (${builderCount}/max)`);
-        return {
-          role: GameConfig.ROLES.BUILDER,
-          priority: GameConfig.PRIORITIES.MEDIUM
-        };
-      }
-    }
-
-    // 优先级4: 增加第二个采集者（如果能量充足且配置允许）
-    if (harvesterCount === 1 &&
-      availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_SECOND_HARVESTER) {
-
-      if (GameConfig.canProduceMoreCreeps(controllerLevel, GameConfig.ROLES.HARVESTER, harvesterCount, totalCreeps)) {
-        console.log(`[Bootstrap] 生产第二个harvester (${harvesterCount}/max)`);
-        return {
-          role: GameConfig.ROLES.HARVESTER,
-          priority: GameConfig.PRIORITIES.MEDIUM
-        };
-      }
-    }
-
-    // 优先级5: 如果基础设施完善，考虑升级工
-    const upgraderCount = roleCounts[GameConfig.ROLES.UPGRADER] || 0;
-    if (harvesterCount >= 1 &&
-      transporterCount >= 1 &&
-      upgraderCount === 0 &&
-      availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_UPGRADER) {
-
-      if (GameConfig.canProduceMoreCreeps(controllerLevel, GameConfig.ROLES.UPGRADER, upgraderCount, totalCreeps)) {
-        console.log(`[Bootstrap] 生产upgrader (${upgraderCount}/max)`);
-        return {
-          role: GameConfig.ROLES.UPGRADER,
-          priority: GameConfig.PRIORITIES.MEDIUM
-        };
-      }
-    }
-
-    return null;
+    return tasksByRoom;
   }
 
   /**
-   * 检查是否应该生产指定角色
+   * 计算房间的生产需求
    */
-  private shouldProduceRole(room: Room, role: string, currentCount: number, availableEnergy: number): boolean {
-    // 检查能量是否足够
-    if (!this.hasEnoughEnergyForRole(role, availableEnergy)) {
-      return false;
+  private calculateRoomProductionDemands(roomName: string, tasks: Task[]): void {
+    const room = Game.rooms[roomName];
+    if (!room || !room.controller?.my) {
+      return;
     }
 
-    // 检查房间是否已有这个角色
-    if (!this.hasRole(room, role)) {
-      return true;
+    console.log(`[calculateRoomProductionDemands] 房间 ${roomName}: ${tasks.length} 个任务`);
+
+    // 按任务类型分组
+    const tasksByType = this.groupTasksByType(tasks);
+
+    // 获取当前角色数量
+    const currentRoleCounts = this.getRoleCountsInRoom(roomName);
+    const controllerLevel = room.controller.level || 1;
+    const totalCreepsInRoom = this.getCreepCountInRoom(roomName);
+
+    console.log(`[calculateRoomProductionDemands] 当前角色数量:`, currentRoleCounts);
+
+    // 为每种任务类型计算需要的角色
+    for (const [taskType, taskList] of tasksByType) {
+      const roles = TaskRoleMapping.getRolesForTask(taskType);
+
+      for (const role of roles) {
+        const currentCount = currentRoleCounts[role] || 0;
+        const maxAllowed = this.getRoleLimit(controllerLevel, role);
+
+        // 计算需要的数量（基于任务数量）
+        const neededCount = this.calculateNeededCount(taskList, role);
+
+        console.log(`[calculateRoomProductionDemands] ${taskType} 任务需要 ${role}: 当前${currentCount}, 需要${neededCount}, 上限${maxAllowed}`);
+
+        if (currentCount < neededCount && currentCount < maxAllowed) {
+          const priority = TaskRoleMapping.calculateTaskPriority(taskType, taskList.length);
+          const urgency = TaskRoleMapping.calculateTaskUrgency(taskType, taskList.length);
+
+          this.addProductionNeed(
+            roomName,
+            role,
+            priority,
+            room.energyAvailable,
+            undefined,
+            taskType,
+            taskList.length,
+            `Task demand: ${taskType} (${taskList.length} tasks)`
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * 按任务类型分组
+   */
+  private groupTasksByType(tasks: Task[]): Map<TaskType, Task[]> {
+    const tasksByType = new Map<TaskType, Task[]>();
+
+    for (const task of tasks) {
+      if (!tasksByType.has(task.type)) {
+        tasksByType.set(task.type, []);
+      }
+      tasksByType.get(task.type)!.push(task);
     }
 
-    // 角色特定的检查
+    return tasksByType;
+  }
+
+  /**
+   * 计算需要的角色数量
+   */
+  private calculateNeededCount(tasks: Task[], role: string): number {
+    // 基础需求：每个任务至少需要一个角色
+    let needed = tasks.length;
+
+    // 根据角色类型调整需求
     switch (role) {
-      case GameConfig.ROLES.BUILDER:
-        return this.needsBuilder(room);
-
-      case GameConfig.ROLES.DEFENDER:
-        // 检查是否有敌人威胁
-        return this.hasEnemyThreatFallback(room);
-
-      case GameConfig.ROLES.UPGRADER:
-        // 升级工总是有用的，但需要足够的能量
-        return availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_UPGRADER;
-
-      default:
-        return true;
-    }
-  }
-
-  /**
-   * 检查房间是否有指定角色的creep
-   */
-  private hasRole(room: Room, role: string): boolean {
-    return Object.values(Game.creeps).some(creep =>
-      creep.room.name === room.name && creep.memory.role === role
-    );
-  }
-
-  /**
-   * 检查是否有足够能量生产指定角色
-   */
-  private hasEnoughEnergyForRole(role: string, availableEnergy: number): boolean {
-    switch (role) {
+      case GameConfig.ROLES.WORKER:
+        // 工作者可以执行多种任务，但效率有限
+        needed = Math.ceil(tasks.length * 0.8); // 每个工作者可以处理0.8个任务
+        break;
       case GameConfig.ROLES.TRANSPORTER:
-        return availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_TRANSPORT;
-      case GameConfig.ROLES.BUILDER:
-        return availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_BUILDER;
-      case GameConfig.ROLES.UPGRADER:
-        return availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_UPGRADER;
-      case GameConfig.ROLES.DEFENDER:
-        return availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_DEFENDER;
-      default:
-        return true;
+        // 运输者专门处理运输任务，效率较高
+        needed = Math.ceil(tasks.length * 0.6); // 每个运输者可以处理0.6个任务
+        break;
+      case GameConfig.ROLES.SHOOTER:
+        // 战斗单位专门处理战斗任务
+        needed = Math.ceil(tasks.length * 0.5); // 每个战斗单位可以处理0.5个任务
+        break;
+    }
+
+    return Math.max(needed, 1); // 至少需要1个
+  }
+
+  /**
+   * 获取角色限制
+   */
+  private getRoleLimit(roomLevel: number, role: string): number {
+    const limits = GameConfig.getRoleLimits(roomLevel, role);
+    return limits ? limits.max : 0;
+  }
+
+  /**
+   * 处理紧急情况
+   */
+  private handleEmergencySituations(): void {
+    // 检查房间是否受到攻击
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (room && room.controller?.my) {
+        const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+        if (hostileCreeps.length > 0) {
+          this.handleRoomUnderAttack(roomName, hostileCreeps.length);
+        }
+      }
+    }
+
+    // 检查需要替换的creep
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+      if (creep.ticksToLive && creep.ticksToLive < GameConfig.THRESHOLDS.CREEP_REPLACEMENT_TIME) {
+        this.addProductionNeed(
+          creep.room.name,
+          creep.memory.role,
+          GameConfig.PRIORITIES.HIGH,
+          creep.room.energyAvailable,
+          undefined,
+          undefined,
+          undefined,
+          `Creep replacement: ${creep.name}`
+        );
+      }
     }
   }
 
   /**
-   * 检查是否需要建筑工
+   * 获取待分配的任务
    */
-  private needsBuilder(room: Room): boolean {
-    // 检查是否有建造工地
-    const constructionSites = room.find(FIND_CONSTRUCTION_SITES);
-    if (constructionSites.length > 0) {
-      return true;
-    }
-
-    // 检查是否有需要修复的建筑
-    const damagedStructures = room.find(FIND_STRUCTURES, {
-      filter: (structure) =>
-        structure.hits < structure.hitsMax * GameConfig.THRESHOLDS.REPAIR_THRESHOLD &&
-        !this.isEngineerOnlyStructure(structure.structureType)
-    });
-
-    return damagedStructures.length > 0;
-  }
-
-  /**
-   * 检查是否是工程师专用建筑
-   */
-  private isEngineerOnlyStructure(structureType: StructureConstant): boolean {
-    return GameConfig.isEngineerResponsible(structureType);
+  private getPendingTasks(): Task[] {
+    if (!Memory.tasks) return [];
+    return Memory.tasks.taskQueue.filter(task => task.status === TaskStatus.PENDING);
   }
 
   /**
    * 添加生产需求
    */
-  public addProductionNeed(roomName: string, role: string, priority: number, availableEnergy: number): void {
+  public addProductionNeed(
+    roomName: string,
+    role: string,
+    priority: number,
+    availableEnergy: number,
+    energyBudget?: number,
+    taskType?: TaskType,
+    taskCount?: number,
+    reason?: string
+  ): void {
     // 检查是否已存在相同的生产需求
     const existingNeed = this.productionQueue.find(need =>
       need.roomName === roomName && need.role === role
     );
 
     if (existingNeed) {
-      console.log(`[addProductionNeed] 房间 ${roomName} 角色 ${role} 的生产需求已存在，跳过添加`);
+      // 如果已存在，比较优先级，保留优先级更高的
+      if (priority > existingNeed.priority) {
+        existingNeed.priority = priority;
+        existingNeed.urgency = priority >= GameConfig.PRIORITIES.CRITICAL ? 'critical' : 'normal';
+        existingNeed.taskType = taskType;
+        existingNeed.taskCount = taskCount;
+        existingNeed.reason = reason;
+        console.log(`[addProductionNeed] 更新生产需求: ${role} (房间: ${roomName}, 优先级: ${priority})`);
+      }
       return;
     }
 
@@ -345,12 +370,15 @@ export class CreepProductionService {
       role,
       priority,
       urgency: priority >= GameConfig.PRIORITIES.CRITICAL ? 'critical' : 'normal',
-      energyBudget: availableEnergy,
-      timestamp: Game.time
+      energyBudget: energyBudget !== undefined ? energyBudget : availableEnergy,
+      timestamp: Game.time,
+      taskType,
+      taskCount,
+      reason
     };
 
     this.productionQueue.push(need);
-    console.log(`[addProductionNeed] 添加生产需求: ${role} (房间: ${roomName}, 优先级: ${priority})`);
+    console.log(`[addProductionNeed] 添加生产需求: ${role} (房间: ${roomName}, 优先级: ${priority}, 原因: ${reason})`);
   }
 
   /**
@@ -362,6 +390,9 @@ export class CreepProductionService {
     }
 
     console.log(`[executeProduction] 生产队列长度: ${this.productionQueue.length}`);
+
+    // 按优先级排序
+    this.productionQueue.sort((a, b) => b.priority - a.priority);
 
     // 处理队列中的第一个需求
     const need = this.productionQueue[0];
@@ -403,8 +434,9 @@ export class CreepProductionService {
     // 生成身体配置
     const body = BodyBuilder.generateOptimalBody(
       need.role,
-      need.energyBudget || GameConfig.THRESHOLDS.MIN_ENERGY_FOR_UPGRADER,
-      GameConfig.THRESHOLDS.MAX_CREEP_BODY_SIZE
+      need.energyBudget !== undefined ? need.energyBudget : room.energyAvailable,
+      GameConfig.THRESHOLDS.MAX_CREEP_BODY_SIZE,
+      room
     );
 
     const cost = BodyBuilder.getBodyCost(body);
@@ -444,37 +476,6 @@ export class CreepProductionService {
   }
 
   /**
-   * 生成creep名称
-   */
-  private generateCreepName(role: string): string {
-    return `${role}_${Game.time}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
-   * 请求Creep替换
-   */
-  public requestCreepReplacement(creep: Creep): void {
-    const room = creep.room;
-    const controllerLevel = room.controller?.level || 1;
-    const currentRoleCount = this.getCreepCountInRoom(room.name, creep.memory.role);
-    const totalCreepsInRoom = this.getCreepCountInRoom(room.name);
-
-    // 检查是否仍然需要这个角色（考虑即将死亡的creep）
-    if (!GameConfig.canProduceMoreCreeps(controllerLevel, creep.memory.role, currentRoleCount - 1, totalCreepsInRoom)) {
-      console.log(`[requestCreepReplacement] 角色 ${creep.memory.role} 已达到限制，不需要替换`);
-      return;
-    }
-
-    const availableEnergy = room.energyAvailable;
-    this.addProductionNeed(
-      room.name,
-      creep.memory.role,
-      GameConfig.PRIORITIES.HIGH,
-      availableEnergy
-    );
-  }
-
-  /**
    * 处理房间受到攻击时的生产需求
    */
   public handleRoomUnderAttack(roomName: string, hostileCount: number): void {
@@ -485,29 +486,33 @@ export class CreepProductionService {
       return;
     }
 
-    // 检查当前defender数量
+    // 检查当前shooter数量
     const controllerLevel = room.controller.level || 1;
-    const currentDefenderCount = this.getCreepCountInRoom(roomName, GameConfig.ROLES.DEFENDER);
+    const currentShooterCount = this.getCreepCountInRoom(roomName, GameConfig.ROLES.SHOOTER);
     const totalCreepsInRoom = this.getCreepCountInRoom(roomName);
 
-    console.log(`🛡️ [CreepProductionService] 房间 ${roomName} 当前defender数量: ${currentDefenderCount}`);
+    console.log(`🛡️ [CreepProductionService] 房间 ${roomName} 当前shooter数量: ${currentShooterCount}`);
 
-    // 检查是否可以生产更多defender
-    if (GameConfig.canProduceMoreCreeps(controllerLevel, GameConfig.ROLES.DEFENDER, currentDefenderCount, totalCreepsInRoom)) {
+    // 检查是否可以生产更多shooter
+    if (GameConfig.canProduceMoreCreeps(controllerLevel, GameConfig.ROLES.SHOOTER, currentShooterCount, totalCreepsInRoom)) {
       const availableEnergy = room.energyAvailable;
-      if (availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_DEFENDER) {
-        console.log(`🛡️ [CreepProductionService] 添加紧急defender生产需求`);
+      if (availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_SHOOTER) {
+        console.log(`🛡️ [CreepProductionService] 添加紧急shooter生产需求`);
         this.addProductionNeed(
           roomName,
-          GameConfig.ROLES.DEFENDER,
+          GameConfig.ROLES.SHOOTER,
           GameConfig.PRIORITIES.HIGH,
-          availableEnergy
+          availableEnergy,
+          undefined,
+          TaskType.ATTACK,
+          hostileCount,
+          `Emergency defense: ${hostileCount} hostiles`
         );
       } else {
-        console.log(`🛡️ [CreepProductionService] 能量不足，无法生产defender (需要: ${GameConfig.THRESHOLDS.MIN_ENERGY_FOR_DEFENDER}, 当前: ${availableEnergy})`);
+        console.log(`🛡️ [CreepProductionService] 能量不足，无法生产shooter (需要: ${GameConfig.THRESHOLDS.MIN_ENERGY_FOR_SHOOTER}, 当前: ${availableEnergy})`);
       }
     } else {
-      console.log(`🛡️ [CreepProductionService] defender数量已达上限，无法生产更多`);
+      console.log(`🛡️ [CreepProductionService] shooter数量已达上限，无法生产更多`);
     }
   }
 
@@ -552,6 +557,7 @@ export class CreepProductionService {
   public onReset(): void {
     this.productionQueue = [];
     this.lastProductionCheck = 0;
+    this.lastTaskAnalysis = 0;
   }
 
   /**
@@ -560,7 +566,7 @@ export class CreepProductionService {
   private cleanupDuplicateProductionNeeds(): void {
     const uniqueNeeds = new Map<string, ProductionNeed>();
 
-    // 遍历生产队列，保留每个房间-角色组合的第一个需求
+    // 遍历生产队列，保留每个房间-角色组合的最高优先级需求
     for (const need of this.productionQueue) {
       const key = `${need.roomName}-${need.role}`;
 
@@ -658,30 +664,11 @@ export class CreepProductionService {
   }
 
   /**
-   * 检查房间是否有敌人威胁 (备用方法，当RoomManager不可用时使用)
+   * 生成creep名称
    */
-  private hasEnemyThreatFallback(room: Room): boolean {
-    // 检查是否有敌对creep
-    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
-    if (hostileCreeps.length > 0) {
-      console.log(`[hasEnemyThreatFallback] 房间 ${room.name} 发现 ${hostileCreeps.length} 个敌对creep`);
-      return true;
-    }
-
-    // 检查是否有敌对建筑
-    const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
-    if (hostileStructures.length > 0) {
-      console.log(`[hasEnemyThreatFallback] 房间 ${room.name} 发现 ${hostileStructures.length} 个敌对建筑`);
-      return true;
-    }
-
-    // 检查最近是否有敌人活动的记录
-    if (room.memory.lastEnemyActivity &&
-        Game.time - room.memory.lastEnemyActivity < GameConfig.THRESHOLDS.ENEMY_MEMORY_DURATION) {
-      console.log(`[hasEnemyThreatFallback] 房间 ${room.name} 最近有敌人活动记录`);
-      return true;
-    }
-
-    return false;
+  private generateCreepName(role: string): string {
+    const timestamp = Game.time;
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    return `${role}_${timestamp}_${randomSuffix}`;
   }
 }

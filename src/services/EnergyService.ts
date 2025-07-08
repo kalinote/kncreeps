@@ -34,7 +34,7 @@ export class EnergyService {
   public static findBestEnergySource(creep: Creep, config: EnergySourceConfig, roleName: string): Structure | Resource | Source | null {
     // 优先使用内存中的目标
     if (creep.memory.targetId) {
-      const cachedTarget = Game.getObjectById(creep.memory.targetId) as Structure | Resource | Source | null;
+      const cachedTarget = Game.getObjectById<Structure | Resource | Source>(creep.memory.targetId as Id<Structure | Resource | Source>);
       if (cachedTarget && EnergyService.isValidEnergySource(cachedTarget, config, roleName)) {
         return cachedTarget;
       }

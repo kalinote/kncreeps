@@ -3,7 +3,7 @@ import { StateManager } from "../managers/StateManager";
 import { BaseManager } from "../managers/BaseManager";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "../managers/CreepManager";
-import { BehaviorManager } from "../managers/BehaviorManager";
+import { TaskExecutionManager } from "../managers/TaskExecutionManager";
 import { CreepProductionService } from "../services/CreepProductionService";
 import { CreepLifecycleService } from "../services/CreepLifecycleService";
 import { EnergyService } from "../services/EnergyService";
@@ -52,8 +52,8 @@ export class ServiceContainer {
         this.get('roomManager')
       )
     );
-    this.registerSingleton('behaviorManager', () =>
-      new BehaviorManager(this.get('eventBus'), this.get('taskManager'))
+    this.registerSingleton('taskExecutionManager', () =>
+      new TaskExecutionManager(this.get('eventBus'), this.get('taskManager'))
     );
 
     // 注册任务执行器（可选，因为现在通过 TaskExecutorRegistry 管理）
@@ -134,7 +134,7 @@ export class ServiceContainer {
     this.get('taskManager');
     this.get('roomManager');
     this.get('creepManager');
-    this.get('behaviorManager');
+    this.get('taskExecutionManager');
 
     console.log('ServiceContainer: 管理器已初始化');
   }
@@ -161,7 +161,7 @@ export class ServiceContainer {
       'taskManager',
       'roomManager',
       'creepManager',
-      'behaviorManager'
+      'taskExecutionManager'
     ];
 
     for (const name of managerNames) {

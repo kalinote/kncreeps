@@ -12,6 +12,7 @@ export class EventConfig {
     // Room相关事件
     ROOM_ENERGY_CHANGED: 'room.energy.changed',        // 房间能量变化
     ROOM_UNDER_ATTACK: 'room.under.attack',             // 房间受到攻击
+    ROOM_NEEDS_ATTENTION: 'room.needs.attention',       // 房间需要关注
 
     // 建筑相关事件
     CONSTRUCTION_COMPLETED: 'construction.completed',   // 建筑完成
@@ -22,6 +23,11 @@ export class EventConfig {
     COMBAT_STARTED: 'combat.started',                   // 战斗开始
     COMBAT_ENDED: 'combat.ended',                       // 战斗结束
     COMBAT_DEFENDER_ENGAGED: 'combat.defender.engaged',               // 防御单位开始攻击
-    COMBAT_DEFENDER_RETREATING: 'combat.defender.retreating'          // 防御单位撤退
+    COMBAT_DEFENDER_RETREATING: 'combat.defender.retreating',         // 防御单位撤退
+
+    // 任务系统相关事件
+    TASK_CREATED: 'task.created',                       // 任务创建
+    TASK_COMPLETED: 'task.completed',                   // 任务完成
+    TASK_FAILED: 'task.failed'                          // 任务失败
   } as const;
 }

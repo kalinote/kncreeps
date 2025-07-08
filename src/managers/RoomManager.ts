@@ -128,7 +128,7 @@ export class RoomManager extends BaseManager {
         console.log(`房间 ${roomName} 警报:`, alerts);
 
         // 发送房间需要注意的事件
-        this.emit('room.needs.attention', {
+        this.emit(GameConfig.EVENTS.ROOM_NEEDS_ATTENTION, {
           roomName,
           alerts,
           severity: this.calculateAlertSeverity(alerts)

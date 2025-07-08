@@ -162,14 +162,24 @@ export class CreepManager extends BaseManager {
    * 手动请求Creep替换 - 委托给生产服务
    */
   public requestCreepReplacement(creep: Creep): void {
-    this.productionService.requestCreepReplacement(creep);
+    // 使用新的生产需求接口
+    this.productionService.addProductionNeed(
+      creep.room.name,
+      creep.memory.role,
+      GameConfig.PRIORITIES.HIGH,
+      creep.room.energyAvailable,
+      undefined,
+      undefined,
+      undefined,
+      `Manual replacement request: ${creep.name}`
+    );
   }
 
   /**
    * 手动添加生产需求 - 委托给生产服务
    */
   public addProductionNeed(roomName: string, role: string, priority: number, availableEnergy: number): void {
-    this.productionService.addProductionNeed(roomName, role, priority, availableEnergy);
+    this.productionService.addProductionNeed(roomName, role, priority, availableEnergy, undefined, undefined, undefined, 'Manual production request');
   }
 
   /**

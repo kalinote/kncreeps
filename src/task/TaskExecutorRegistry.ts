@@ -1,7 +1,9 @@
 import { TaskType } from "../types";
 import { BaseTaskExecutor } from "./executors/BaseTaskExecutor";
+import { BuildTaskExecutor } from "./executors/BuildTaskExecutor";
 import { HarvestTaskExecutor } from "./executors/HarvestTaskExecutor";
 import { TransportTaskExecutor } from "./executors/TransportTaskExecutor";
+import { UpgradeTaskExecutor } from "./executors/UpgradeTaskExecutor";
 
 /**
  * 任务执行器注册表
@@ -23,8 +25,11 @@ export class TaskExecutorRegistry {
     // 注册运输任务执行器
     this.executors.set(TaskType.TRANSPORT, new TransportTaskExecutor());
 
-    // 后续添加其他任务执行器
-    // this.executors.set(TaskType.BUILD, new BuildTaskExecutor());
+    // 注册建造任务执行器
+    this.executors.set(TaskType.BUILD, new BuildTaskExecutor());
+
+    // 注册升级任务执行器
+    this.executors.set(TaskType.UPGRADE, new UpgradeTaskExecutor());
 
     console.log(`[TaskExecutorRegistry] 已注册 ${this.executors.size} 种任务执行器`);
   }

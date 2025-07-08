@@ -1,5 +1,5 @@
 import { TaskManager } from "../managers/TaskManager";
-import { HarvestTask, TransportTask, TaskPriority, TaskType } from "../types";
+import { HarvestTask, TransportTask, UpgradeTask, BuildTask, TaskPriority, TaskType } from "../types";
 
 /**
  * 任务生成器 - 根据房间状态自动创建任务
@@ -19,6 +19,8 @@ export class TaskGenerator {
 
     this.generateHarvestTasks(room);
     this.generateTransportTasks(room);
+    this.generateBuildTasks(room);
+    this.generateUpgradeTasks(room);
     // 后续添加其他任务类型
   }
 
@@ -30,22 +32,26 @@ export class TaskGenerator {
     console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${sources.length} 个源, 现有 ${existingHarvestTasks.length} 个活跃采集任务`);
 
     // 为每个源创建采集任务（如果还没有）
-    for (const source of sources) {
+    // 前两个source保持高优先级，超过两个的source设置为低优先级
+    for (let i = 0; i < sources.length; i++) {
+      const source = sources[i];
       const hasTask = existingHarvestTasks.some(task =>
         (task as HarvestTask).params.sourceId === source.id
       );
 
       if (!hasTask) {
+        // 前两个source使用高优先级，其余使用低优先级
+        const priority = i < 2 ? TaskPriority.HIGH : TaskPriority.LOW;
         const taskId = this.taskManager.createTask({
           type: TaskType.HARVEST,
-          priority: TaskPriority.HIGH,
+          priority: priority,
           roomName: room.name,
           maxRetries: 3,
           params: {
             sourceId: source.id
           }
         });
-        console.log(`[TaskGenerator] 为源 ${source.id} 创建采集任务: ${taskId}`);
+        console.log(`[TaskGenerator] 为源 ${source.id} 创建采集任务: ${taskId} (优先级: ${priority})`);
       } else {
         console.log(`[TaskGenerator] 源 ${source.id} 已有活跃任务，跳过创建`);
       }
@@ -129,4 +135,71 @@ export class TaskGenerator {
 
     return null;
   }
+
+  /**
+   * 生成升级任务
+   */
+  private generateUpgradeTasks(room: Room): void {
+    // 检查是否有控制器且属于我们
+    if (!room.controller || !room.controller.my) {
+      return;
+    }
+
+    const existingUpgradeTasks = this.taskManager.getActiveTasks()
+      .filter(task => task.type === TaskType.UPGRADE && task.roomName === room.name);
+
+    console.log(`[TaskGenerator] 房间 ${room.name}: 控制器等级 ${room.controller.level}, 现有 ${existingUpgradeTasks.length} 个活跃升级任务`);
+
+    // 如果还没有升级任务，创建一个
+    if (existingUpgradeTasks.length === 0) {
+      const taskId = this.taskManager.createTask({
+        type: TaskType.UPGRADE,
+        priority: TaskPriority.NORMAL,
+        roomName: room.name,
+        maxRetries: 3,
+        params: {
+          controllerId: room.controller.id,
+          sourceConstructionIds: [] // 从任意建筑获取能量
+        }
+      });
+      console.log(`[TaskGenerator] 为控制器 ${room.controller.id} 创建升级任务: ${taskId}`);
+    } else {
+      console.log(`[TaskGenerator] 控制器 ${room.controller.id} 已有活跃任务，跳过创建`);
+    }
+  }
+
+  /**
+   * 生成建造任务
+   */
+  private generateBuildTasks(room: Room): void {
+    const constructionSites = room.find(FIND_CONSTRUCTION_SITES);
+    const existingBuildTasks = this.taskManager.getActiveTasks()
+      .filter(task => task.type === TaskType.BUILD && task.roomName === room.name);
+
+    console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${constructionSites.length} 个建筑工地, 现有 ${existingBuildTasks.length} 个活跃建造任务`);
+
+    // 为每个建筑工地创建建造任务（如果还没有）
+    for (const site of constructionSites) {
+      const hasTask = existingBuildTasks.some(task =>
+        (task as BuildTask).params.targetId === site.id
+      );
+
+      if (!hasTask) {
+        const taskId = this.taskManager.createTask({
+          type: TaskType.BUILD,
+          priority: TaskPriority.NORMAL,
+          roomName: room.name,
+          maxRetries: 3,
+          params: {
+            targetId: site.id,
+            sourceConstructionIds: [] // 从任意建筑获取能量
+          }
+        });
+        console.log(`[TaskGenerator] 为建筑工地 ${site.id} (${site.structureType}) 创建建造任务: ${taskId}`);
+      } else {
+        console.log(`[TaskGenerator] 建筑工地 ${site.id} 已有活跃任务，跳过创建`);
+      }
+    }
+  }
 }
+

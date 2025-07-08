@@ -4,7 +4,7 @@ import { BaseManager } from "../managers/BaseManager";
 import { GameConfig } from "../config/GameConfig";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "managers/CreepManager";
-import { BehaviorManager } from "../managers/BehaviorManager";
+import { TaskExecutionManager } from "../managers/TaskExecutionManager";
 import { ServiceContainer } from "./ServiceContainer";
 
 /**
@@ -294,7 +294,7 @@ export class GameEngine {
     for (const name in Game.creeps) {
       const creep = Game.creeps[name];
       if (!creep.memory.role) {
-        creep.memory.role = GameConfig.ROLES.HARVESTER;
+        creep.memory.role = GameConfig.ROLES.WORKER;
       }
     }
   }

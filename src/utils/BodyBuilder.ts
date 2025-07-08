@@ -11,8 +11,18 @@ export class BodyBuilder {
   public static generateOptimalBody(
     role: string,
     availableEnergy: number,
-    maxBodySize: number = GameConfig.THRESHOLDS.MAX_CREEP_BODY_SIZE
+    maxBodySize: number = GameConfig.THRESHOLDS.MAX_CREEP_BODY_SIZE,
+    room?: Room
   ): BodyPartConstant[] {
+    // 检查是否处于开局阶段
+    if (room && GameConfig.isBootstrapPhase(room)) {
+      const bootstrapConfig = GameConfig.getBootstrapConfig(role);
+      if (bootstrapConfig && availableEnergy >= bootstrapConfig.cost) {
+        console.log(`[BodyBuilder] 使用开局最小配置: ${role} = ${JSON.stringify(bootstrapConfig.body)}`);
+        return [...bootstrapConfig.body];
+      }
+    }
+
     const template = this.getRoleTemplate(role);
     if (!template) {
       console.log(`未找到角色 ${role} 的模板`);
@@ -132,14 +142,14 @@ export class BodyBuilder {
    */
   private static getRoleTemplate(role: string): RoleTemplate | undefined {
     const templates: { [role: string]: RoleTemplate } = {
-      [GameConfig.ROLES.HARVESTER]: {
-        name: GameConfig.ROLES.HARVESTER,
+      [GameConfig.ROLES.WORKER]: {
+        name: GameConfig.ROLES.WORKER,
         minConfig: [WORK, CARRY, MOVE],
-        standardConfig: [WORK, WORK, CARRY, MOVE],
-        maxConfig: [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE],
+        standardConfig: [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
+        maxConfig: [WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
         scalingRules: [
-          { priority: 1, part: WORK, maxCount: 6 },
-          { priority: 2, part: CARRY, maxCount: 2 },
+          { priority: 1, part: WORK, maxCount: 5 },
+          { priority: 2, part: CARRY, maxCount: 3 },
           { priority: 3, part: MOVE, ratio: 0.5 }
         ]
       },
@@ -153,30 +163,8 @@ export class BodyBuilder {
           { priority: 2, part: MOVE, ratio: 0.5 }
         ]
       },
-      [GameConfig.ROLES.BUILDER]: {
-        name: GameConfig.ROLES.BUILDER,
-        minConfig: [WORK, CARRY, MOVE],
-        standardConfig: [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
-        maxConfig: [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE],
-        scalingRules: [
-          { priority: 1, part: WORK, maxCount: 4 },
-          { priority: 2, part: CARRY, maxCount: 4 },
-          { priority: 3, part: MOVE, ratio: 0.5 }
-        ]
-      },
-      [GameConfig.ROLES.UPGRADER]: {
-        name: GameConfig.ROLES.UPGRADER,
-        minConfig: [WORK, CARRY, MOVE],
-        standardConfig: [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
-        maxConfig: [WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE],
-        scalingRules: [
-          { priority: 1, part: WORK, maxCount: 5 },
-          { priority: 2, part: CARRY, maxCount: 2 },
-          { priority: 3, part: MOVE, ratio: 0.4 }
-        ]
-      },
-      [GameConfig.ROLES.DEFENDER]: {
-        name: GameConfig.ROLES.DEFENDER,
+      [GameConfig.ROLES.SHOOTER]: {
+        name: GameConfig.ROLES.SHOOTER,
         minConfig: [MOVE, TOUGH, RANGED_ATTACK],
         standardConfig: [MOVE, MOVE, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK],
         maxConfig: [MOVE, MOVE, MOVE, MOVE, TOUGH, TOUGH, TOUGH, TOUGH, RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, HEAL, HEAL],
@@ -223,38 +211,41 @@ export class BodyBuilder {
     const lifespan = GameConfig.SYSTEM.CREEP_LIFETIME;
 
     switch (role) {
-      case GameConfig.ROLES.HARVESTER:
+      case GameConfig.ROLES.WORKER:
         const workParts = body.filter(p => p === WORK).length;
-        const harvestRate = workParts * 2; // 每tick每个WORK部件产出2能量
-        return (harvestRate * lifespan) / cost;
-
-      case GameConfig.ROLES.TRANSPORTER:
         const carryParts = body.filter(p => p === CARRY).length;
         const moveParts = body.filter(p => p === MOVE).length;
+
+        // 工作者可以执行多种任务，综合评估效率
+        const workRate = workParts * 2; // 每tick每个WORK部件产出2能量
+        const buildRate = workParts * 5; // 每tick每个WORK部件建造5点
         const capacity = carryParts * 50;
         const mobility = moveParts / body.length;
-        return (capacity * mobility * lifespan) / cost;
 
-      case GameConfig.ROLES.BUILDER:
-        const buildWorkParts = body.filter(p => p === WORK).length;
-        const buildCarryParts = body.filter(p => p === CARRY).length;
-        const buildRate = buildWorkParts * 5; // 每tick每个WORK部件建造5点
-        const buildCapacity = buildCarryParts * 50;
-        return ((buildRate + buildCapacity) * lifespan) / cost;
+        // 综合效率：工作能力 + 建造能力 + 运输能力 + 机动性
+        const workerEfficiency = (workRate + buildRate + capacity * mobility) * lifespan;
+        return workerEfficiency / cost;
 
-      case GameConfig.ROLES.DEFENDER:
+      case GameConfig.ROLES.TRANSPORTER:
+        const transporterCarryParts = body.filter(p => p === CARRY).length;
+        const transporterMoveParts = body.filter(p => p === MOVE).length;
+        const transporterCapacity = transporterCarryParts * 50;
+        const transporterMobility = transporterMoveParts / body.length;
+        return (transporterCapacity * transporterMobility * lifespan) / cost;
+
+      case GameConfig.ROLES.SHOOTER:
         const attackParts = body.filter(p => p === RANGED_ATTACK).length;
         const toughParts = body.filter(p => p === TOUGH).length;
         const healParts = body.filter(p => p === HEAL).length;
-        const defenderMoveParts = body.filter(p => p === MOVE).length;
+        const shooterMoveParts = body.filter(p => p === MOVE).length;
 
         const attackPower = attackParts * 10; // 每个RANGED_ATTACK部件10攻击力
         const durability = toughParts * 100; // 每个TOUGH部件100血量
         const healPower = healParts * 12; // 每个HEAL部件12治疗力
-        const defenderMobility = defenderMoveParts / body.length;
+        const shooterMobility = shooterMoveParts / body.length;
 
         // 综合战斗效率：攻击力 + 耐久性 + 治疗力 + 机动性
-        const combatEfficiency = (attackPower + durability * 0.1 + healPower + defenderMobility * 100) * lifespan;
+        const combatEfficiency = (attackPower + durability * 0.1 + healPower + shooterMobility * 100) * lifespan;
         return combatEfficiency / cost;
 
       default:

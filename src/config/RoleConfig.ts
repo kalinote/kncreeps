@@ -1,15 +1,12 @@
 /**
- * 角色相关配置
+ * 角色相关配置 - 简化后的角色系统
  */
 export class RoleConfig {
-  // 角色类型
+  // 角色类型 - 简化后的角色定义
   public static readonly ROLES = {
-    HARVESTER: 'harvester',       // 矿工，用于采集资源
+    WORKER: 'worker',             // 通用工作者：采集、建造、升级
     TRANSPORTER: 'transporter',   // 搬运工，用于搬运资源
-    BUILDER: 'builder',           // 建筑工，用于建造建筑
-    UPGRADER: 'upgrader',         // 升级工，用于升级建筑
-    ENGINEER: 'engineer',         // 工程师，用于建造军事设施
-    DEFENDER: 'defender',         // 防御者，用于房间内的防御
+    SHOOTER: 'shooter',           // 战斗单位，用于防御和攻击
   } as const;
 
   // 优先级
@@ -26,14 +23,12 @@ export class RoleConfig {
     // 允许捡拾地面掉落资源的角色
     CAN_PICKUP_DROPPED_RESOURCES: [
       RoleConfig.ROLES.TRANSPORTER,
-      RoleConfig.ROLES.HARVESTER  // 采集者在必要时也可以捡拾（如专业模式下）
+      RoleConfig.ROLES.WORKER  // 工作者在必要时也可以捡拾
     ],
 
     // 只能从存储建筑获取资源的角色
     STORAGE_ONLY_ROLES: [
-      RoleConfig.ROLES.BUILDER,
-      RoleConfig.ROLES.UPGRADER,
-      RoleConfig.ROLES.ENGINEER
+      RoleConfig.ROLES.WORKER  // 工作者主要从存储建筑获取资源
     ]
   } as const;
 
@@ -45,67 +40,47 @@ export class RoleConfig {
       MIN_ENERGY_RESERVE: 100
     },
 
-    // 按房间控制器等级的角色数量限制
+    // 按房间控制器等级的角色数量限制（提高上限以支持任务驱动生产）
     BY_RCL: {
       1: {
-        [RoleConfig.ROLES.HARVESTER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.BUILDER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.UPGRADER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.DEFENDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       2: {
-        [RoleConfig.ROLES.HARVESTER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.BUILDER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.UPGRADER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.DEFENDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       3: {
-        [RoleConfig.ROLES.HARVESTER]: { min: 1, max: 2, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.BUILDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.UPGRADER]: { min: 1, max: 1, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.DEFENDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 5, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       4: {
-        [RoleConfig.ROLES.HARVESTER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.BUILDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.UPGRADER]: { min: 1, max: 1, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.DEFENDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       5: {
-        [RoleConfig.ROLES.HARVESTER]: { min: 2, max: 3, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 3, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.BUILDER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.UPGRADER]: { min: 1, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.ENGINEER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL },
-        [RoleConfig.ROLES.DEFENDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 3, max: 8, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 5, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 3, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       6: {
-        [RoleConfig.ROLES.HARVESTER]: { min: 2, max: 4, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 4, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.BUILDER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.UPGRADER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.ENGINEER]: { min: 0, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL },
-        [RoleConfig.ROLES.DEFENDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 3, max: 10, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max: 6, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 3, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       7: {
-        [RoleConfig.ROLES.HARVESTER]: { min: 2, max: 4, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 5, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.BUILDER]: { min: 0, max: 3, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.UPGRADER]: { min: 2, max: 4, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.ENGINEER]: { min: 1, max: 2, priority: RoleConfig.PRIORITIES.MINIMAL },
-        [RoleConfig.ROLES.DEFENDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 4, max: 12, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 7, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
       8: {
-        [RoleConfig.ROLES.HARVESTER]: { min: 2, max: 5, priority: RoleConfig.PRIORITIES.HIGH },
-        [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 6, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.BUILDER]: { min: 0, max: 3, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.UPGRADER]: { min: 2, max: 5, priority: RoleConfig.PRIORITIES.MEDIUM },
-        [RoleConfig.ROLES.ENGINEER]: { min: 1, max: 3, priority: RoleConfig.PRIORITIES.MINIMAL },
-        [RoleConfig.ROLES.DEFENDER]: { min: 0, max: 1, priority: RoleConfig.PRIORITIES.MINIMAL }
+        [RoleConfig.ROLES.WORKER]: { min: 4, max: 15, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.TRANSPORTER]: { min: 3, max: 8, priority: RoleConfig.PRIORITIES.MEDIUM },
+        [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 4, priority: RoleConfig.PRIORITIES.MINIMAL }
       }
     }
   } as const;

@@ -25,8 +25,7 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
   }
 
   private executeTransport(creep: Creep, task: TransportTask): TaskResult {
-    const params = task.params;
-    const resourceType = params.resourceType;
+    const resourceType = task.params.resourceType;
 
     // 如果creep即将死亡，完成任务让其他creep接管
     if (creep.ticksToLive && creep.ticksToLive < 50) {
@@ -59,7 +58,7 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
 
     // 优先从指定建筑拾取
     if (params.sourceId) {
-      const source = Game.getObjectById(params.sourceId) as Structure;
+      const source = Game.getObjectById<Structure>(params.sourceId as Id<Structure>);
       if (!source) {
         return { success: false, completed: true, message: '源建筑不存在，任务完成' };
       }
@@ -195,7 +194,7 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
 
     // 优先传输到指定建筑
     if (params.targetId) {
-      const target = Game.getObjectById(params.targetId) as Structure;
+      const target = Game.getObjectById<Structure>(params.targetId as Id<Structure>);
       if (!target) {
         return { success: false, completed: true, message: '目标建筑不存在，任务完成' };
       }

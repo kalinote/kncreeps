@@ -13,6 +13,10 @@ export interface ProductionNeed {
   urgency: 'critical' | 'high' | 'normal' | 'low';
   energyBudget?: number;
   timestamp?: number;
+  // 任务驱动相关字段
+  taskType?: TaskType;        // 关联的任务类型
+  taskCount?: number;         // 该类型任务的数量
+  reason?: string;            // 生产原因
 }
 
 // Creep状态类型
@@ -69,7 +73,7 @@ declare global {
     creepProduction: CreepProductionMemory;
     intelligence: IntelligenceMemory;
     creepStates: { [creepName: string]: CreepState };
-    behaviorStats: { [role: string]: BehaviorStats };
+
     eventBus: EventBusMemory;
     tasks?: TaskSystemMemory;
     gameEngine?: {
@@ -116,13 +120,7 @@ declare global {
     lastUpdate: number;
   }
 
-  interface BehaviorStats {
-    executions: number;
-    successes: number;
-    failures: number;
-    lastExecution: number;
-    averageExecutionTime: number;
-  }
+
 
   interface EventBusMemory {
     eventQueue: GameEvent[];
@@ -148,7 +146,7 @@ export enum TaskType {
   BUILD = 'build',
   REPAIR = 'repair',
   UPGRADE = 'upgrade',
-  DEFEND = 'defend'
+  ATTACK = 'attack'
 }
 
 // 任务状态枚举
@@ -205,6 +203,18 @@ export interface TransportTaskParams {
   amount?: number;
 }
 
+// 建造任务参数
+export interface BuildTaskParams {
+  targetId: string;   // 目标建筑ID
+  sourceConstructionIds: string[]; // 从该列表中的建筑拾取资源用于建造，为空则从任意符合条件的建筑中获取
+}
+
+// 升级任务参数
+export interface UpgradeTaskParams {
+  controllerId: string;   // 控制器ID
+  sourceConstructionIds: string[]; // 从该列表中的建筑拾取资源用于升级，为空则从任意符合条件的建筑中获取
+}
+
 // 具体任务接口
 export interface HarvestTask extends BaseTask {
   type: TaskType.HARVEST;
@@ -216,8 +226,18 @@ export interface TransportTask extends BaseTask {
   params: TransportTaskParams;
 }
 
+export interface BuildTask extends BaseTask {
+  type: TaskType.BUILD;
+  params: BuildTaskParams;
+}
+
+export interface UpgradeTask extends BaseTask {
+  type: TaskType.UPGRADE;
+  params: UpgradeTaskParams;
+}
+
 // 联合类型
-export type Task = HarvestTask | TransportTask;
+export type Task = HarvestTask | TransportTask | BuildTask | UpgradeTask;
 
 // 任务执行结果
 export interface TaskResult {
@@ -239,14 +259,6 @@ export interface TaskExecutor {
   canExecute(creep: Creep, task: Task): boolean;
   execute(creep: Creep, task: Task): TaskResult;
   getRequiredCapabilities(): CapabilityRequirement[];
-}
-
-// 在全局Memory接口中添加任务系统内存
-declare global {
-  interface Memory {
-    // ... 现有属性 ...
-    tasks?: TaskSystemMemory;
-  }
 }
 
 // 任务系统内存

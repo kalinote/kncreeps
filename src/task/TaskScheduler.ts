@@ -1,25 +1,14 @@
 import { Task, TaskPriority, CapabilityRequirement, TaskType } from "../types";
 import { TaskManager } from "../managers/TaskManager";
-import { HarvestTaskExecutor } from "./executors/HarvestTaskExecutor";
-import { TransportTaskExecutor } from "./executors/TransportTaskExecutor";
 
 /**
  * 任务调度器 - 负责任务分配和调度
  */
 export class TaskScheduler {
   private taskManager: TaskManager;
-  private executors: Map<string, any> = new Map();
 
   constructor(taskManager: TaskManager) {
     this.taskManager = taskManager;
-    this.initializeExecutors();
-  }
-
-  private initializeExecutors(): void {
-    this.executors.set(TaskType.HARVEST, new HarvestTaskExecutor());
-    this.executors.set(TaskType.TRANSPORT, new TransportTaskExecutor());
-
-    console.log(`[TaskScheduler] 已注册执行器: ${TaskType.HARVEST}, ${TaskType.TRANSPORT}`);
   }
 
   /**
@@ -44,7 +33,7 @@ export class TaskScheduler {
 
     let assignedCount = 0;
     for (const task of pendingTasks) {
-      const executor = this.executors.get(task.type);
+      const executor = this.taskManager.getTaskExecutor(task.type);
       if (!executor) {
         console.log(`[TaskScheduler] 警告: 找不到任务类型 ${task.type} 的执行器`);
         continue;
@@ -95,7 +84,7 @@ export class TaskScheduler {
    * 为任务找到最佳creep
    */
   private findBestCreepForTask(task: Task, creeps: Creep[]): Creep | null {
-    const executor = this.executors.get(task.type);
+    const executor = this.taskManager.getTaskExecutor(task.type);
     if (!executor) return null;
 
     let bestCreep: Creep | null = null;
@@ -125,17 +114,16 @@ export class TaskScheduler {
       executor.calculateCapabilityScore(creep) : 0.5;
     score += capabilityScore * 0.4;
 
-    // 距离因素 (30%)
-    // 这里简化处理，实际可以根据任务类型计算到目标的距离
-    const distanceScore = 0.5; // 暂时固定值
+    // TODO 距离因素 (30%)
+    const distanceScore = 0.5;
     score += distanceScore * 0.3;
 
     // 当前负载 (20%)
     const loadScore = creep.store.getFreeCapacity() / creep.store.getCapacity();
     score += loadScore * 0.2;
 
-    // 历史效率 (10%)
-    const efficiencyScore = 0.5; // 暂时固定值，后续可以实现
+    // TODO 历史效率 (10%)
+    const efficiencyScore = 0.5;
     score += efficiencyScore * 0.1;
 
     return score;
