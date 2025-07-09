@@ -44,6 +44,9 @@ export class EventConfig {
     LAYER_TOGGLED: 'visual.layer.toggled',
     LAYER_UPDATED: 'visual.layer.updated',
     VISUAL_CLEARED: 'visual.cleared',
-    VISUAL_OVERFLOW: 'visual.overflow'
+    VISUAL_OVERFLOW: 'visual.overflow',
+    // 可视化系统事件
+    VISUALS_DRAW_REQUEST: 'visuals.draw.request', // 由 VisualManager 发出，请求绘制
+    VISUALS_REFRESHED: 'visuals.refreshed', // 由 VisualManager 发出，通知刷新完成
   } as const;
 }

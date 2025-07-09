@@ -51,12 +51,12 @@ export class GameEngine {
       // 初始化所有服务
       this.serviceContainer.initializeServices();
 
+      // 设置全局引用, 必须在初始化管理器之前
+      this.setupGlobalReferences();
+
       // 初始化管理器
       this.serviceContainer.initializeManagers();
       this.managers = this.serviceContainer.getAllManagers();
-
-      // 设置全局引用
-      this.setupGlobalReferences();
 
       // 设置事件监听
       this.setupEventListeners();
@@ -297,9 +297,6 @@ export class GameEngine {
    */
   private handleCreepDeath(data: any): void {
     console.log(`💀 [GameEngine] Creep死亡事件: ${data.creepName} (${data.role})`);
-
-    // 确保所有相关服务都收到通知
-    this.eventBus.emitSync(GameConfig.EVENTS.CREEP_DIED, data);
 
     // 触发紧急生产检查
     this.handleEmergencyProduction(data);

@@ -144,6 +144,17 @@ export interface CrossRoomTask {
   createdAt: number;
 }
 
+// 用于存储可视化系统相关数据
+export interface VisualsMemory {
+  cache: string | null; // 缓存的视觉数据
+  lastUpdateTime: number; // 上次更新的 tick
+  layerSettings: {
+    [layerName: string]: {
+      enabled: boolean;
+    };
+  };
+}
+
 // 全局类型扩展
 declare global {
   interface Memory {
@@ -166,6 +177,7 @@ declare global {
     system?: SystemMemory;
     stats?: StatsMemory;
     coordination?: CoordinationMemory;
+    visuals?: VisualsMemory;
   }
 
   interface CreepMemory {
