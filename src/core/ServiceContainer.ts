@@ -11,7 +11,7 @@ import { CreepProductionService } from "../services/CreepProductionService";
 import { CreepLifecycleService } from "../services/CreepLifecycleService";
 import { EnergyService } from "../services/EnergyService";
 import { TaskManager } from "../managers/TaskManager";
-import { HarvestTaskExecutor } from "task/executors/HarvestTaskExecutor";
+import { VisualManager } from "../managers/VisualManager";
 
 /**
  * 服务容器 - 管理所有服务和依赖注入
@@ -64,8 +64,8 @@ export class ServiceContainer {
       new TaskExecutionManager(this.get('eventBus'), this.get('taskManager'))
     );
 
-    // 注册任务执行器（可选，因为现在通过 TaskExecutorRegistry 管理）
-    this.registerSingleton('harvestTaskExecutor', () => new HarvestTaskExecutor());
+    // 注册可视化管理器
+    this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus')));
   }
 
   /**
@@ -149,11 +149,12 @@ export class ServiceContainer {
       this.get('taskManager'),
       this.get('roomManager'),
       this.get('creepManager'),
-      this.get('taskExecutionManager')
+      this.get('taskExecutionManager'),
+      this.get('visualManager')
     ];
 
     // 注册所有管理器到注册表
-    const managerNames = ['taskManager', 'roomManager', 'creepManager', 'taskExecutionManager'];
+    const managerNames = ['taskManager', 'roomManager', 'creepManager', 'taskExecutionManager', 'visualManager'];
     for (let i = 0; i < managers.length; i++) {
       managerRegistry.register(managerNames[i], managers[i] as BaseManager);
     }
@@ -186,7 +187,8 @@ export class ServiceContainer {
       'taskManager',
       'roomManager',
       'creepManager',
-      'taskExecutionManager'
+      'taskExecutionManager',
+      'visualManager'
     ];
 
     for (const name of managerNames) {

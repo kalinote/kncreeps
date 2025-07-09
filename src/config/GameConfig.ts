@@ -3,6 +3,7 @@ import { ThresholdConfig } from "./ThresholdConfig";
 import { SystemConfig } from "./SystemConfig";
 import { EventConfig } from "./EventConfig";
 import { EnergyConfig } from "./EnergyConfig";
+import { VisualConfig } from "./VisualConfig";
 
 /**
  * 统一配置接口
@@ -30,6 +31,10 @@ export class GameConfig {
   public static readonly BODY_PART_COSTS = EnergyConfig.BODY_PART_COSTS;
   public static readonly ENERGY_CAPACITY = EnergyConfig.ENERGY_CAPACITY;
   public static readonly STRUCTURE_CATEGORIES = EnergyConfig.STRUCTURE_CATEGORIES;
+
+  // 导出可视化配置
+  public static readonly VISUAL = VisualConfig.LAYERS;
+  public static readonly VISUAL_PERFORMANCE = VisualConfig.PERFORMANCE;
 
   // 开局生产配置
   public static readonly BOOTSTRAP_CONFIG = {
@@ -99,7 +104,7 @@ export class GameConfig {
     ).length;
 
     return workerCount >= GameConfig.BOOTSTRAP_CONFIG.COMPLETION_CONDITIONS.MIN_WORKER_COUNT &&
-           transporterCount >= GameConfig.BOOTSTRAP_CONFIG.COMPLETION_CONDITIONS.MIN_TRANSPORTER_COUNT;
+      transporterCount >= GameConfig.BOOTSTRAP_CONFIG.COMPLETION_CONDITIONS.MIN_TRANSPORTER_COUNT;
   };
 
   public static getBootstrapConfig = (role: string) => {

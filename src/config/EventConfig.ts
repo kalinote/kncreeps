@@ -38,6 +38,12 @@ export class EventConfig {
     MANAGER_ERROR: 'manager.error',                     // 管理器错误
     SYSTEM_CLEANUP: 'system.cleanup',                   // 系统清理
     STATS_UPDATED: 'stats.updated',                     // 统计信息更新
-    COORDINATION_NEEDED: 'coordination.needed'          // 需要协调
+    COORDINATION_NEEDED: 'coordination.needed',         // 需要协调
+
+    // 可视化相关事件
+    LAYER_TOGGLED: 'visual.layer.toggled',
+    LAYER_UPDATED: 'visual.layer.updated',
+    VISUAL_CLEARED: 'visual.cleared',
+    VISUAL_OVERFLOW: 'visual.overflow'
   } as const;
 }
