@@ -18,14 +18,14 @@ export class BodyBuilder {
     if (room && GameConfig.isBootstrapPhase(room)) {
       const bootstrapConfig = GameConfig.getBootstrapConfig(role);
       if (bootstrapConfig && availableEnergy >= bootstrapConfig.cost) {
-        console.log(`[BodyBuilder] 使用开局最小配置: ${role} = ${JSON.stringify(bootstrapConfig.body)}`);
+        // console.log(`[BodyBuilder] 使用开局最小配置: ${role} = ${JSON.stringify(bootstrapConfig.body)}`);
         return [...bootstrapConfig.body];
       }
     }
 
     const template = this.getRoleTemplate(role);
     if (!template) {
-      console.log(`未找到角色 ${role} 的模板`);
+      // console.log(`未找到角色 ${role} 的模板`);
       return [WORK, CARRY, MOVE]; // 默认配置
     }
 
@@ -44,7 +44,7 @@ export class BodyBuilder {
 
     // 验证身体配置
     if (!GameConfig.isValidBody(body)) {
-      console.log(`生成的身体配置无效，回退到最小配置`);
+      // console.log(`生成的身体配置无效，回退到最小配置`);
       return template.minConfig;
     }
 

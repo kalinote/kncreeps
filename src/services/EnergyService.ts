@@ -1,6 +1,16 @@
 import { GameConfig } from "../config/GameConfig";
 
 /**
+ * 能量源类型
+ */
+export interface EnergySource {
+  type: 'storage' | 'container' | 'spawn' | 'extension' | 'dropped' | 'source';
+  object: Structure | Resource | Source;
+  energy: number;
+  distance: number;
+}
+
+/**
  * 能量获取策略
  */
 export enum EnergySourceStrategy {
@@ -29,114 +39,124 @@ export interface EnergySourceConfig {
  */
 export class EnergyService {
   /**
-   * 寻找最佳能量源
+   * 为creep寻找能量源
    */
-  public static findBestEnergySource(creep: Creep, config: EnergySourceConfig, roleName: string): Structure | Resource | Source | null {
-    // 优先使用内存中的目标
-    if (creep.memory.targetId) {
-      const cachedTarget = Game.getObjectById<Structure | Resource | Source>(creep.memory.targetId as Id<Structure | Resource | Source>);
-      if (cachedTarget && EnergyService.isValidEnergySource(cachedTarget, config, roleName)) {
-        return cachedTarget;
-      }
-      delete creep.memory.targetId;
+  public findEnergySources(creep: Creep): EnergySource[] {
+    const roleName = creep.memory.role;
+    // console.log(`[${creep.name}] 角色: ${roleName}, 寻找能量源...`);
+
+    const energySources: EnergySource[] = [];
+
+    // 1. 从Storage获取能量
+    const storages = creep.room.find(FIND_MY_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_STORAGE &&
+                   'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+    }) as StructureStorage[];
+
+    if (storages.length > 0) {
+      // console.log(`[${creep.name}] 找到 ${storages.length} 个Storage，能量: ${storages.map(s => s.store.getUsedCapacity(RESOURCE_ENERGY)).join(',')}`);
+      energySources.push(...storages.map(storage => ({
+        type: 'storage' as const,
+        object: storage,
+        energy: storage.store.getUsedCapacity(RESOURCE_ENERGY),
+        distance: creep.pos.getRangeTo(storage)
+      })));
     }
 
-    const energySources: (Structure | Resource | Source)[] = [];
+    // 2. 从Container获取能量
+    const containers = creep.room.find(FIND_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_CONTAINER &&
+                   'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+    }) as StructureContainer[];
 
-    console.log(`[${creep.name}] 角色: ${roleName}, 寻找能量源...`);
-
-    // 1. Storage (优先级最高)
-    if (config.allowStorage) {
-      const storages = creep.room.find(FIND_MY_STRUCTURES, {
-        filter: (s) => s.structureType === STRUCTURE_STORAGE &&
-          (s as StructureStorage).store.getUsedCapacity(RESOURCE_ENERGY) > config.minEnergyThreshold
-      });
-      energySources.push(...storages);
-      if (storages.length > 0) {
-        console.log(`[${creep.name}] 找到 ${storages.length} 个Storage，能量: ${storages.map(s => (s as StructureStorage).store.getUsedCapacity(RESOURCE_ENERGY)).join(',')}`);
-      }
+    if (containers.length > 0) {
+      // console.log(`[${creep.name}] 找到 ${containers.length} 个Container，能量: ${containers.map(s => s.store.getUsedCapacity(RESOURCE_ENERGY)).join(',')}`);
+      energySources.push(...containers.map(container => ({
+        type: 'container' as const,
+        object: container,
+        energy: container.store.getUsedCapacity(RESOURCE_ENERGY),
+        distance: creep.pos.getRangeTo(container)
+      })));
     }
 
-    // 2. Container
-    if (config.allowContainers) {
-      const containers = creep.room.find(FIND_STRUCTURES, {
-        filter: (s) => s.structureType === STRUCTURE_CONTAINER &&
-          (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY) > config.minEnergyThreshold
-      });
-      energySources.push(...containers);
-      if (containers.length > 0) {
-        console.log(`[${creep.name}] 找到 ${containers.length} 个Container，能量: ${containers.map(s => (s as StructureContainer).store.getUsedCapacity(RESOURCE_ENERGY)).join(',')}`);
-      }
-    }
+    // 3. 从Spawn获取能量（如果能量充足）
+    const spawns = creep.room.find(FIND_MY_SPAWNS);
+    for (const spawn of spawns) {
+      const spawnEnergy = spawn.store.getUsedCapacity(RESOURCE_ENERGY);
+      const canUseSpawn = spawnEnergy > 50; // 保留一些能量给spawn使用
 
-    // 3. Spawn (有spawn能量保护机制)
-    if (config.allowSpawn) {
-      const spawns = creep.room.find(FIND_MY_STRUCTURES, {
-        filter: (s) => s.structureType === STRUCTURE_SPAWN
-      }) as StructureSpawn[];
+      // console.log(`[${creep.name}] Spawn能量: ${spawnEnergy}, 能否使用: ${canUseSpawn}`);
 
-      if (spawns.length > 0) {
-        const spawn = spawns[0];
-        const spawnEnergy = spawn.store.getUsedCapacity(RESOURCE_ENERGY);
-        const canUseSpawn = GameConfig.canUseSpawnEnergy(creep.room, roleName);
-
-        console.log(`[${creep.name}] Spawn能量: ${spawnEnergy}, 能否使用: ${canUseSpawn}`);
-
-        if (canUseSpawn && spawnEnergy > config.minEnergyThreshold) {
-          energySources.push(spawn);
-          console.log(`[${creep.name}] 添加Spawn到能量源列表`);
-        }
-      }
-    }
-
-    // 4. Extension
-    if (config.allowExtensions) {
-      const extensions = creep.room.find(FIND_MY_STRUCTURES, {
-        filter: (s) => s.structureType === STRUCTURE_EXTENSION &&
-          (s as StructureExtension).store.getUsedCapacity(RESOURCE_ENERGY) > config.minEnergyThreshold
-      });
-      energySources.push(...extensions);
-      if (extensions.length > 0) {
-        console.log(`[${creep.name}] 找到 ${extensions.length} 个Extension，总能量: ${extensions.reduce((sum, s) => sum + (s as StructureExtension).store.getUsedCapacity(RESOURCE_ENERGY), 0)}`);
+      if (canUseSpawn) {
+        // console.log(`[${creep.name}] 添加Spawn到能量源列表`);
+        energySources.push({
+          type: 'spawn' as const,
+          object: spawn,
+          energy: spawnEnergy,
+          distance: creep.pos.getRangeTo(spawn)
+        });
       }
     }
 
-    // 5. 地面掉落资源
-    if (config.allowDroppedResources) {
-      const droppedResources = creep.room.find(FIND_DROPPED_RESOURCES, {
-        filter: (r) => r.resourceType === RESOURCE_ENERGY &&
-          r.amount > config.minEnergyThreshold
-      });
-      energySources.push(...droppedResources);
-      if (droppedResources.length > 0) {
-        console.log(`[${creep.name}] 找到 ${droppedResources.length} 个地面资源，总能量: ${droppedResources.reduce((sum, r) => sum + r.amount, 0)}`);
-      }
+    // 4. 从Extension获取能量
+    const extensions = creep.room.find(FIND_MY_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_EXTENSION &&
+                   'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+    }) as StructureExtension[];
+
+    if (extensions.length > 0) {
+      // console.log(`[${creep.name}] 找到 ${extensions.length} 个Extension，总能量: ${extensions.reduce((sum, s) => sum + s.store.getUsedCapacity(RESOURCE_ENERGY), 0)}`);
+      energySources.push(...extensions.map(extension => ({
+        type: 'extension' as const,
+        object: extension,
+        energy: extension.store.getUsedCapacity(RESOURCE_ENERGY),
+        distance: creep.pos.getRangeTo(extension)
+      })));
     }
 
-    // 6. 直接采集源
-    if (config.allowDirectHarvest) {
-      const sources = creep.room.find(FIND_SOURCES, {
-        filter: (s) => s.energy > config.minEnergyThreshold
-      });
-      energySources.push(...sources);
-      if (sources.length > 0) {
-        console.log(`[${creep.name}] 找到 ${sources.length} 个采集源，总能量: ${sources.reduce((sum, s) => sum + s.energy, 0)}`);
-      }
+    // 5. 从地面资源获取能量
+    const droppedResources = creep.room.find(FIND_DROPPED_RESOURCES, {
+      filter: r => r.resourceType === RESOURCE_ENERGY && r.amount > 10
+    });
+
+    if (droppedResources.length > 0) {
+      // console.log(`[${creep.name}] 找到 ${droppedResources.length} 个地面资源，总能量: ${droppedResources.reduce((sum, r) => sum + r.amount, 0)}`);
+      energySources.push(...droppedResources.map(resource => ({
+        type: 'dropped' as const,
+        object: resource,
+        energy: resource.amount,
+        distance: creep.pos.getRangeTo(resource)
+      })));
     }
 
-    console.log(`[${creep.name}] 总共找到 ${energySources.length} 个能量源`);
+    // 6. 从Source获取能量（最后选择）
+    const sources = creep.room.find(FIND_SOURCES, {
+      filter: s => s.energy > 0
+    });
 
-    // 选择最近的能量源
+    if (sources.length > 0) {
+      // console.log(`[${creep.name}] 找到 ${sources.length} 个采集源，总能量: ${sources.reduce((sum, s) => sum + s.energy, 0)}`);
+      energySources.push(...sources.map(source => ({
+        type: 'source' as const,
+        object: source,
+        energy: source.energy,
+        distance: creep.pos.getRangeTo(source)
+      })));
+    }
+
+    // console.log(`[${creep.name}] 总共找到 ${energySources.length} 个能量源`);
+
+    // 按距离排序，选择最近的
+    energySources.sort((a, b) => a.distance - b.distance);
+
     if (energySources.length > 0) {
-      const bestSource = creep.pos.findClosestByRange(energySources);
-      if (bestSource) {
-        console.log(`[${creep.name}] 选择最近的能量源: ${bestSource.constructor.name}`);
-      }
-      return bestSource;
+      const bestSource = energySources[0];
+      // console.log(`[${creep.name}] 选择最近的能量源: ${bestSource.constructor.name}`);
+      return [bestSource];
+    } else {
+      // console.log(`[${creep.name}] 未找到任何可用的能量源`);
+      return [];
     }
-
-    console.log(`[${creep.name}] 未找到任何可用的能量源`);
-    return null;
   }
 
   /**

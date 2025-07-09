@@ -10,6 +10,7 @@ import { CreepProductionService } from "./CreepProductionService";
 export class CreepLifecycleService {
   private eventBus: EventBus;
   private productionService: CreepProductionService;
+  private previousCreepNames: Set<string> = new Set();
 
   constructor(eventBus: EventBus, productionService: CreepProductionService) {
     this.eventBus = eventBus;
@@ -62,9 +63,55 @@ export class CreepLifecycleService {
   }
 
   /**
+   * 检测creep死亡并触发事件
+   * 这是系统中唯一负责检测creep死亡的模块
+   */
+  private detectAndEmitCreepDeaths(): void {
+    try {
+      const currentCreepNames = new Set(Object.keys(Game.creeps));
+
+      // 检测死亡的creep
+      for (const creepName of this.previousCreepNames) {
+        if (!currentCreepNames.has(creepName)) {
+          this.emitCreepDeathEvent(creepName);
+        }
+      }
+
+      // 更新上一tick的creep列表
+      this.previousCreepNames = currentCreepNames;
+    } catch (error) {
+      // console.log(`[CreepLifecycleService] 死亡检测错误: ${error}`);
+      // 错误时重置状态，确保下次正常运行
+      this.previousCreepNames = new Set(Object.keys(Game.creeps));
+    }
+  }
+
+  /**
+   * 触发creep死亡事件
+   */
+  private emitCreepDeathEvent(creepName: string): void {
+    const creepMemory = Memory.creeps[creepName];
+    if (!creepMemory) return;
+
+    const deathData = {
+      creepName,
+      role: creepMemory.role,
+      roomName: creepMemory.room
+    };
+
+    // 触发死亡事件
+    this.emit(GameConfig.EVENTS.CREEP_DIED, deathData);
+    // console.log(`💀 [CreepLifecycleService] 检测到creep死亡: ${creepName} (${creepMemory.role})`);
+  }
+
+  /**
    * 更新所有Creep的状态
    */
   public updateCreepStates(): void {
+    // 1. 检测死亡（唯一检测点）
+    this.detectAndEmitCreepDeaths();
+
+    // 2. 更新存活creep的状态
     for (const name in Game.creeps) {
       const creep = Game.creeps[name];
       this.updateCreepState(creep);
@@ -172,21 +219,11 @@ export class CreepLifecycleService {
 
   /**
    * 清理已死亡的Creep
+   * 现在完全依赖事件驱动，此方法保留用于兼容性
    */
   public cleanupDeadCreeps(): void {
-    // 清理Memory中已死亡的creep
-    for (const name in Memory.creeps) {
-      if (!(name in Game.creeps)) {
-        delete Memory.creeps[name];
-      }
-    }
-
-    // 清理状态中已死亡的creep
-    for (const name in this.creepStates) {
-      if (!(name in Game.creeps)) {
-        this.deleteCreepState(name);
-      }
-    }
+    // 死亡creep的清理现在完全通过事件驱动
+    // 此方法保留用于向后兼容
   }
 
   /**

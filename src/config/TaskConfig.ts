@@ -54,7 +54,7 @@ export class TaskRoleMapping {
   // 任务清理相关配置
   public static readonly TASK_CLEANUP_CONFIG = {
     // 保留的已完成任务数量
-    COMPLETED_TASKS_TO_KEEP: 50,
+    COMPLETED_TASKS_TO_KEEP: 10,
 
     // 任务执行超时时间（ticks）
     TASK_EXECUTION_TIMEOUT: 1000,
@@ -66,7 +66,7 @@ export class TaskRoleMapping {
     DUPLICATE_DETECTION_THRESHOLD: 5,
 
     // 任务过期时间（ticks）
-    TASK_EXPIRATION_TIME: 2000
+    TASK_EXPIRATION_TIME: 5000
   } as const;
 
   /**

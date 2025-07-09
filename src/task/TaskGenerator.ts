@@ -16,7 +16,6 @@ export class TaskGenerator {
    * 为房间生成必要的任务
    */
   public generateTasksForRoom(room: Room): void {
-    if (!this.taskManager.isSystemEnabled()) return;
 
     this.generateHarvestTasks(room);
     this.generateTransportTasks(room);
@@ -34,7 +33,7 @@ export class TaskGenerator {
     // 获取房间的source统计信息
     const sourceStats = SourceAnalyzer.getRoomSourceStats(room);
 
-    console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${sourceStats.totalSources} 个源, 总共 ${sourceStats.totalHarvestPositions} 个可采集位置, 现有 ${existingHarvestTasks.length} 个活跃采集任务`);
+    // console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${sourceStats.totalSources} 个源, 总共 ${sourceStats.totalHarvestPositions} 个可采集位置, 现有 ${existingHarvestTasks.length} 个活跃采集任务`);
 
     // 为每个source的每个可采集位置创建任务
     for (let sourceIndex = 0; sourceIndex < sourceStats.sourceDetails.length; sourceIndex++) {
@@ -76,9 +75,9 @@ export class TaskGenerator {
               }
             }
           });
-          console.log(`[TaskGenerator] 为源 ${source.id} 位置 (${harvestPosition.x}, ${harvestPosition.y}) 创建采集任务: ${taskId} (优先级: ${priority})`);
+          // console.log(`[TaskGenerator] 为源 ${source.id} 位置 (${harvestPosition.x}, ${harvestPosition.y}) 创建采集任务: ${taskId} (优先级: ${priority})`);
         } else {
-          console.log(`[TaskGenerator] 源 ${source.id} 位置 (${harvestPosition.x}, ${harvestPosition.y}) 已有活跃任务，跳过创建`);
+          // console.log(`[TaskGenerator] 源 ${source.id} 位置 (${harvestPosition.x}, ${harvestPosition.y}) 已有活跃任务，跳过创建`);
         }
       }
     }
@@ -93,7 +92,7 @@ export class TaskGenerator {
     const existingTransportTasks = this.taskManager.getActiveTasks()
       .filter(task => task.type === TaskType.TRANSPORT && task.roomName === room.name);
 
-    console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${droppedResources.length} 个掉落资源, 现有 ${existingTransportTasks.length} 个活跃搬运任务`);
+    // console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${droppedResources.length} 个掉落资源, 现有 ${existingTransportTasks.length} 个活跃搬运任务`);
 
     for (const resource of droppedResources) {
       // 检查是否已有针对此位置的搬运任务
@@ -122,12 +121,12 @@ export class TaskGenerator {
               amount: resource.amount
             }
           });
-          console.log(`[TaskGenerator] 为掉落资源 ${resource.resourceType}(${resource.amount}) 创建搬运任务: ${taskId}`);
+          // console.log(`[TaskGenerator] 为掉落资源 ${resource.resourceType}(${resource.amount}) 创建搬运任务: ${taskId}`);
         } else {
-          console.log(`[TaskGenerator] 找不到合适的存储目标，跳过资源 ${resource.resourceType}(${resource.amount})`);
+          // console.log(`[TaskGenerator] 找不到合适的存储目标，跳过资源 ${resource.resourceType}(${resource.amount})`);
         }
       } else {
-        console.log(`[TaskGenerator] 位置 (${resource.pos.x}, ${resource.pos.y}) 的 ${resource.resourceType} 已有搬运任务，跳过创建`);
+        // console.log(`[TaskGenerator] 位置 (${resource.pos.x}, ${resource.pos.y}) 的 ${resource.resourceType} 已有搬运任务，跳过创建`);
       }
     }
   }
@@ -174,7 +173,7 @@ export class TaskGenerator {
     const existingUpgradeTasks = this.taskManager.getActiveTasks()
       .filter(task => task.type === TaskType.UPGRADE && task.roomName === room.name);
 
-    console.log(`[TaskGenerator] 房间 ${room.name}: 控制器等级 ${room.controller.level}, 现有 ${existingUpgradeTasks.length} 个活跃升级任务`);
+    // console.log(`[TaskGenerator] 房间 ${room.name}: 控制器等级 ${room.controller.level}, 现有 ${existingUpgradeTasks.length} 个活跃升级任务`);
 
     // 如果还没有升级任务，创建一个
     if (existingUpgradeTasks.length === 0) {
@@ -188,9 +187,9 @@ export class TaskGenerator {
           sourceConstructionIds: [] // 从任意建筑获取能量
         }
       });
-      console.log(`[TaskGenerator] 为控制器 ${room.controller.id} 创建升级任务: ${taskId}`);
+      // console.log(`[TaskGenerator] 为控制器 ${room.controller.id} 创建升级任务: ${taskId}`);
     } else {
-      console.log(`[TaskGenerator] 控制器 ${room.controller.id} 已有活跃任务，跳过创建`);
+      // console.log(`[TaskGenerator] 控制器 ${room.controller.id} 已有活跃任务，跳过创建`);
     }
   }
 
@@ -198,17 +197,18 @@ export class TaskGenerator {
    * 生成建造任务
    */
   private generateBuildTasks(room: Room): void {
-    const constructionSites = room.find(FIND_CONSTRUCTION_SITES);
+    const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
     const existingBuildTasks = this.taskManager.getActiveTasks()
       .filter(task => task.type === TaskType.BUILD && task.roomName === room.name);
 
-    console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${constructionSites.length} 个建筑工地, 现有 ${existingBuildTasks.length} 个活跃建造任务`);
+    // console.log(`[TaskGenerator] 房间 ${room.name}: 找到 ${constructionSites.length} 个建筑工地, 现有 ${existingBuildTasks.length} 个活跃建造任务`);
 
-    // 为每个建筑工地创建建造任务（如果还没有）
     for (const site of constructionSites) {
-      const hasTask = existingBuildTasks.some(task =>
-        (task as BuildTask).params.targetId === site.id
-      );
+      // 检查是否已有针对此建筑工地的任务
+      const hasTask = existingBuildTasks.some(task => {
+        const buildTask = task as BuildTask;
+        return buildTask.params.targetId === site.id;
+      });
 
       if (!hasTask) {
         const taskId = this.taskManager.createTask({
@@ -218,12 +218,12 @@ export class TaskGenerator {
           maxRetries: 3,
           params: {
             targetId: site.id,
-            sourceConstructionIds: [] // 从任意建筑获取能量
+            sourceConstructionIds: [] // 从任意建筑获取资源
           }
         });
-        console.log(`[TaskGenerator] 为建筑工地 ${site.id} (${site.structureType}) 创建建造任务: ${taskId}`);
+        // console.log(`[TaskGenerator] 为建筑工地 ${site.id} (${site.structureType}) 创建建造任务: ${taskId}`);
       } else {
-        console.log(`[TaskGenerator] 建筑工地 ${site.id} 已有活跃任务，跳过创建`);
+        // console.log(`[TaskGenerator] 建筑工地 ${site.id} 已有活跃任务，跳过创建`);
       }
     }
   }
@@ -232,24 +232,18 @@ export class TaskGenerator {
    * 生成攻击任务
    */
   private generateAttackTasks(room: Room): void {
-    // 查找敌对单位
     const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
     const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
-
-    if (hostileCreeps.length === 0 && hostileStructures.length === 0) {
-      return; // 没有敌对目标
-    }
-
     const existingAttackTasks = this.taskManager.getActiveTasks()
-      .filter(task => task.type === TaskType.ATTACK && task.roomName === room.name) as AttackTask[];
+      .filter(task => task.type === TaskType.ATTACK && task.roomName === room.name);
 
-    console.log(`[TaskGenerator] 房间 ${room.name}: 发现 ${hostileCreeps.length} 个敌对creep, ${hostileStructures.length} 个敌对建筑, 现有 ${existingAttackTasks.length} 个活跃攻击任务`);
+    // console.log(`[TaskGenerator] 房间 ${room.name}: 发现 ${hostileCreeps.length} 个敌对creep, ${hostileStructures.length} 个敌对建筑, 现有 ${existingAttackTasks.length} 个活跃攻击任务`);
 
-    // 为敌对creep创建攻击任务
-    this.createAttackTasksForHostileCreeps(room, hostileCreeps, existingAttackTasks);
+    // 处理敌对creep
+    this.createAttackTasksForHostileCreeps(room, hostileCreeps, existingAttackTasks as AttackTask[]);
 
-    // 为敌对建筑创建攻击任务
-    this.createAttackTasksForHostileStructures(room, hostileStructures, existingAttackTasks);
+    // 处理敌对建筑
+    this.createAttackTasksForHostileStructures(room, hostileStructures, existingAttackTasks as AttackTask[]);
   }
 
   /**
@@ -257,33 +251,22 @@ export class TaskGenerator {
    */
   private createAttackTasksForHostileCreeps(room: Room, hostileCreeps: Creep[], existingTasks: AttackTask[]): void {
     for (const hostile of hostileCreeps) {
-      // 检查是否已有针对此目标的任务
-      const hasExistingTask = existingTasks.some(task =>
-        task.params.targetId === hostile.id
-      );
-
-      if (!hasExistingTask) {
-        // 检查是否应该创建新的攻击任务
-        if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
-          const priority = this.calculateAttackTaskPriority(hostile);
-          const taskId = this.taskManager.createTask({
-            type: TaskType.ATTACK,
-            priority: priority,
-            roomName: room.name,
-            maxRetries: 3,
-            params: {
-              targetId: hostile.id,
-              targetType: 'creep',
-              attackType: 'auto',
-              maxRange: 3
-            }
-          });
-          console.log(`[TaskGenerator] 为敌对creep ${hostile.name}(${hostile.owner.username}) 创建攻击任务: ${taskId} (优先级: ${priority})`);
-        } else {
-          console.log(`[TaskGenerator] 跳过为敌对creep ${hostile.name} 创建攻击任务 - 已有足够的攻击单位`);
-        }
+      if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
+        const priority = this.calculateAttackTaskPriority(hostile);
+        const taskId = this.taskManager.createTask({
+          type: TaskType.ATTACK,
+          priority: priority,
+          roomName: room.name,
+          maxRetries: 3,
+          params: {
+            targetId: hostile.id,
+            targetType: 'creep',
+            attackType: 'auto'
+          }
+        });
+        // console.log(`[TaskGenerator] 为敌对creep ${hostile.name}(${hostile.owner.username}) 创建攻击任务: ${taskId} (优先级: ${priority})`);
       } else {
-        console.log(`[TaskGenerator] 敌对creep ${hostile.name} 已有攻击任务，跳过创建`);
+        // console.log(`[TaskGenerator] 跳过为敌对creep ${hostile.name} 创建攻击任务 - 已有足够的攻击单位`);
       }
     }
   }
@@ -293,33 +276,22 @@ export class TaskGenerator {
    */
   private createAttackTasksForHostileStructures(room: Room, hostileStructures: Structure[], existingTasks: AttackTask[]): void {
     for (const hostile of hostileStructures) {
-      // 检查是否已有针对此目标的任务
-      const hasExistingTask = existingTasks.some(task =>
-        task.params.targetId === hostile.id
-      );
-
-      if (!hasExistingTask) {
-        // 检查是否应该创建新的攻击任务
-        if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
-          const priority = this.calculateAttackTaskPriority(hostile);
-          const taskId = this.taskManager.createTask({
-            type: TaskType.ATTACK,
-            priority: priority,
-            roomName: room.name,
-            maxRetries: 3,
-            params: {
-              targetId: hostile.id,
-              targetType: 'structure',
-              attackType: 'auto',
-              maxRange: 3
-            }
-          });
-          console.log(`[TaskGenerator] 为敌对建筑 ${hostile.structureType}(${hostile.id}) 创建攻击任务: ${taskId} (优先级: ${priority})`);
-        } else {
-          console.log(`[TaskGenerator] 跳过为敌对建筑 ${hostile.structureType} 创建攻击任务 - 已有足够的攻击单位`);
-        }
+      if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
+        const priority = this.calculateAttackTaskPriority(hostile);
+        const taskId = this.taskManager.createTask({
+          type: TaskType.ATTACK,
+          priority: priority,
+          roomName: room.name,
+          maxRetries: 3,
+          params: {
+            targetId: hostile.id,
+            targetType: 'structure',
+            attackType: 'auto'
+          }
+        });
+        // console.log(`[TaskGenerator] 为敌对建筑 ${hostile.structureType}(${hostile.id}) 创建攻击任务: ${taskId} (优先级: ${priority})`);
       } else {
-        console.log(`[TaskGenerator] 敌对建筑 ${hostile.structureType} 已有攻击任务，跳过创建`);
+        // console.log(`[TaskGenerator] 跳过为敌对建筑 ${hostile.structureType} 创建攻击任务 - 已有足够的攻击单位`);
       }
     }
   }

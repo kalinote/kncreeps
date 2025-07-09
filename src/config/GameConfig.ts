@@ -20,6 +20,7 @@ export class GameConfig {
   // 导出系统配置
   public static readonly SYSTEM = SystemConfig.SYSTEM;
   public static readonly UPDATE_FREQUENCIES = SystemConfig.UPDATE_FREQUENCIES;
+  public static readonly TIMEOUTS = SystemConfig.TIMEOUTS;
   public static readonly ROOM_PHASES = SystemConfig.ROOM_PHASES;
 
   // 导出事件配置

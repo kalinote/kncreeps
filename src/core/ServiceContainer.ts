@@ -1,5 +1,8 @@
 import { EventBus } from "./EventBus";
-import { StateManager } from "../managers/StateManager";
+import { ManagerRegistry } from "./ManagerRegistry";
+import { SystemManager } from "../managers/SystemManager";
+import { StatsManager } from "../managers/StatsManager";
+import { CoordinationManager } from "../managers/CoordinationManager";
 import { BaseManager } from "../managers/BaseManager";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "../managers/CreepManager";
@@ -28,7 +31,12 @@ export class ServiceContainer {
   private registerServices(): void {
     // 注册核心服务
     this.registerSingleton('eventBus', () => new EventBus());
-    this.registerSingleton('stateManager', () => new StateManager());
+    this.registerSingleton('managerRegistry', () => new ManagerRegistry(this.get('eventBus')));
+
+    // 注册系统管理器
+    this.registerSingleton('systemManager', () => new SystemManager(this.get('eventBus')));
+    this.registerSingleton('statsManager', () => new StatsManager(this.get('eventBus')));
+    this.registerSingleton('coordinationManager', () => new CoordinationManager(this.get('eventBus')));
 
     // 注册业务服务
     this.registerSingleton('energyService', () => new EnergyService());
@@ -120,7 +128,10 @@ export class ServiceContainer {
 
     // 初始化核心服务
     this.get('eventBus');
-    this.get('stateManager');
+    this.get('managerRegistry');
+    this.get('systemManager');
+    this.get('statsManager');
+    this.get('coordinationManager');
 
     console.log('ServiceContainer: 核心服务已初始化');
     this.isInitialized = true;
@@ -130,11 +141,22 @@ export class ServiceContainer {
    * 初始化所有管理器
    */
   public initializeManagers(): void {
+    // 获取管理器注册表
+    const managerRegistry = this.get<ManagerRegistry>('managerRegistry');
+
     // 按依赖顺序初始化管理器
-    this.get('taskManager');
-    this.get('roomManager');
-    this.get('creepManager');
-    this.get('taskExecutionManager');
+    const managers = [
+      this.get('taskManager'),
+      this.get('roomManager'),
+      this.get('creepManager'),
+      this.get('taskExecutionManager')
+    ];
+
+    // 注册所有管理器到注册表
+    const managerNames = ['taskManager', 'roomManager', 'creepManager', 'taskExecutionManager'];
+    for (let i = 0; i < managers.length; i++) {
+      managerRegistry.register(managerNames[i], managers[i] as BaseManager);
+    }
 
     console.log('ServiceContainer: 管理器已初始化');
   }
@@ -158,6 +180,9 @@ export class ServiceContainer {
     const managers = new Map<string, BaseManager>();
 
     const managerNames = [
+      'systemManager',
+      'statsManager',
+      'coordinationManager',
       'taskManager',
       'roomManager',
       'creepManager',

@@ -12,6 +12,7 @@ export class EventConfig {
     // Room相关事件
     ROOM_ENERGY_CHANGED: 'room.energy.changed',        // 房间能量变化
     ROOM_UNDER_ATTACK: 'room.under.attack',             // 房间受到攻击
+    ROOM_THREAT_CLEARED: 'room.threat.cleared',         // 房间威胁清除
     ROOM_NEEDS_ATTENTION: 'room.needs.attention',       // 房间需要关注
 
     // 建筑相关事件
@@ -28,6 +29,15 @@ export class EventConfig {
     // 任务系统相关事件
     TASK_CREATED: 'task.created',                       // 任务创建
     TASK_COMPLETED: 'task.completed',                   // 任务完成
-    TASK_FAILED: 'task.failed'                          // 任务失败
+    TASK_FAILED: 'task.failed',                         // 任务失败
+    TASK_STARTED: 'task.started',                       // 任务开始执行
+    TASK_PROGRESS: 'task.progress',                     // 任务进度更新
+
+    // 系统相关事件
+    SYSTEM_ERROR: 'system.error',                       // 系统错误
+    MANAGER_ERROR: 'manager.error',                     // 管理器错误
+    SYSTEM_CLEANUP: 'system.cleanup',                   // 系统清理
+    STATS_UPDATED: 'stats.updated',                     // 统计信息更新
+    COORDINATION_NEEDED: 'coordination.needed'          // 需要协调
   } as const;
 }

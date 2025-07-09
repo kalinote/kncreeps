@@ -54,8 +54,7 @@ export class CreepManager extends BaseManager {
       this.productionService.assessProductionNeeds();
       this.productionService.executeProduction();
 
-      // 清理死亡creep
-      this.lifecycleService.cleanupDeadCreeps();
+      // 死亡creep的清理现在通过事件驱动，不需要手动调用
     }, 'CreepManager.update');
 
     this.updateCompleted();
@@ -79,9 +78,10 @@ export class CreepManager extends BaseManager {
   }
 
   /**
-   * 处理Creep死亡事件 - 转发给生命周期服务
+   * 通过事件处理creep死亡 - 转发给生命周期服务
    */
   private handleCreepDeath(data: any): void {
+    console.log(`[CreepManager] 收到creep死亡事件: ${data.creepName} (${data.role})`);
     this.lifecycleService.handleCreepDeath(data);
   }
 

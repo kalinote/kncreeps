@@ -5,12 +5,12 @@ import { BaseManager } from "./BaseManager";
 import { TaskGenerator } from "../task/TaskGenerator";
 import { TaskScheduler } from "../task/TaskScheduler";
 import { TaskRoleMapping } from "../config/TaskConfig";
+import { GameConfig } from "../config/GameConfig";
 
 /**
  * 任务管理器 - 管理所有任务的生命周期
  */
 export class TaskManager extends BaseManager {
-  private isEnabled: boolean = true;
   private executorRegistry: TaskExecutorRegistry;
   private taskGenerator: TaskGenerator;
   private taskScheduler: TaskScheduler;
@@ -21,6 +21,37 @@ export class TaskManager extends BaseManager {
     this.taskGenerator = new TaskGenerator(this);
     this.taskScheduler = new TaskScheduler(this);
     this.initializeMemory();
+    this.setupEventListeners();
+  }
+
+  /**
+   * 设置事件监听器
+   */
+  private setupEventListeners(): void {
+    this.on(GameConfig.EVENTS.CREEP_DIED, (data: any) => {
+      this.handleCreepDeathEvent(data);
+    });
+  }
+
+  /**
+   * 通过事件处理creep死亡
+   */
+  private handleCreepDeathEvent(data: any): void {
+    const { creepName } = data;
+
+    // 清理死亡creep的任务分配
+    if (Memory.tasks && Memory.tasks.creepTasks[creepName]) {
+      const taskId = Memory.tasks.creepTasks[creepName];
+      delete Memory.tasks.creepTasks[creepName];
+
+      // 重置任务状态，使其可以重新分配
+      const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+      if (task && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.FAILED) {
+        task.status = TaskStatus.PENDING;
+        task.assignedCreep = undefined;
+        console.log(`[TaskManager] 通过事件重置死亡creep的任务: ${taskId}`);
+      }
+    }
   }
 
   /**
@@ -29,7 +60,6 @@ export class TaskManager extends BaseManager {
   private initializeMemory(): void {
     if (!Memory.tasks) {
       Memory.tasks = {
-        enabled: true,
         taskQueue: [],
         creepTasks: {},
         completedTasks: [],
@@ -51,20 +81,18 @@ export class TaskManager extends BaseManager {
     if (!this.shouldUpdate()) return;
 
     this.safeExecute(() => {
-      if (this.isSystemEnabled()) {
-        // 1. 生成新任务
-        this.generateTasks();
+      // 1. 生成新任务
+      this.generateTasks();
 
-        // 2. 分配任务给空闲creep
-        this.scheduleTasks();
+      // 2. 分配任务给空闲creep
+      this.scheduleTasks();
 
-        // 3. 清理完成的任务
-        this.cleanup();
+      // 3. 清理完成的任务
+      this.cleanup();
 
-        // 4. 输出调试信息
-        if (TaskRoleMapping.shouldPerformCleanup(Game.time, 'STATS_OUTPUT')) {
-          this.logTaskStats();
-        }
+      // 4. 输出调试信息
+      if (TaskRoleMapping.shouldPerformCleanup(Game.time, 'STATS_OUTPUT')) {
+        this.logTaskStats();
       }
     }, 'TaskManager.update');
 
@@ -94,12 +122,12 @@ export class TaskManager extends BaseManager {
    */
   private logTaskStats(): void {
     const stats = this.getStats();
-    console.log(`[TaskManager] 任务统计 - 待处理:${stats.pendingTasks}, 总计:${stats.totalTasks}, 已创建:${stats.tasksCreated}, 已完成:${stats.tasksCompleted}`);
+    // console.log(`[TaskManager] 任务统计 - 待处理:${stats.pendingTasks}, 总计:${stats.totalTasks}, 已创建:${stats.tasksCreated}, 已完成:${stats.tasksCompleted}`);
 
     // 输出当前任务分配情况
     if (Memory.tasks?.creepTasks) {
       const assignments = Object.keys(Memory.tasks.creepTasks).length;
-      console.log(`[TaskManager] 已分配任务的creep数量: ${assignments}`);
+      // console.log(`[TaskManager] 已分配任务的creep数量: ${assignments}`);
     }
   }
 
@@ -110,23 +138,7 @@ export class TaskManager extends BaseManager {
     return this.executorRegistry.getExecutor(taskType);
   }
 
-  /**
-   * 启用/禁用任务系统
-   */
-  public setEnabled(enabled: boolean): void {
-    this.isEnabled = enabled;
-    if (Memory.tasks) {
-      Memory.tasks.enabled = enabled;
-    }
-    console.log(`任务系统${enabled ? '已启用' : '已禁用'}`);
-  }
 
-  /**
-   * 检查任务系统是否启用
-   */
-  public isSystemEnabled(): boolean {
-    return this.isEnabled && Memory.tasks?.enabled || false;
-  }
 
   /**
    * 创建新任务
@@ -148,7 +160,7 @@ export class TaskManager extends BaseManager {
       Memory.tasks.stats.tasksCreated++;
     }
 
-    console.log(`创建任务: ${task.type} (${taskId})`);
+    // console.log(`创建任务: ${task.type} (${taskId})`);
     return taskId;
   }
 
@@ -189,7 +201,7 @@ export class TaskManager extends BaseManager {
 
     Memory.tasks.creepTasks[creepName] = taskId;
 
-    console.log(`任务 ${taskId} 分配给 ${creepName}`);
+    // console.log(`任务 ${taskId} 分配给 ${creepName}`);
     return true;
   }
 
@@ -271,26 +283,19 @@ export class TaskManager extends BaseManager {
     // 清理过期任务
     this.cleanupExpiredTasks();
 
-    console.log(`[TaskManager] 清理完成: 移除 ${tasksToRemove.length} 个已完成任务`);
+    // console.log(`[TaskManager] 清理完成: 移除 ${tasksToRemove.length} 个已完成任务`);
   }
 
   /**
    * 清理死亡creep的任务分配
+   * 现在只处理事件触发的清理，不再主动检测
    */
   private cleanupDeadCreepTasks(): void {
     if (!Memory.tasks) return;
 
-    let cleanedCount = 0;
-    for (const creepName in Memory.tasks.creepTasks) {
-      if (!(creepName in Game.creeps)) {
-        delete Memory.tasks.creepTasks[creepName];
-        cleanedCount++;
-      }
-    }
-
-    if (cleanedCount > 0) {
-      console.log(`[TaskManager] 清理了 ${cleanedCount} 个死亡creep的任务分配`);
-    }
+    // 这个方法现在只处理事件触发的清理
+    // 不再主动检测creep状态，完全依赖事件驱动
+    // console.log(`[TaskManager] 清理完成`);
   }
 
   /**
@@ -336,7 +341,6 @@ export class TaskManager extends BaseManager {
     if (!Memory.tasks) return {};
 
     return {
-      enabled: this.isSystemEnabled(),
       pendingTasks: this.getPendingTasks().length,
       totalTasks: Memory.tasks.taskQueue.length,
       ...Memory.tasks.stats
@@ -347,9 +351,6 @@ export class TaskManager extends BaseManager {
    * 重置时的清理工作
    */
   protected onReset(): void {
-    this.isEnabled = false;
-    if (Memory.tasks) {
-      Memory.tasks.enabled = false;
-    }
+    // 任务系统现在总是启用，不需要重置开关
   }
 }

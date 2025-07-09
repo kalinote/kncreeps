@@ -35,7 +35,7 @@ export class TaskExecutorRegistry {
     // 注册攻击任务执行器
     this.executors.set(TaskType.ATTACK, new AttackTaskExecutor());
 
-    console.log(`[TaskExecutorRegistry] 已注册 ${this.executors.size} 种任务执行器`);
+    // console.log(`[TaskExecutorRegistry] 已注册 ${this.executors.size} 种任务执行器`);
   }
 
   /**

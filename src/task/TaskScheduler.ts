@@ -15,18 +15,17 @@ export class TaskScheduler {
    * 为空闲creep分配任务
    */
   public assignTasks(): void {
-    if (!this.taskManager.isSystemEnabled()) return;
 
     const pendingTasks = this.taskManager.getPendingTasks();
     const availableCreeps = this.getAvailableCreeps();
 
-    console.log(`[TaskScheduler] 开始分配任务: ${pendingTasks.length} 个待处理任务, ${availableCreeps.length} 个可用creep`);
+    // console.log(`[TaskScheduler] 开始分配任务: ${pendingTasks.length} 个待处理任务, ${availableCreeps.length} 个可用creep`);
 
     if (pendingTasks.length > 0) {
-      console.log(`[TaskScheduler] 待分配任务类型: ${pendingTasks.map(t => t.type).join(', ')}`);
+      // console.log(`[TaskScheduler] 待分配任务类型: ${pendingTasks.map(t => t.type).join(', ')}`);
     }
     if (availableCreeps.length > 0) {
-      console.log(`[TaskScheduler] 可用creep: ${availableCreeps.map(c => c.name).join(', ')}`);
+      // console.log(`[TaskScheduler] 可用creep: ${availableCreeps.map(c => c.name).join(', ')}`);
     }
 
     pendingTasks.sort((a, b) => b.priority - a.priority);
@@ -44,21 +43,21 @@ export class TaskScheduler {
         const success = this.taskManager.assignTask(task.id, bestCreep.name);
         if (success) {
           assignedCount++;
-          console.log(`[TaskScheduler] 分配任务 ${task.type}(${task.id}) 给 ${bestCreep.name}`);
+          // console.log(`[TaskScheduler] 分配任务 ${task.type}(${task.id}) 给 ${bestCreep.name}`);
         }
         const index = availableCreeps.indexOf(bestCreep);
         if (index > -1) {
           availableCreeps.splice(index, 1);
         }
       } else {
-        console.log(`[TaskScheduler] 找不到合适的creep执行任务 ${task.type}(${task.id})`);
+        // console.log(`[TaskScheduler] 找不到合适的creep执行任务 ${task.type}(${task.id})`);
       }
     }
 
     if (assignedCount > 0) {
-      console.log(`[TaskScheduler] 成功分配 ${assignedCount} 个任务`);
+      // console.log(`[TaskScheduler] 成功分配 ${assignedCount} 个任务`);
     } else if (pendingTasks.length > 0) {
-      console.log(`[TaskScheduler] 没有分配任何任务，可能需要检查creep能力或任务执行器`);
+      // console.log(`[TaskScheduler] 没有分配任何任务，可能需要检查creep能力或任务执行器`);
     }
   }
 

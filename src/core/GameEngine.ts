@@ -1,10 +1,9 @@
 import { EventBus } from "./EventBus";
-import { StateManager } from "../managers/StateManager";
+import { SystemManager } from "../managers/SystemManager";
+import { StatsManager } from "../managers/StatsManager";
+import { CoordinationManager } from "../managers/CoordinationManager";
 import { BaseManager } from "../managers/BaseManager";
 import { GameConfig } from "../config/GameConfig";
-import { RoomManager } from "../managers/RoomManager";
-import { CreepManager } from "managers/CreepManager";
-import { TaskExecutionManager } from "../managers/TaskExecutionManager";
 import { ServiceContainer } from "./ServiceContainer";
 
 /**
@@ -14,7 +13,9 @@ import { ServiceContainer } from "./ServiceContainer";
 export class GameEngine {
   private serviceContainer: ServiceContainer;
   private eventBus!: EventBus;
-  private stateManager!: StateManager;
+  private systemManager!: SystemManager;
+  private statsManager!: StatsManager;
+  private coordinationManager!: CoordinationManager;
   private managers: Map<string, BaseManager> = new Map();
   private isInitialized: boolean = false;
   private lastRunTick: number = 0;
@@ -40,10 +41,12 @@ export class GameEngine {
 
       // 获取核心服务
       this.eventBus = this.serviceContainer.get('eventBus');
-      this.stateManager = this.serviceContainer.get('stateManager');
+      this.systemManager = this.serviceContainer.get('systemManager');
+      this.statsManager = this.serviceContainer.get('statsManager');
+      this.coordinationManager = this.serviceContainer.get('coordinationManager');
 
-      // 初始化状态管理器
-      this.stateManager.initialize();
+      // 初始化系统管理器
+      this.systemManager.update();
 
       // 初始化所有服务
       this.serviceContainer.initializeServices();
@@ -110,8 +113,8 @@ export class GameEngine {
         return;
       }
 
-      // 1. 更新全局状态
-      this.stateManager.update();
+      // 1. 更新系统管理器
+      this.systemManager.update();
 
       // 2. 处理事件队列
       this.eventBus.processEvents();
@@ -165,12 +168,7 @@ export class GameEngine {
    * 深度清理
    */
   private performDeepCleanup(): void {
-    // 清理死亡creep的内存
-    for (const name in Memory.creeps) {
-      if (!(name in Game.creeps)) {
-        delete Memory.creeps[name];
-      }
-    }
+    // 死亡creep的内存清理现在由CreepLifecycleService通过事件处理
 
     // 清理过期的房间内存
     for (const roomName in Memory.rooms) {
@@ -283,12 +281,7 @@ export class GameEngine {
   private executeSafeMode(): void {
     // 只保留最基本的功能
 
-    // 清理死亡creep内存
-    for (const name in Memory.creeps) {
-      if (!(name in Game.creeps)) {
-        delete Memory.creeps[name];
-      }
-    }
+    // 死亡creep的内存清理现在由CreepLifecycleService通过事件处理
 
     // 基本creep控制
     for (const name in Game.creeps) {
@@ -300,11 +293,32 @@ export class GameEngine {
   }
 
   /**
-   * 事件处理方法
+   * 通过事件处理creep死亡
    */
   private handleCreepDeath(data: any): void {
-    console.log('Creep死亡:', data);
-    // 处理creep死亡逻辑
+    console.log(`💀 [GameEngine] Creep死亡事件: ${data.creepName} (${data.role})`);
+
+    // 确保所有相关服务都收到通知
+    this.eventBus.emitSync(GameConfig.EVENTS.CREEP_DIED, data);
+
+    // 触发紧急生产检查
+    this.handleEmergencyProduction(data);
+  }
+
+  /**
+   * 处理紧急生产需求
+   */
+  private handleEmergencyProduction(data: any): void {
+    const { role, roomName } = data;
+
+    // 如果是重要角色，立即请求替换
+    if (role === GameConfig.ROLES.WORKER || role === GameConfig.ROLES.TRANSPORTER) {
+      const room = Game.rooms[roomName];
+      if (room && room.controller?.my) {
+        console.log(`🚨 [GameEngine] 紧急生产需求: ${role} in ${roomName}`);
+        // 这里可以触发紧急生产逻辑
+      }
+    }
   }
 
   private handleRoomUnderAttack(data: any): void {

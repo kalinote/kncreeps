@@ -83,19 +83,19 @@ export class CreepProductionService {
    * 处理开局生产逻辑
    */
   private handleBootstrapProduction(room: Room): void {
-    console.log(`🚀 [Bootstrap] 房间 ${room.name} 处于开局阶段，使用开局生产策略`);
+    // console.log(`🚀 [Bootstrap] 房间 ${room.name} 处于开局阶段，使用开局生产策略`);
 
     const availableEnergy = room.energyAvailable;
     const spawns = room.find(FIND_MY_SPAWNS);
 
     if (spawns.length === 0) {
-      console.log(`[Bootstrap] 房间 ${room.name} 没有spawn`);
+      // console.log(`[Bootstrap] 房间 ${room.name} 没有spawn`);
         return;
       }
 
     const spawn = spawns[0];
     if (spawn.spawning) {
-      console.log(`[Bootstrap] spawn正在生产: ${spawn.spawning.name}`);
+      // console.log(`[Bootstrap] spawn正在生产: ${spawn.spawning.name}`);
       return;
     }
 
@@ -107,7 +107,7 @@ export class CreepProductionService {
       creep.room.name === room.name && creep.memory.role === GameConfig.ROLES.TRANSPORTER
     ).length;
 
-    console.log(`[Bootstrap] 当前数量: worker=${workerCount}, transporter=${transporterCount}`);
+    // console.log(`[Bootstrap] 当前数量: worker=${workerCount}, transporter=${transporterCount}`);
 
     // 按开局生产顺序处理
     for (const role of GameConfig.BOOTSTRAP_CONFIG.PRODUCTION_ORDER) {
@@ -120,7 +120,7 @@ export class CreepProductionService {
         GameConfig.BOOTSTRAP_CONFIG.COMPLETION_CONDITIONS.MIN_TRANSPORTER_COUNT;
 
       if (currentCount < minRequired && availableEnergy >= config.cost) {
-        console.log(`[Bootstrap] 生产开局${role}: 需要${minRequired}, 当前${currentCount}, 成本${config.cost}`);
+        // console.log(`[Bootstrap] 生产开局${role}: 需要${minRequired}, 当前${currentCount}, 成本${config.cost}`);
 
         // 生成creep名称
         const creepName = this.generateCreepName(role);
@@ -148,7 +148,7 @@ export class CreepProductionService {
       }
     }
 
-    console.log(`[Bootstrap] 开局生产完成或无法生产`);
+    // console.log(`[Bootstrap] 开局生产完成或无法生产`);
   }
 
   /**
@@ -159,11 +159,11 @@ export class CreepProductionService {
     const pendingTasks = this.getPendingTasks();
 
     if (pendingTasks.length === 0) {
-      console.log(`[updateProductionDemands] 没有待分配的任务`);
+      // console.log(`[updateProductionDemands] 没有待分配的任务`);
       return;
     }
 
-    console.log(`[updateProductionDemands] 分析 ${pendingTasks.length} 个待分配任务`);
+    // console.log(`[updateProductionDemands] 分析 ${pendingTasks.length} 个待分配任务`);
 
     // 按房间分组任务
     const tasksByRoom = this.groupTasksByRoom(pendingTasks);
@@ -199,7 +199,7 @@ export class CreepProductionService {
       return;
     }
 
-    console.log(`[calculateRoomProductionDemands] 房间 ${roomName}: ${tasks.length} 个任务`);
+    // console.log(`[calculateRoomProductionDemands] 房间 ${roomName}: ${tasks.length} 个任务`);
 
     // 按任务类型分组
     const tasksByType = this.groupTasksByType(tasks);
@@ -209,7 +209,7 @@ export class CreepProductionService {
     const controllerLevel = room.controller.level || 1;
     const totalCreepsInRoom = this.getCreepCountInRoom(roomName);
 
-    console.log(`[calculateRoomProductionDemands] 当前角色数量:`, currentRoleCounts);
+    // console.log(`[calculateRoomProductionDemands] 当前角色数量:`, currentRoleCounts);
 
     // 为每种任务类型计算需要的角色
     for (const [taskType, taskList] of tasksByType) {
@@ -222,7 +222,7 @@ export class CreepProductionService {
         // 计算需要的数量（基于任务数量）
         const neededCount = this.calculateNeededCount(taskList, role);
 
-        console.log(`[calculateRoomProductionDemands] ${taskType} 任务需要 ${role}: 当前${currentCount}, 需要${neededCount}, 上限${maxAllowed}`);
+        // console.log(`[calculateRoomProductionDemands] ${taskType} 任务需要 ${role}: 当前${currentCount}, 需要${neededCount}, 上限${maxAllowed}`);
 
         if (currentCount < neededCount && currentCount < maxAllowed) {
           const priority = TaskRoleMapping.calculateTaskPriority(taskType, taskList.length);
@@ -360,7 +360,7 @@ export class CreepProductionService {
         existingNeed.taskType = taskType;
         existingNeed.taskCount = taskCount;
         existingNeed.reason = reason;
-        console.log(`[addProductionNeed] 更新生产需求: ${role} (房间: ${roomName}, 优先级: ${priority})`);
+        // console.log(`[addProductionNeed] 更新生产需求: ${role} (房间: ${roomName}, 优先级: ${priority})`);
       }
       return;
     }
@@ -378,7 +378,7 @@ export class CreepProductionService {
     };
 
     this.productionQueue.push(need);
-    console.log(`[addProductionNeed] 添加生产需求: ${role} (房间: ${roomName}, 优先级: ${priority}, 原因: ${reason})`);
+    // console.log(`[addProductionNeed] 添加生产需求: ${role} (房间: ${roomName}, 优先级: ${priority}, 原因: ${reason})`);
   }
 
   /**
@@ -389,7 +389,7 @@ export class CreepProductionService {
       return;
     }
 
-    console.log(`[executeProduction] 生产队列长度: ${this.productionQueue.length}`);
+    // console.log(`[executeProduction] 生产队列长度: ${this.productionQueue.length}`);
 
     // 按优先级排序
     this.productionQueue.sort((a, b) => b.priority - a.priority);
@@ -398,10 +398,10 @@ export class CreepProductionService {
     const need = this.productionQueue[0];
     const room = Game.rooms[need.roomName];
 
-    console.log(`[executeProduction] 处理生产需求: ${need.role} (房间: ${need.roomName}, 优先级: ${need.priority})`);
+    // console.log(`[executeProduction] 处理生产需求: ${need.role} (房间: ${need.roomName}, 优先级: ${need.priority})`);
 
     if (!room) {
-      console.log(`[executeProduction] 房间不存在: ${need.roomName}`);
+      // console.log(`[executeProduction] 房间不存在: ${need.roomName}`);
       this.productionQueue.shift();
       return;
     }
@@ -413,21 +413,21 @@ export class CreepProductionService {
 
     // 检查是否仍然需要生产这个角色
     if (!GameConfig.canProduceMoreCreeps(controllerLevel, need.role, currentRoleCount, totalCreepsInRoom)) {
-      console.log(`[executeProduction] 角色 ${need.role} 已达到限制，跳过生产 (当前: ${currentRoleCount}, 总数: ${totalCreepsInRoom})`);
+      // console.log(`[executeProduction] 角色 ${need.role} 已达到限制，跳过生产 (当前: ${currentRoleCount}, 总数: ${totalCreepsInRoom})`);
       this.productionQueue.shift();
       return;
     }
 
     const spawns = room.find(FIND_MY_SPAWNS);
     if (spawns.length === 0) {
-      console.log(`[executeProduction] 房间 ${need.roomName} 没有spawn`);
+      // console.log(`[executeProduction] 房间 ${need.roomName} 没有spawn`);
       return;
     }
 
     const spawn = spawns[0];
 
     if (spawn.spawning) {
-      console.log(`[executeProduction] spawn正在生产: ${spawn.spawning.name}`);
+      // console.log(`[executeProduction] spawn正在生产: ${spawn.spawning.name}`);
       return;
     }
 
@@ -440,18 +440,18 @@ export class CreepProductionService {
     );
 
     const cost = BodyBuilder.getBodyCost(body);
-    console.log(`[executeProduction] 生成身体配置: ${JSON.stringify(body)}, 成本: ${cost}`);
+    // console.log(`[executeProduction] 生成身体配置: ${JSON.stringify(body)}, 成本: ${cost}`);
 
     // 检查是否有足够能量
     if (room.energyAvailable < cost) {
-      console.log(`[executeProduction] 能量不足: 需要${cost}, 当前${room.energyAvailable}`);
+      // console.log(`[executeProduction] 能量不足: 需要${cost}, 当前${room.energyAvailable}`);
       return;
     }
 
     // 生成creep名称
     const creepName = this.generateCreepName(need.role);
 
-    console.log(`[executeProduction] 开始生产: ${creepName} (${need.role})`);
+    // console.log(`[executeProduction] 开始生产: ${creepName} (${need.role})`);
 
     // 尝试生产creep
     const result = spawn.spawnCreep(body, creepName, {
@@ -459,7 +459,7 @@ export class CreepProductionService {
     });
 
     if (result === OK) {
-      console.log(`[executeProduction] 成功生产: ${creepName}`);
+      // console.log(`[executeProduction] 成功生产: ${creepName}`);
       this.productionQueue.shift();
 
       // 发送事件
@@ -470,7 +470,7 @@ export class CreepProductionService {
         cost
       });
     } else {
-      console.log(`[executeProduction] 生产失败: ${creepName}, 错误: ${result}`);
+      // console.log(`[executeProduction] 生产失败: ${creepName}, 错误: ${result}`);
       // 生产失败时不移除队列项，下次再试
     }
   }
@@ -479,7 +479,7 @@ export class CreepProductionService {
    * 处理房间受到攻击时的生产需求
    */
   public handleRoomUnderAttack(roomName: string, hostileCount: number): void {
-    console.log(`🛡️ [CreepProductionService] 房间 ${roomName} 受到攻击! 敌对单位: ${hostileCount}个`);
+    // console.log(`🛡️ [CreepProductionService] 房间 ${roomName} 受到攻击! 敌对单位: ${hostileCount}个`);
 
     const room = Game.rooms[roomName];
     if (!room || !room.controller?.my) {
@@ -491,13 +491,13 @@ export class CreepProductionService {
     const currentShooterCount = this.getCreepCountInRoom(roomName, GameConfig.ROLES.SHOOTER);
     const totalCreepsInRoom = this.getCreepCountInRoom(roomName);
 
-    console.log(`🛡️ [CreepProductionService] 房间 ${roomName} 当前shooter数量: ${currentShooterCount}`);
+    // console.log(`🛡️ [CreepProductionService] 房间 ${roomName} 当前shooter数量: ${currentShooterCount}`);
 
     // 检查是否可以生产更多shooter
     if (GameConfig.canProduceMoreCreeps(controllerLevel, GameConfig.ROLES.SHOOTER, currentShooterCount, totalCreepsInRoom)) {
       const availableEnergy = room.energyAvailable;
       if (availableEnergy >= GameConfig.THRESHOLDS.MIN_ENERGY_FOR_SHOOTER) {
-        console.log(`🛡️ [CreepProductionService] 添加紧急shooter生产需求`);
+        // console.log(`🛡️ [CreepProductionService] 添加紧急shooter生产需求`);
         this.addProductionNeed(
           roomName,
           GameConfig.ROLES.SHOOTER,
@@ -509,10 +509,10 @@ export class CreepProductionService {
           `Emergency defense: ${hostileCount} hostiles`
         );
       } else {
-        console.log(`🛡️ [CreepProductionService] 能量不足，无法生产shooter (需要: ${GameConfig.THRESHOLDS.MIN_ENERGY_FOR_SHOOTER}, 当前: ${availableEnergy})`);
+        // console.log(`🛡️ [CreepProductionService] 能量不足，无法生产shooter (需要: ${GameConfig.THRESHOLDS.MIN_ENERGY_FOR_SHOOTER}, 当前: ${availableEnergy})`);
       }
     } else {
-      console.log(`🛡️ [CreepProductionService] shooter数量已达上限，无法生产更多`);
+      // console.log(`🛡️ [CreepProductionService] shooter数量已达上限，无法生产更多`);
     }
   }
 
@@ -585,7 +585,7 @@ export class CreepProductionService {
     this.productionQueue = Array.from(uniqueNeeds.values());
 
     if (originalLength > this.productionQueue.length) {
-      console.log(`[cleanupDuplicateProductionNeeds] 清理重复需求: ${originalLength} -> ${this.productionQueue.length}`);
+      // console.log(`[cleanupDuplicateProductionNeeds] 清理重复需求: ${originalLength} -> ${this.productionQueue.length}`);
     }
   }
 
@@ -612,8 +612,8 @@ export class CreepProductionService {
         return false;
       }
 
-      // 检查需求是否过期（超过100 ticks）
-      if (need.timestamp && Game.time - need.timestamp > 100) {
+      // 检查需求是否过期
+      if (need.timestamp && Game.time - need.timestamp > GameConfig.TIMEOUTS.PRODUCTION_NEED_EXPIRY) {
         return false;
       }
 
@@ -621,7 +621,7 @@ export class CreepProductionService {
     });
 
     if (originalLength > this.productionQueue.length) {
-      console.log(`[removeCompletedNeeds] 清理需求: ${originalLength} -> ${this.productionQueue.length}`);
+      // console.log(`[removeCompletedNeeds] 清理需求: ${originalLength} -> ${this.productionQueue.length}`);
     }
   }
 

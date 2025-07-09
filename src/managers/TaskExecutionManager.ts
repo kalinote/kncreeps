@@ -26,7 +26,7 @@ export class TaskExecutionManager extends BaseManager {
     // 清理旧的行为统计数据
     if ('behaviorStats' in Memory) {
       (Memory as any).behaviorStats = undefined;
-      console.log('[TaskExecutionManager] 已清理旧的行为统计数据');
+      // console.log('[TaskExecutionManager] 已清理旧的行为统计数据');
     }
   }
 
@@ -35,12 +35,24 @@ export class TaskExecutionManager extends BaseManager {
    */
   private setupEventListeners(): void {
     this.on(GameConfig.EVENTS.CREEP_SPAWNED, (data: any) => {
-      console.log(`[TaskExecutionManager] 新creep已出生: ${data.name}, 角色: ${data.role}`);
+      // console.log(`[TaskExecutionManager] 新creep已出生: ${data.name}, 角色: ${data.role}`);
     });
 
     this.on(GameConfig.EVENTS.CREEP_DIED, (data: any) => {
-      console.log(`[TaskExecutionManager] Creep已死亡: ${data.name}, 角色: ${data.role}`);
+      this.handleCreepDeathEvent(data);
     });
+  }
+
+  /**
+   * 通过事件处理creep死亡
+   */
+  private handleCreepDeathEvent(data: any): void {
+    const { creepName } = data;
+    // console.log(`[TaskExecutionManager] 收到creep死亡事件: ${creepName}`);
+
+    // 任务执行器不需要做任何特殊处理
+    // 因为任务状态已经在TaskManager中重置
+    // 这里只是记录日志
   }
 
   public update(): void {
@@ -78,7 +90,7 @@ export class TaskExecutionManager extends BaseManager {
 
     // 定期输出统计信息
     if (TaskRoleMapping.shouldPerformCleanup(Game.time, 'STATS_OUTPUT')) {
-      console.log(`[TaskExecutionManager] 执行了 ${executedCount} 个任务, 成功: ${successCount}, CPU: ${executionTime.toFixed(2)}`);
+      // console.log(`[TaskExecutionManager] 执行了 ${executedCount} 个任务, 成功: ${successCount}, CPU: ${executionTime.toFixed(2)}`);
     }
   }
 
@@ -93,12 +105,47 @@ export class TaskExecutionManager extends BaseManager {
 
     const result = executor.execute(creep, task);
 
-    // 更新任务状态
+    // 更新任务状态并通过事件通知
     if (result.completed) {
-      this.taskManager.updateTaskStatus(task.id,
-        result.success ? TaskStatus.COMPLETED : TaskStatus.FAILED);
+      const newStatus = result.success ? TaskStatus.COMPLETED : TaskStatus.FAILED;
+      this.taskManager.updateTaskStatus(task.id, newStatus);
+
+      // 发送任务完成事件
+      if (result.success) {
+        this.emit(GameConfig.EVENTS.TASK_COMPLETED, {
+          taskId: task.id,
+          taskType: task.type,
+          creepName: creep.name,
+          roomName: task.roomName
+        });
+      } else {
+        this.emit(GameConfig.EVENTS.TASK_FAILED, {
+          taskId: task.id,
+          taskType: task.type,
+          creepName: creep.name,
+          roomName: task.roomName,
+          reason: result.message
+        });
+      }
     } else if (task.status !== TaskStatus.IN_PROGRESS) {
       this.taskManager.updateTaskStatus(task.id, TaskStatus.IN_PROGRESS);
+
+      // 发送任务开始事件
+      this.emit(GameConfig.EVENTS.TASK_STARTED, {
+        taskId: task.id,
+        taskType: task.type,
+        creepName: creep.name,
+        roomName: task.roomName
+      });
+    } else {
+      // 发送任务进度事件
+      this.emit(GameConfig.EVENTS.TASK_PROGRESS, {
+        taskId: task.id,
+        taskType: task.type,
+        creepName: creep.name,
+        roomName: task.roomName,
+        message: result.message
+      });
     }
 
     return {
