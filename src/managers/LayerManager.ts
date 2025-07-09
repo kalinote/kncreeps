@@ -4,6 +4,7 @@ import { BaseManager } from './BaseManager';
 import { EventBus } from '../core/EventBus';
 import { EventConfig } from '../config/EventConfig';
 import { VisualConfig } from '../config/VisualConfig';
+import { TaskTrackLayer } from '../visual/layers/TaskTrackLayer';
 
 /**
  * 图层管理器 - 负责管理所有可视化图层的生命周期和状态
@@ -50,6 +51,7 @@ export class LayerManager extends BaseManager {
   private initializeLayers(): void {
     // 这里我们先只注册 RoomInfoLayer 作为示例
     this.registerLayer(new RoomInfoLayer(this.eventBus));
+    this.registerLayer(new TaskTrackLayer(this.eventBus));
 
     // TODO: 未来在这里注册更多图层
     // this.registerLayer(new PathLayer(this.eventBus));

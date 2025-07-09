@@ -27,12 +27,25 @@ export class RoomInfoLayer extends VisualLayer {
     }
 
     const ownedRooms = this.roomManager.getRoomNames();
+    if (ownedRooms.length === 0) {
+      return;
+    }
+
+    // 在顶部显示RoomManager的更新周期
+    const { nextUpdateIn, updateInterval } = this.roomManager.getUpdateCycleInfo();
+    const updateText = `RM Scan: ${nextUpdateIn}/${updateInterval}`;
+    Game.map.visual.text(updateText, new RoomPosition(2, 1, ownedRooms[0]), {
+      color: VisualConfig.STYLES.ROOM_INFO_STYLE.color,
+      fontSize: 0.7
+    });
+
+    // 渲染每个房间的信息
     ownedRooms.forEach((roomName, index) => {
       const room = this.roomManager.getRoom(roomName);
       if (room && room.controller) {
         const text = `[${roomName}] RCL: ${room.controller.level} | Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`;
-        // 使用MapVisual进行绘制
-        Game.map.visual.text(text, new RoomPosition(2, 2 + index * 1.2, roomName), {
+        // 使用MapVisual进行绘制，y坐标下移以避免与周期显示重叠
+        Game.map.visual.text(text, new RoomPosition(2, 2.2 + index * 1.2, roomName), {
           ...VisualConfig.STYLES.ROOM_INFO_STYLE,
           align: 'left'
         });

@@ -18,6 +18,16 @@ export class RoomManager extends BaseManager {
   }
 
   /**
+   * 获取房间管理器的更新周期信息
+   */
+  public getUpdateCycleInfo(): { nextUpdateIn: number; updateInterval: number } {
+    const updateInterval = GameConfig.UPDATE_FREQUENCIES.ROOM_ANALYSIS;
+    const nextUpdateTick = this.lastRoomScan + updateInterval;
+    const nextUpdateIn = Math.max(0, nextUpdateTick - Game.time);
+    return { nextUpdateIn, updateInterval };
+  }
+
+  /**
    * 初始化所有房间内存
    */
   private initializeRoomsMemory(): void {
