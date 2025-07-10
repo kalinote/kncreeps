@@ -1,18 +1,31 @@
 import { EventBus } from "../core/EventBus";
+import { GameConfig } from "../config/GameConfig";
+import { ServiceContainer } from "../core/ServiceContainer";
 
 /**
  * 基础管理器类 - 所有管理器的基类
  */
 export abstract class BaseManager {
   protected eventBus: EventBus;
+  protected serviceContainer: ServiceContainer;
   protected isManagerActive: boolean = true;
   protected hasErrors: boolean = false;
   protected lastUpdateTick: number = 0;
   protected errorCount: number = 0;
   protected maxErrorCount: number = 3;
+  protected updateInterval: number = 0;
 
-  constructor(eventBus: EventBus) {
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     this.eventBus = eventBus;
+    this.serviceContainer = serviceContainer;
+    this.setupEventListeners();
+  }
+
+  /**
+   * 设置事件监听器 - 子类可重写
+   */
+  protected setupEventListeners(): void {
+    // 子类可重写
   }
 
   /**
@@ -87,6 +100,11 @@ export abstract class BaseManager {
       return false;
     }
 
+    // 检查更新频率
+    if (this.updateInterval > 0 && Game.time - this.lastUpdateTick < this.updateInterval) {
+      return false;
+    }
+
     return true;
   }
 
@@ -95,6 +113,18 @@ export abstract class BaseManager {
    */
   protected updateCompleted(): void {
     this.lastUpdateTick = Game.time;
+  }
+
+  /**
+   * 获取下一次更新的信息
+   */
+  public getNextUpdateInfo(): { nextUpdateIn: number; updateInterval: number } {
+    if (this.updateInterval <= 0) {
+      return { nextUpdateIn: 0, updateInterval: 0 };
+    }
+    const nextUpdateTick = this.lastUpdateTick + this.updateInterval;
+    const nextUpdateIn = Math.max(0, nextUpdateTick - Game.time);
+    return { nextUpdateIn, updateInterval: this.updateInterval };
   }
 
   /**

@@ -3,41 +3,32 @@ import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { ProductionNeed, CreepState } from "../types";
-import { RoomManager } from "./RoomManager";
+import { CreepCoordinationService } from "../services/CreepCoordinationService";
 import { CreepProductionService } from "../services/CreepProductionService";
 import { CreepLifecycleService } from "../services/CreepLifecycleService";
+
 
 /**
  * Creep管理器 - 协调器模式
  * 协调CreepProductionService和CreepLifecycleService的工作
  */
 export class CreepManager extends BaseManager {
-  private roomManager: RoomManager | null = null;
-  private productionService: CreepProductionService;
-  private lifecycleService: CreepLifecycleService;
-
-  constructor(
-    eventBus: EventBus,
-    productionService: CreepProductionService,
-    lifecycleService: CreepLifecycleService,
-    roomManager?: RoomManager
-  ) {
-    super(eventBus);
-    this.roomManager = roomManager || null;
-
-    // 接收注入的服务实例
-    this.productionService = productionService;
-    this.lifecycleService = lifecycleService;
-
-    this.setupEventListeners();
-    this.lifecycleService.initializeCreepStatesMemory();
+  constructor(eventBus: EventBus, serviceContainer: any) {
+    super(eventBus, serviceContainer);
+    this.updateInterval = GameConfig.MANAGER_CONFIGS.CREEP_MANAGER.UPDATE_INTERVAL;
+    this.coordinationService.initialize();
   }
 
-  /**
-   * 设置RoomManager引用
-   */
-  public setRoomManager(roomManager: RoomManager): void {
-    this.roomManager = roomManager;
+  private get coordinationService(): CreepCoordinationService {
+    return this.serviceContainer.get('creepCoordinationService');
+  }
+
+  private get productionService(): CreepProductionService {
+    return this.serviceContainer.get('creepProductionService');
+  }
+
+  private get lifecycleService(): CreepLifecycleService {
+    return this.serviceContainer.get('creepLifecycleService');
   }
 
   /**
@@ -47,60 +38,15 @@ export class CreepManager extends BaseManager {
     if (!this.shouldUpdate()) return;
 
     this.safeExecute(() => {
-      // 更新生命周期
-      this.lifecycleService.updateCreepStates();
-
-      // 处理生产逻辑
-      this.productionService.assessProductionNeeds();
-      this.productionService.executeProduction();
-
-      // 死亡creep的清理现在通过事件驱动，不需要手动调用
+      this.coordinationService.update();
     }, 'CreepManager.update');
 
     this.updateCompleted();
   }
 
-  /**
-   * 设置事件监听器
-   */
-  private setupEventListeners(): void {
-    this.on(GameConfig.EVENTS.CREEP_DIED, (data: any) => {
-      this.handleCreepDeath(data);
-    });
-
-    this.on(GameConfig.EVENTS.ROOM_ENERGY_CHANGED, (data: any) => {
-      this.handleRoomEnergyChanged(data);
-    });
-
-    this.on(GameConfig.EVENTS.ROOM_UNDER_ATTACK, (data: any) => {
-      this.handleRoomUnderAttack(data);
-    });
-  }
-
-  /**
-   * 通过事件处理creep死亡 - 转发给生命周期服务
-   */
-  private handleCreepDeath(data: any): void {
-    console.log(`[CreepManager] 收到creep死亡事件: ${data.creepName} (${data.role})`);
-    this.lifecycleService.handleCreepDeath(data);
-  }
-
-  /**
-   * 处理房间能量变化事件
-   */
-  private handleRoomEnergyChanged(data: any): void {
-    // 能量变化可能触发生产机会，但现在由生产服务在下次评估时处理
-    // 这里可以添加额外的逻辑如果需要
-  }
-
-  /**
-   * 处理房间受到攻击事件 - 转发给生产服务
-   */
-  private handleRoomUnderAttack(data: any): void {
-    this.productionService.handleRoomUnderAttack(data.roomName, data.hostileCount);
-  }
-
-  // ========== 公共接口方法 - 委托给相应的服务 ==========
+  // The setupEventListeners is now handled by the CreepCoordinationService.
+  // We keep the public interface methods for now for backward compatibility,
+  // but they are now delegated to the respective services.
 
   /**
    * 获取Creep统计信息 - 委托给生命周期服务
@@ -186,10 +132,8 @@ export class CreepManager extends BaseManager {
    * 重置时的清理工作 - 协调各服务的重置
    */
   protected onReset(): void {
-    // 重置生命周期服务
+    // This can be moved to the service if needed. For now, it's fine here.
     this.lifecycleService.onReset();
-
-    // 重置生产服务
     this.productionService.onReset();
   }
 }

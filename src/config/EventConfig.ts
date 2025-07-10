@@ -13,6 +13,7 @@ export class EventConfig {
     ROOM_ENERGY_CHANGED: 'room.energy.changed',        // 房间能量变化
     ROOM_UNDER_ATTACK: 'room.under.attack',             // 房间受到攻击
     ROOM_THREAT_CLEARED: 'room.threat.cleared',         // 房间威胁清除
+    ROOM_THREAT_PERSISTS: 'room.threat.persists',       // 房间威胁持续存在
     ROOM_NEEDS_ATTENTION: 'room.needs.attention',       // 房间需要关注
 
     // 建筑相关事件

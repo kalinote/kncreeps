@@ -29,6 +29,45 @@ export const VisualConfig = {
     }
   },
 
+  // 任务类型颜色配置
+  TASK_COLORS: {
+    HARVEST: {
+      stroke: '#FFD700', // 金色 - 采集任务
+      color: '#FFD700',
+      strokeWidth: 0.07,
+      opacity: 0.8,
+      font: 0.5
+    },
+    TRANSPORT: {
+      stroke: '#00FF00', // 绿色 - 运输任务
+      color: '#00FF00',
+      strokeWidth: 0.07,
+      opacity: 0.8,
+      font: 0.5
+    },
+    BUILD: {
+      stroke: '#FF6B35', // 橙色 - 建造任务
+      color: '#FF6B35',
+      strokeWidth: 0.07,
+      opacity: 0.8,
+      font: 0.5
+    },
+    UPGRADE: {
+      stroke: '#9370DB', // 紫色 - 升级任务
+      color: '#9370DB',
+      strokeWidth: 0.07,
+      opacity: 0.8,
+      font: 0.5
+    },
+    ATTACK: {
+      stroke: '#FF0000', // 红色 - 攻击任务
+      color: '#FF0000',
+      strokeWidth: 0.07,
+      opacity: 0.8,
+      font: 0.5
+    }
+  },
+
   // 性能控制
   PERFORMANCE: {
     MAX_VISUAL_SIZE: 1024 * 500 // 500KB

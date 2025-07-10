@@ -23,6 +23,19 @@ export class SystemConfig {
     THREAT_CHECK: 10        // 威胁检查频率
   } as const;
 
+  // 管理器更新频率配置
+  public static readonly MANAGER_CONFIGS = {
+    TASK_MANAGER: { UPDATE_INTERVAL: 0 },
+    CREEP_MANAGER: { UPDATE_INTERVAL: 5 },
+    ROOM_MANAGER: { UPDATE_INTERVAL: 10 },
+    STATS_MANAGER: { UPDATE_INTERVAL: 20 },
+    COORDINATION_MANAGER: { UPDATE_INTERVAL: 50 },
+    TASK_EXECUTION_MANAGER: { UPDATE_INTERVAL: 0 },
+    SYSTEM_MANAGER: { UPDATE_INTERVAL: 0 },
+    VISUAL_MANAGER: { UPDATE_INTERVAL: 0 },
+    LAYER_MANAGER: { UPDATE_INTERVAL: 0 },
+  } as const;
+
   // 超时和过期时间（ticks）
   public static readonly TIMEOUTS = {
     PRODUCTION_NEED_EXPIRY: 100,    // 生产需求过期时间

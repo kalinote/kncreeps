@@ -50,7 +50,7 @@ export class EnergyService {
     // 1. 从Storage获取能量
     const storages = creep.room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_STORAGE &&
-                   'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+        'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
     }) as StructureStorage[];
 
     if (storages.length > 0) {
@@ -66,7 +66,7 @@ export class EnergyService {
     // 2. 从Container获取能量
     const containers = creep.room.find(FIND_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_CONTAINER &&
-                   'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+        'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
     }) as StructureContainer[];
 
     if (containers.length > 0) {
@@ -101,7 +101,7 @@ export class EnergyService {
     // 4. 从Extension获取能量
     const extensions = creep.room.find(FIND_MY_STRUCTURES, {
       filter: s => s.structureType === STRUCTURE_EXTENSION &&
-                   'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
+        'store' in s && s.store && s.store.getUsedCapacity(RESOURCE_ENERGY) > 0
     }) as StructureExtension[];
 
     if (extensions.length > 0) {

@@ -196,14 +196,15 @@ declare global {
   }
 
   interface RoomMemory {
-    creepCounts: { [role: string]: number };
     energyAvailable: number;
     energyCapacity: number;
     constructionSites: number;
-    defenseLevel: number;
-    lastAnalysis: number;
     needsAttention: boolean;
     lastEnemyActivity?: number; // 最近敌人活动时间
+    // 统一后的新字段
+    creepCounts: { [role: string]: number };
+    threatLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
+    lastUpdated: number;
   }
 
   interface CreepProductionMemory {
@@ -290,7 +291,7 @@ export interface HarvestTaskParams {
   sourceId: string;
   harvestPosition?: { x: number; y: number; roomName: string }; // 指定的采集位置
   targetId?: string;  // 存储目标，为空则丢在地上
-  targetPos?: { x: number; y: number; roomName: string }; // 目标位置
+  targetPos?: { x: number; y: number; roomName: string }; // 目标位置，如果指定了位置，则移动到该位置丢弃
 }
 
 // 运输任务参数

@@ -23,6 +23,7 @@ export class GameConfig {
   public static readonly UPDATE_FREQUENCIES = SystemConfig.UPDATE_FREQUENCIES;
   public static readonly TIMEOUTS = SystemConfig.TIMEOUTS;
   public static readonly ROOM_PHASES = SystemConfig.ROOM_PHASES;
+  public static readonly MANAGER_CONFIGS = SystemConfig.MANAGER_CONFIGS;
 
   // 导出事件配置
   public static readonly EVENTS = EventConfig.EVENTS;

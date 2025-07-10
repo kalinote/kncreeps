@@ -14,11 +14,10 @@ export class ManagerRegistry {
   }
 
   /**
-   * 注册管理器
+   * 注册业务管理器
    */
   public register(name: string, manager: BaseManager): void {
     this.managers.set(name, manager);
-    console.log(`[ManagerRegistry] 注册管理器: ${name}`);
   }
 
   /**

@@ -83,10 +83,10 @@ export class SourceAnalyzer {
 
   /**
    * 获取房间内所有source的可采集位置统计
-   * @param room 要分析的房间
+   * @param sources 要分析的source
    * @returns 统计信息
    */
-  public static getRoomSourceStats(room: Room): {
+  public static getRoomSourceStats(sources: Source[]): {
     totalSources: number;
     totalHarvestPositions: number;
     sourceDetails: Array<{
@@ -95,7 +95,6 @@ export class SourceAnalyzer {
       positions: RoomPosition[];
     }>;
   } {
-    const sources = room.find(FIND_SOURCES);
     const sourceDetails = sources.map(source => {
       const positions = this.getHarvestPositions(source);
       return {

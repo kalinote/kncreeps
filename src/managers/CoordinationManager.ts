@@ -9,16 +9,16 @@ import { CoordinationMemory, ResourceAllocation, CrossRoomTask } from "../types"
 export class CoordinationManager extends BaseManager {
   private lastCoordinationCheck: number = 0;
 
-  constructor(eventBus: EventBus) {
-    super(eventBus);
-    this.setupEventListeners();
+  constructor(eventBus: EventBus, serviceContainer: any) {
+    super(eventBus, serviceContainer);
+    this.updateInterval = GameConfig.MANAGER_CONFIGS.COORDINATION_MANAGER.UPDATE_INTERVAL;
     this.initializeCoordinationMemory();
   }
 
   /**
    * 设置事件监听器
    */
-  private setupEventListeners(): void {
+  protected setupEventListeners(): void {
     this.on(GameConfig.EVENTS.ROOM_NEEDS_ATTENTION, (data: any) => {
       this.handleRoomNeedsAttention(data);
     });

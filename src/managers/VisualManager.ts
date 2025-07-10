@@ -1,15 +1,16 @@
 import { EventBus } from '../core/EventBus';
 import { BaseManager } from './BaseManager';
-import { GameConfig } from '../config/GameConfig';
 import { VisualConfig } from '../config/VisualConfig';
 import { EventConfig } from '../config/EventConfig';
+import { GameConfig } from '../config/GameConfig';
 
 /**
  * 可视化管理器 - 负责渲染调度和缓存控制
  */
 export class VisualManager extends BaseManager {
-  constructor(eventBus: EventBus) {
-    super(eventBus);
+  constructor(eventBus: EventBus, serviceContainer: any) {
+    super(eventBus, serviceContainer);
+    this.updateInterval = GameConfig.MANAGER_CONFIGS.VISUAL_MANAGER.UPDATE_INTERVAL;
     this.initializeMemory();
   }
 

@@ -1,16 +1,18 @@
 import { EventBus } from '../core/EventBus';
+import { ServiceContainer } from '../core/ServiceContainer';
 
 /**
  * 可视化层抽象基类
  */
 export abstract class VisualLayer {
-  public name: string;
+  protected abstract name: string;
   public priority: number = 99;
   protected eventBus: EventBus;
+  protected serviceContainer: ServiceContainer;
 
-  constructor(name: string, eventBus: EventBus) {
-    this.name = name;
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     this.eventBus = eventBus;
+    this.serviceContainer = serviceContainer;
   }
 
   /**

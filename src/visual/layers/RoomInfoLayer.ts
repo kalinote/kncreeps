@@ -1,19 +1,20 @@
-import { RoomManager } from './../../managers/RoomManager';
+import { RoomManager } from '../../managers/RoomManager';
 import { VisualLayer } from '../VisualLayer';
 import { VisualConfig } from '../../config/VisualConfig';
 import { ServiceContainer } from '../../core/ServiceContainer';
 import { EventBus } from '../../core/EventBus';
+import { VisualManager } from '../../managers/VisualManager';
 
 /**
  * 房间信息图层
  */
 export class RoomInfoLayer extends VisualLayer {
+  protected name: string = VisualConfig.LAYERS.ROOM_INFO;
   private roomManager: RoomManager;
 
-  constructor(eventBus: EventBus) {
-    const serviceContainer = (global as any).serviceContainer as ServiceContainer;
-    super(VisualConfig.LAYERS.ROOM_INFO, eventBus);
-    this.roomManager = serviceContainer.get<RoomManager>('roomManager');
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+    super(eventBus, serviceContainer);
+    this.roomManager = this.serviceContainer.get<RoomManager>('roomManager');
     this.priority = VisualConfig.LAYER_DEFAULTS.RoomInfoLayer.priority;
   }
 
@@ -25,8 +26,9 @@ export class RoomInfoLayer extends VisualLayer {
       console.log('RoomInfoLayer: RoomManager not found');
       return;
     }
+    const visualManager = this.serviceContainer.get<VisualManager>('visualManager');
 
-    const ownedRooms = this.roomManager.getRoomNames();
+    const ownedRooms = this.roomManager.getMyRoomNames();
     if (ownedRooms.length === 0) {
       return;
     }
@@ -40,7 +42,7 @@ export class RoomInfoLayer extends VisualLayer {
     });
 
     // 渲染每个房间的信息
-    ownedRooms.forEach((roomName, index) => {
+    ownedRooms.forEach((roomName: string, index: number) => {
       const room = this.roomManager.getRoom(roomName);
       if (room && room.controller) {
         const text = `[${roomName}] RCL: ${room.controller.level} | Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`;
