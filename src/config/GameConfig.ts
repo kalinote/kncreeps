@@ -4,6 +4,7 @@ import { SystemConfig } from "./SystemConfig";
 import { EventConfig } from "./EventConfig";
 import { EnergyConfig } from "./EnergyConfig";
 import { VisualConfig } from "./VisualConfig";
+import { ConstructionConfig } from "./ConstructionConfig";
 
 /**
  * 统一配置接口
@@ -36,6 +37,9 @@ export class GameConfig {
   // 导出可视化配置
   public static readonly VISUAL = VisualConfig.LAYERS;
   public static readonly VISUAL_PERFORMANCE = VisualConfig.PERFORMANCE;
+
+  // 导出建筑规划配置
+  public static readonly CONSTRUCTION = ConstructionConfig;
 
   // 开局生产配置
   public static readonly BOOTSTRAP_CONFIG = {

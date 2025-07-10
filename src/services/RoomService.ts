@@ -238,7 +238,6 @@ export class RoomService extends BaseService {
       Memory.rooms[roomName] = {
         energyAvailable: room?.energyAvailable || 0,
         energyCapacity: room?.energyCapacityAvailable || 0,
-        constructionSites: room?.find(FIND_CONSTRUCTION_SITES).length || 0,
         needsAttention: false,
         creepCounts: {},
         threatLevel: "none",

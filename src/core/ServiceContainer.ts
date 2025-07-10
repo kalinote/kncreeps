@@ -23,6 +23,7 @@ import { TaskSchedulerService } from "../services/TaskSchedulerService";
 import { CreepCoordinationService } from "../services/CreepCoordinationService";
 import { RoomService } from "../services/RoomService";
 import { TaskExecutionService } from "../services/TaskExecutionService";
+import { ConstructionManager } from "../managers/ConstructionManager";
 
 const serviceConfig = {
   // 核心服务，需要最先初始化
@@ -41,6 +42,7 @@ const serviceConfig = {
     'creepManager',
     'taskExecutionManager',
     'visualManager',
+    'constructionManager'
   ],
   // 业务服务
   services: [
@@ -117,6 +119,9 @@ export class ServiceContainer {
         this
       )
     );
+
+    // 注册建筑管理器
+    this.registerSingleton('constructionManager', () => new ConstructionManager(this.get('eventBus'), this));
 
     // 注册可视化管理器和服务
     this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus'), this));

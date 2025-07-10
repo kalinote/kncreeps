@@ -155,6 +155,31 @@ export interface VisualsMemory {
   };
 }
 
+// (新) 单个建筑的布局位置
+export interface StructurePosition {
+  pos: { x: number; y: number; roomName: string };
+}
+
+// (新) 房间布局蓝图
+export interface RoomLayout {
+  version: number;
+  lastUpdated: number;
+  status: 'planning' | 'done';
+  nextPlannerIndex: number;
+  buildings: {
+    [plannerName: string]: StructurePosition[];
+  };
+}
+
+// (新) 建筑规划模块的内存
+export interface ConstructionPlannerMemory {
+  layouts: {
+    [roomName: string]: RoomLayout;
+  };
+  lastRun: number;
+}
+
+
 // 全局类型扩展
 declare global {
   interface Memory {
@@ -178,6 +203,7 @@ declare global {
     stats?: StatsMemory;
     coordination?: CoordinationMemory;
     visuals?: VisualsMemory;
+    constructPlanner?: ConstructionPlannerMemory;
   }
 
   interface CreepMemory {
@@ -198,7 +224,8 @@ declare global {
   interface RoomMemory {
     energyAvailable: number;
     energyCapacity: number;
-    constructionSites: number;
+    activeConstructionStrategy?: string | null;
+    planningAttemptedAt?: number;
     needsAttention: boolean;
     lastEnemyActivity?: number; // 最近敌人活动时间
     // 统一后的新字段
