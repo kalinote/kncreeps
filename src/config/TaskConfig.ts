@@ -12,8 +12,8 @@ export class TaskRoleMapping {
       { role: GameConfig.ROLES.WORKER, priority: 1 }
     ],
     [TaskType.TRANSPORT]: [
-      { role: GameConfig.ROLES.TRANSPORTER, priority: 1 },
-      { role: GameConfig.ROLES.WORKER, priority: 2 }
+      { role: GameConfig.ROLES.TRANSPORTER, priority: 10 },
+      { role: GameConfig.ROLES.WORKER, priority: 1 }
     ],
     [TaskType.BUILD]: [
       { role: GameConfig.ROLES.WORKER, priority: 1 }
@@ -41,14 +41,14 @@ export class TaskRoleMapping {
 
   // 任务系统清理周期配置
   public static readonly TASK_CLEANUP_FREQUENCIES = {
-    MAIN_CLEANUP: 30,                    // 任务系统主要清理周期（ticks）
-    DEAD_CREEP_CLEANUP: 50,              // 死亡creep任务分配清理周期
-    COMPLETED_TASK_CLEANUP: 20,         // 已完成任务清理周期
-    DUPLICATE_TASK_CLEANUP: 30,        // 重复任务检测和清理周期
+    MAIN_CLEANUP: 15,                    // 任务系统主要清理周期（ticks）
+    DEAD_CREEP_CLEANUP: 15,              // 死亡creep任务分配清理周期
+    COMPLETED_TASK_CLEANUP: 5,         // 已完成任务清理周期
+    DUPLICATE_TASK_CLEANUP: 15,        // 重复任务检测和清理周期
     EXPIRED_TASK_CLEANUP: 500,           // 过期任务清理周期
-    STATS_OUTPUT: 20,                    // 任务统计信息输出频率
+    STATS_OUTPUT: 10,                    // 任务统计信息输出频率
     ASSIGNMENT_RETRY: 10,                // 任务分配重试周期
-    EXECUTION_TIMEOUT_CHECK: 30          // 任务执行超时检查周期
+    EXECUTION_TIMEOUT_CHECK: 20          // 任务执行超时检查周期
   } as const;
 
   // 任务清理相关配置
@@ -57,7 +57,7 @@ export class TaskRoleMapping {
     COMPLETED_TASKS_TO_KEEP: 10,
 
     // 任务执行超时时间（ticks）
-    TASK_EXECUTION_TIMEOUT: 1000,
+    TASK_EXECUTION_TIMEOUT: 1500,
 
     // 任务重试次数
     MAX_TASK_RETRIES: 3,
@@ -72,9 +72,14 @@ export class TaskRoleMapping {
   /**
    * 获取任务类型对应的角色列表
    */
+  /**
+   * 获取任务类型对应的角色列表
+   */
   public static getRolesForTask(taskType: TaskType): string[] {
     const mapping = TaskRoleMapping.TASK_ROLE_MAPPING[taskType];
-    return mapping ? mapping.map(item => item.role) : [];
+    if (!mapping) return [];
+    const sorted = [...mapping].sort((a, b) => b.priority - a.priority);
+    return sorted.map(item => item.role);
   }
 
   /**

@@ -63,7 +63,7 @@ export class GameEngine {
 
       this.isInitialized = true;
       console.log(`游戏引擎初始化完成 - Tick: ${Game.time}`);
-      console.log('服务容器状态:', this.serviceContainer.getServiceStats());
+      // console.log(`服务容器状态: ${JSON.stringify(this.serviceContainer.getServiceStats())}`);
 
     } catch (error) {
       console.log('游戏引擎初始化失败:', error);
@@ -319,7 +319,7 @@ export class GameEngine {
   }
 
   private handleRoomUnderAttack(data: any): void {
-    console.log('房间受到攻击:', data);
+    console.log(`🚨 [GameEngine] 房间受到攻击: ${data.roomName}`);
     // 处理房间受攻击逻辑
   }
 

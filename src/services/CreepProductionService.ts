@@ -2,7 +2,7 @@ import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { TaskRoleMapping } from "../config/TaskConfig";
 import { BodyBuilder } from "../utils/BodyBuilder";
-import { ProductionNeed, Task, TaskType, TaskStatus } from "../types";
+import { ProductionNeed, Task, TaskType, TaskStatus, TaskAssignmentType } from "../types";
 
 /**
  * Creep生产服务 - 基于任务需求的生产系统
@@ -90,8 +90,8 @@ export class CreepProductionService {
 
     if (spawns.length === 0) {
       // console.log(`[Bootstrap] 房间 ${room.name} 没有spawn`);
-        return;
-      }
+      return;
+    }
 
     const spawn = spawns[0];
     if (spawn.spawning) {
@@ -158,19 +158,54 @@ export class CreepProductionService {
     // 获取所有待分配的任务
     const pendingTasks = this.getPendingTasks();
 
-    if (pendingTasks.length === 0) {
-      // console.log(`[updateProductionDemands] 没有待分配的任务`);
-      return;
-    }
-
-    // console.log(`[updateProductionDemands] 分析 ${pendingTasks.length} 个待分配任务`);
-
     // 按房间分组任务
     const tasksByRoom = this.groupTasksByRoom(pendingTasks);
 
     // 为每个房间计算生产需求
     for (const [roomName, tasks] of tasksByRoom) {
       this.calculateRoomProductionDemands(roomName, tasks);
+    }
+
+    // 额外检查：确保每个房间都达到RCL最小配置要求
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (room && room.controller?.my) {
+        this.ensureMinimumRoleRequirements(room);
+      }
+    }
+  }
+
+  /**
+   * 确保房间达到RCL最小角色配置要求
+   */
+  private ensureMinimumRoleRequirements(room: Room): void {
+    const controllerLevel = room.controller?.level || 1;
+    const roomName = room.name;
+    const currentRoleCounts = this.getRoleCountsInRoom(roomName);
+    const totalCreepsInRoom = this.getCreepCountInRoom(roomName);
+
+    // 检查每种角色是否达到最小配置要求
+    for (const role of [GameConfig.ROLES.WORKER, GameConfig.ROLES.TRANSPORTER]) {
+      const currentCount = currentRoleCounts[role] || 0;
+      const limits = GameConfig.getRoleLimits(controllerLevel, role);
+
+      if (limits && currentCount < limits.min) {
+        // 检查是否可以生产更多
+        if (GameConfig.canProduceMoreCreeps(controllerLevel, role, currentCount, totalCreepsInRoom)) {
+          console.log(`[ensureMinimumRoleRequirements] 房间 ${roomName} ${role} 未达到最小配置: ${currentCount}/${limits.min}`);
+
+          this.addProductionNeed(
+            roomName,
+            role,
+            GameConfig.PRIORITIES.HIGH,
+            room.energyAvailable,
+            undefined,
+            undefined,
+            undefined,
+            `Min role requirement: ${role} (${currentCount}/${limits.min})`
+          );
+        }
+      }
     }
   }
 
@@ -199,34 +234,39 @@ export class CreepProductionService {
       return;
     }
 
-    // console.log(`[calculateRoomProductionDemands] 房间 ${roomName}: ${tasks.length} 个任务`);
+    if (tasks.length === 0) {
+      return; // 没有任务就不需要生产
+    }
 
     // 按任务类型分组
     const tasksByType = this.groupTasksByType(tasks);
 
-    // 获取当前角色数量
+    // 获取当前角色数量和分配状态
     const currentRoleCounts = this.getRoleCountsInRoom(roomName);
     const controllerLevel = room.controller.level || 1;
     const totalCreepsInRoom = this.getCreepCountInRoom(roomName);
-
-    // console.log(`[calculateRoomProductionDemands] 当前角色数量:`, currentRoleCounts);
 
     // 为每种任务类型计算需要的角色
     for (const [taskType, taskList] of tasksByType) {
       const roles = TaskRoleMapping.getRolesForTask(taskType);
 
       for (const role of roles) {
-        const currentCount = currentRoleCounts[role] || 0;
+        const totalCount = currentRoleCounts[role] || 0;
         const maxAllowed = this.getRoleLimit(controllerLevel, role);
 
-        // 计算需要的数量（基于任务数量）
-        const neededCount = this.calculateNeededCount(taskList, role);
+        // 获取当前执行相同任务类型的creep数量
+        const busyCount = this.getCreepsAssignedToTaskType(roomName, role, taskType);
+        // 获取空闲的creep数量
+        const availableCount = this.getAvailableCreepsOfRole(roomName, role);
 
-        // console.log(`[calculateRoomProductionDemands] ${taskType} 任务需要 ${role}: 当前${currentCount}, 需要${neededCount}, 上限${maxAllowed}`);
+        // 计算实际需要的数量
+        const neededCount = this.calculateNeededCount(taskList, role, busyCount, availableCount);
 
-        if (currentCount < neededCount && currentCount < maxAllowed) {
+        // 修改条件：基于实际需求而不是总数
+        // 如果需要的数量大于当前忙于此类任务的数量 + 空闲数量，且未达到上限
+        const effectiveAvailable = busyCount + availableCount;
+        if (neededCount > effectiveAvailable && totalCount < maxAllowed) {
           const priority = TaskRoleMapping.calculateTaskPriority(taskType, taskList.length);
-          const urgency = TaskRoleMapping.calculateTaskUrgency(taskType, taskList.length);
 
           this.addProductionNeed(
             roomName,
@@ -236,7 +276,7 @@ export class CreepProductionService {
             undefined,
             taskType,
             taskList.length,
-            `Task demand: ${taskType} (${taskList.length} tasks)`
+            `Task demand: ${taskType} (${taskList.length} tasks, need ${neededCount}, available ${effectiveAvailable})`
           );
         }
       }
@@ -260,29 +300,95 @@ export class CreepProductionService {
   }
 
   /**
-   * 计算需要的角色数量
+   * 计算需要的角色数量 - 增强版，考虑当前分配状态
    */
-  private calculateNeededCount(tasks: Task[], role: string): number {
-    // 基础需求：每个任务至少需要一个角色
-    let needed = tasks.length;
+  private calculateNeededCount(tasks: Task[], role: string, busyCount: number, availableCount: number): number {
+    if (tasks.length === 0) return 0;
 
-    // 根据角色类型调整需求
+    // 分析任务状态
+    const pendingTasks = tasks.filter(task => task.status === TaskStatus.PENDING);
+    const activeTasks = tasks.filter(task =>
+      task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.ASSIGNED
+    );
+
+    let needed = 0;
+
+    // 根据角色类型和任务状态计算需求
     switch (role) {
       case GameConfig.ROLES.WORKER:
-        // 工作者可以执行多种任务，但效率有限
-        needed = Math.ceil(tasks.length * 0.8); // 每个工作者可以处理0.8个任务
+        // Worker可以执行多种任务类型
+        // 对于pending任务，需要额外的worker
+        if (pendingTasks.length > 0) {
+          // 至少需要能处理所有pending任务的worker数量
+          needed = Math.max(pendingTasks.length, busyCount + Math.ceil(pendingTasks.length * 0.8));
+        } else {
+          // 如果没有pending任务，当前busy的数量应该够用
+          needed = busyCount;
+        }
         break;
+
       case GameConfig.ROLES.TRANSPORTER:
-        // 运输者专门处理运输任务，效率较高
-        needed = Math.ceil(tasks.length * 0.6); // 每个运输者可以处理0.6个任务
+        // Transporter专门处理transport任务
+        if (tasks.length > 0 && tasks[0].type === TaskType.TRANSPORT) {
+          needed = this.calculateTransporterNeeds(tasks, busyCount, availableCount);
+        } else {
+          needed = Math.max(busyCount, Math.ceil(tasks.length * 0.8));
+        }
         break;
+
       case GameConfig.ROLES.SHOOTER:
-        // 战斗单位专门处理战斗任务
-        needed = Math.ceil(tasks.length * 0.5); // 每个战斗单位可以处理0.5个任务
+        // Shooter专门处理战斗任务，通常1对1
+        needed = Math.max(busyCount, tasks.length);
+        break;
+
+      default:
+        // 其他角色
+        needed = Math.max(busyCount, Math.ceil(tasks.length * 0.7));
         break;
     }
 
-    return Math.max(needed, 1); // 至少需要1个
+    // 确保合理的范围
+    const maxReasonable = Math.min(tasks.length * 2, 12);
+    return Math.max(1, Math.min(needed, maxReasonable));
+  }
+
+  /**
+   * 计算transporter需求 - 考虑当前状态
+   */
+  private calculateTransporterNeeds(tasks: Task[], busyCount: number, availableCount: number): number {
+    if (tasks.length === 0) return 0;
+
+    // 分析任务状态
+    const pendingTasks = tasks.filter(task => task.status === TaskStatus.PENDING);
+    const activeTasks = tasks.filter(task =>
+      task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.ASSIGNED
+    );
+
+    // 对于transport任务，每个任务代表一个需要处理的资源堆
+    // 如果有很多pending任务，说明地面资源积累，需要更多transporter
+    let needed = busyCount; // 至少需要维持当前忙碌的数量
+
+    if (pendingTasks.length > 0) {
+      // 有pending任务说明资源在积累，需要更多transporter
+      needed += Math.ceil(pendingTasks.length * 0.8); // 不需要1:1，因为transporter移动速度较快
+    }
+
+    // 考虑transport任务的特殊性：运输效率
+    // 如果有很多小的transport任务（资源量少），可能需要更多transporter
+    const totalResourceAmount = tasks.reduce((sum, task) => {
+      if (task.type === TaskType.TRANSPORT) {
+        return sum + (task.params.amount || 50); // 假设默认50能量
+      }
+      return sum + 50; // 其他任务类型默认50
+    }, 0);
+
+    const averageResourcePerTask = totalResourceAmount / tasks.length;
+    if (averageResourcePerTask < 25) {
+      // 小资源堆需要更多transporter频繁来回
+      needed = Math.ceil(needed * 1.2);
+    }
+
+    return Math.max(1, Math.min(needed, 8)); // 限制在合理范围内
   }
 
   /**
@@ -327,11 +433,25 @@ export class CreepProductionService {
   }
 
   /**
-   * 获取待分配的任务
+   * 获取待分配的任务 - 包含需要生产creep的任务
    */
   private getPendingTasks(): Task[] {
     if (!Memory.tasks) return [];
-    return Memory.tasks.taskQueue.filter(task => task.status === TaskStatus.PENDING);
+
+    return Memory.tasks.taskQueue.filter(task => {
+      // 对于transport任务，需要特殊处理
+      if (task.type === TaskType.TRANSPORT) {
+        // transport任务是EXCLUSIVE类型，一旦分配就变为IN_PROGRESS
+        // 但如果地面上还有更多资源，可能需要更多transporter
+        // 所以transport任务只要是活跃状态就计入需求
+        return task.status === TaskStatus.PENDING ||
+          task.status === TaskStatus.ASSIGNED ||
+          task.status === TaskStatus.IN_PROGRESS;
+      }
+
+      // 其他任务类型只考虑PENDING状态
+      return task.status === TaskStatus.PENDING;
+    });
   }
 
   /**
@@ -670,5 +790,139 @@ export class CreepProductionService {
     const timestamp = Game.time;
     const randomSuffix = Math.floor(Math.random() * 1000);
     return `${role}_${timestamp}_${randomSuffix}`;
+  }
+
+  /**
+   * 获取正在执行特定任务类型的指定角色creep数量
+   */
+  private getCreepsAssignedToTaskType(roomName: string, role: string, taskType: TaskType): number {
+    if (!Memory.tasks || !Memory.tasks.creepTasks) return 0;
+
+    let count = 0;
+    for (const creepName in Memory.tasks.creepTasks) {
+      const creep = Game.creeps[creepName];
+      if (!creep) continue;
+
+      // 检查房间和角色
+      const creepRoom = creep.memory.room || creep.room.name;
+      if (creepRoom !== roomName || creep.memory.role !== role) continue;
+
+      // 检查任务类型
+      const taskId = Memory.tasks.creepTasks[creepName];
+      const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+      if (task && task.type === taskType) {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
+  /**
+   * 获取指定角色的空闲creep数量
+   */
+  private getAvailableCreepsOfRole(roomName: string, role: string): number {
+    let count = 0;
+    for (const creepName in Game.creeps) {
+      const creep = Game.creeps[creepName];
+      if (creep.spawning) continue;
+
+      // 检查房间和角色
+      const creepRoom = creep.memory.room || creep.room.name;
+      if (creepRoom !== roomName || creep.memory.role !== role) continue;
+
+      // 检查是否有任务分配
+      const hasTask = Memory.tasks && Memory.tasks.creepTasks && Memory.tasks.creepTasks[creepName];
+      if (!hasTask) {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
+  /**
+   * 调试生产需求计算
+   */
+  public debugProductionCalculation(roomName?: string): void {
+    console.log("=== 生产需求计算调试报告 ===");
+    console.log(`当前 Tick: ${Game.time}`);
+    console.log("");
+
+    const rooms = roomName ? [roomName] : Object.keys(Game.rooms);
+
+    for (const room of rooms) {
+      if (!Game.rooms[room] || !Game.rooms[room].controller?.my) continue;
+
+      console.log(`🏢 房间: ${room} (RCL ${Game.rooms[room].controller?.level || 1})`);
+      const tasks = this.getPendingTasks().filter(task => task.roomName === room);
+
+      console.log(`  📋 获取pending任务:`);
+      console.log(`    总任务数: ${Memory.tasks?.taskQueue.length || 0}, pending任务数: ${tasks.length}`);
+
+      if (tasks.length > 0) {
+        const tasksByType = this.groupTasksByType(tasks);
+        console.log(`    按类型分组:`);
+        for (const [taskType, taskList] of tasksByType) {
+          console.log(`      ${taskType}: ${taskList.length} 个`);
+        }
+
+        console.log(`  👥 当前角色数量:`);
+        const currentRoleCounts = this.getRoleCountsInRoom(room);
+        const controllerLevel = Game.rooms[room].controller?.level || 1;
+        const roomRoleConfig = GameConfig.getRoomRoleConfig(controllerLevel);
+        for (const role of Object.keys(currentRoleCounts)) {
+          const maxAllowed = this.getRoleLimit(controllerLevel, role);
+          const roleConfig = roomRoleConfig[role];
+          const configStr = roleConfig ? `${roleConfig.min}-${maxAllowed}` : 'N/A';
+          console.log(`    ${role}: ${currentRoleCounts[role]} (配置: ${configStr})`);
+        }
+
+        console.log(`  🧮 需求计算过程:`);
+        for (const [taskType, taskList] of tasksByType) {
+          console.log(`    任务类型: ${taskType} (${taskList.length} 个任务)`);
+          const roles = TaskRoleMapping.getRolesForTask(taskType);
+
+          for (const role of roles) {
+            const totalCount = currentRoleCounts[role] || 0;
+            const maxAllowed = this.getRoleLimit(controllerLevel, role);
+            const busyCount = this.getCreepsAssignedToTaskType(room, role, taskType);
+            const availableCount = this.getAvailableCreepsOfRole(room, role);
+            const neededCount = this.calculateNeededCount(taskList, role, busyCount, availableCount);
+
+            console.log(`      ${role}: 总数${totalCount}, 忙于此类任务${busyCount}, 空闲${availableCount}, 需要${neededCount}, 上限${maxAllowed}`);
+
+            const effectiveAvailable = busyCount + availableCount;
+            const shouldProduce = neededCount > effectiveAvailable && totalCount < maxAllowed;
+
+            console.log(`        条件检查: ${neededCount} > ${effectiveAvailable} && ${totalCount} < ${maxAllowed} = ${shouldProduce}`);
+
+            if (shouldProduce) {
+              console.log(`        ✅ 应该产生生产需求！`);
+            } else {
+              console.log(`        ❌ 不会产生生产需求`);
+              if (neededCount <= effectiveAvailable) {
+                console.log(`          原因: 需要${neededCount}个，可用${effectiveAvailable}个`);
+              }
+              if (totalCount >= maxAllowed) {
+                console.log(`          原因: 已达到数量上限`);
+              }
+            }
+          }
+        }
+      }
+
+      console.log(`  🏭 实际生产队列:`);
+      const roomQueue = this.productionQueue.filter(need => need.roomName === room);
+      if (roomQueue.length === 0) {
+        console.log(`    ✅ 生产队列为空`);
+      } else {
+        for (const need of roomQueue) {
+          console.log(`    📦 ${need.role} (优先级: ${need.priority}, 原因: ${need.reason})`);
+        }
+      }
+      console.log("");
+    }
+    console.log("=== 调试报告结束 ===");
   }
 }

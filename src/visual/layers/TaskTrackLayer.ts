@@ -29,8 +29,9 @@ export class TaskTrackLayer extends VisualLayer {
     const activeTasks = this.taskStateService.getActiveTasks();
 
     for (const task of activeTasks) {
-      if (task.assignedCreep) {
-        const creep = Game.creeps[task.assignedCreep];
+      // 为每个分配的creep绘制连线
+      for (const creepName of task.assignedCreeps) {
+        const creep = Game.creeps[creepName];
         if (!creep) continue;
 
         const taskInfo = this.getTaskInfo(task);

@@ -1,9 +1,9 @@
 import { GameConfig } from "../config/GameConfig";
-import { Task, TaskStatus, TaskSystemMemory } from "../types";
+import { Task, TaskType, TaskStatus, TaskSystemMemory, TaskAssignmentType, TaskLifetime } from "../types";
 import { BaseService } from "./BaseService";
 
 /**
- * 任务状态服务 - 管理任务队列和状态
+ * 任务状态服务 - 管理任务的状态和生命周期
  */
 export class TaskStateService extends BaseService {
 
@@ -12,15 +12,16 @@ export class TaskStateService extends BaseService {
   }
 
   /**
-   * 初始化任务系统内存
+   * 初始化内存结构
    */
   private initializeMemory(): void {
     if (!Memory.tasks) {
       Memory.tasks = {
         taskQueue: [],
         creepTasks: {},
+        taskAssignments: {},
         completedTasks: [],
-        lastCleanup: Game.time,
+        lastCleanup: 0,
         stats: {
           tasksCreated: 0,
           tasksCompleted: 0,
@@ -32,14 +33,43 @@ export class TaskStateService extends BaseService {
   }
 
   /**
+   * 获取任务类型的默认属性
+   * TODO 后续可能需要进一步优化 maxAssignees改成基于创建任务时的状态进行动态配置
+   */
+  private getTaskDefaults(taskType: TaskType): { assignmentType: TaskAssignmentType; lifetime: TaskLifetime; maxAssignees: number } {
+    switch (taskType) {
+      case TaskType.HARVEST:
+        return { assignmentType: TaskAssignmentType.SHARED, lifetime: TaskLifetime.PERSISTENT, maxAssignees: 3 };
+      case TaskType.TRANSPORT:
+        return { assignmentType: TaskAssignmentType.EXCLUSIVE, lifetime: TaskLifetime.ONCE, maxAssignees: 1 };
+      case TaskType.BUILD:
+        return { assignmentType: TaskAssignmentType.SHARED, lifetime: TaskLifetime.ONCE, maxAssignees: 5 };
+      case TaskType.REPAIR:
+        return { assignmentType: TaskAssignmentType.SHARED, lifetime: TaskLifetime.ONCE, maxAssignees: 3 };
+      case TaskType.UPGRADE:
+        return { assignmentType: TaskAssignmentType.SHARED, lifetime: TaskLifetime.PERSISTENT, maxAssignees: 4 };
+      case TaskType.ATTACK:
+        return { assignmentType: TaskAssignmentType.SHARED, lifetime: TaskLifetime.ONCE, maxAssignees: 10 };
+      default:
+        return { assignmentType: TaskAssignmentType.EXCLUSIVE, lifetime: TaskLifetime.ONCE, maxAssignees: 1 };
+    }
+  }
+
+  /**
    * 创建新任务
    */
-  public createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'retryCount'>): string {
+  public createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'retryCount' | 'assignmentType' | 'lifetime' | 'maxAssignees' | 'assignedCreeps'> & Partial<Pick<Task, 'maxAssignees'>>): string {
     const taskId = this.generateTaskId();
+    const defaults = this.getTaskDefaults(task.type);
+
     const newTask: Task = {
       ...task,
       id: taskId,
       status: TaskStatus.PENDING,
+      assignmentType: defaults.assignmentType,
+      lifetime: defaults.lifetime,
+      maxAssignees: task.maxAssignees !== undefined ? task.maxAssignees : defaults.maxAssignees,
+      assignedCreeps: [],
       createdAt: Game.time,
       updatedAt: Game.time,
       retryCount: 0,
@@ -82,17 +112,83 @@ export class TaskStateService extends BaseService {
     if (!Memory.tasks) return false;
 
     const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
-    if (!task || task.status !== TaskStatus.PENDING) {
+    if (!task) return false;
+
+    // 对于共享任务，允许在PENDING、ASSIGNED、IN_PROGRESS状态下继续分配
+    // 对于独占任务，只允许在PENDING状态下分配
+    const canAssign = task.assignmentType === TaskAssignmentType.SHARED
+      ? (task.status === TaskStatus.PENDING || task.status === TaskStatus.ASSIGNED || task.status === TaskStatus.IN_PROGRESS)
+      : (task.status === TaskStatus.PENDING);
+
+    if (!canAssign) {
       return false;
     }
 
-    task.assignedCreep = creepName;
-    task.status = TaskStatus.ASSIGNED;
+    // 检查是否已达到最大分配数
+    if (task.assignedCreeps.length >= task.maxAssignees) {
+      return false;
+    }
+
+    // 检查该creep是否已被分配到此任务
+    if (task.assignedCreeps.includes(creepName)) {
+      return false;
+    }
+
+    // 添加到分配列表
+    task.assignedCreeps.push(creepName);
+
+    // 更新任务状态
+    if (task.status === TaskStatus.PENDING) {
+      task.status = TaskStatus.ASSIGNED;
+    }
     task.updatedAt = Game.time;
 
+    // 更新映射关系
     if (Memory.tasks.creepTasks) {
-        Memory.tasks.creepTasks[creepName] = taskId;
+      Memory.tasks.creepTasks[creepName] = taskId;
     }
+    if (Memory.tasks.taskAssignments) {
+      if (!Memory.tasks.taskAssignments[taskId]) {
+        Memory.tasks.taskAssignments[taskId] = [];
+      }
+      Memory.tasks.taskAssignments[taskId].push(creepName);
+    }
+
+    return true;
+  }
+
+  /**
+   * 从任务中移除creep分配
+   */
+  public unassignCreep(creepName: string): boolean {
+    if (!Memory.tasks) return false;
+
+    const taskId = Memory.tasks.creepTasks[creepName];
+    if (!taskId) return false;
+
+    const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+    if (!task) return false;
+
+    // 从任务的分配列表中移除
+    const index = task.assignedCreeps.indexOf(creepName);
+    if (index > -1) {
+      task.assignedCreeps.splice(index, 1);
+    }
+
+    // 更新任务状态
+    if (task.assignedCreeps.length === 0) {
+      task.status = TaskStatus.PENDING;
+    }
+
+    // 清理映射关系
+    delete Memory.tasks.creepTasks[creepName];
+    if (Memory.tasks.taskAssignments && Memory.tasks.taskAssignments[taskId]) {
+      const assignIndex = Memory.tasks.taskAssignments[taskId].indexOf(creepName);
+      if (assignIndex > -1) {
+        Memory.tasks.taskAssignments[taskId].splice(assignIndex, 1);
+      }
+    }
+
     return true;
   }
 
@@ -126,8 +222,17 @@ export class TaskStateService extends BaseService {
 
     if (status === TaskStatus.COMPLETED || status === TaskStatus.FAILED) {
       task.completedAt = Game.time;
-      if (task.assignedCreep) {
-        delete Memory.tasks.creepTasks[task.assignedCreep];
+
+      // 清理所有分配的creep
+      for (const creepName of task.assignedCreeps) {
+        if (Memory.tasks.creepTasks[creepName]) {
+          delete Memory.tasks.creepTasks[creepName];
+        }
+      }
+
+      // 清理任务分配映射
+      if (Memory.tasks.taskAssignments[taskId]) {
+        delete Memory.tasks.taskAssignments[taskId];
       }
 
       if (status === TaskStatus.COMPLETED) {
@@ -176,8 +281,24 @@ export class TaskStateService extends BaseService {
 
         const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
         if (task && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.FAILED) {
-          task.status = TaskStatus.PENDING;
-          task.assignedCreep = undefined;
+          // 从任务的分配列表中移除死亡的creep
+          const index = task.assignedCreeps.indexOf(creepName);
+          if (index > -1) {
+            task.assignedCreeps.splice(index, 1);
+          }
+
+          // 如果没有分配的creep了，重置状态为PENDING
+          if (task.assignedCreeps.length === 0) {
+            task.status = TaskStatus.PENDING;
+          }
+
+          // 清理任务分配映射
+          if (Memory.tasks.taskAssignments && Memory.tasks.taskAssignments[taskId]) {
+            const assignIndex = Memory.tasks.taskAssignments[taskId].indexOf(creepName);
+            if (assignIndex > -1) {
+              Memory.tasks.taskAssignments[taskId].splice(assignIndex, 1);
+            }
+          }
         }
       }
     }
@@ -209,17 +330,41 @@ export class TaskStateService extends BaseService {
 
   protected setupEventListeners(): void {
     this.on(GameConfig.EVENTS.CREEP_DIED, (data: any) => {
-        const { creepName } = data;
-        if (Memory.tasks && Memory.tasks.creepTasks[creepName]) {
-            const taskId = Memory.tasks.creepTasks[creepName];
-            delete Memory.tasks.creepTasks[creepName];
+      const { creepName } = data;
+      if (Memory.tasks && Memory.tasks.creepTasks[creepName]) {
+        const taskId = Memory.tasks.creepTasks[creepName];
+        delete Memory.tasks.creepTasks[creepName];
 
-            const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
-            if (task && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.FAILED) {
-                task.status = TaskStatus.PENDING;
-                task.assignedCreep = undefined;
+        const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+        if (task && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.FAILED) {
+          // 从任务的分配列表中移除死亡的creep
+          const index = task.assignedCreeps.indexOf(creepName);
+          if (index > -1) {
+            task.assignedCreeps.splice(index, 1);
+          }
+
+          // 如果没有分配的creep了，重置状态为PENDING
+          if (task.assignedCreeps.length === 0) {
+            task.status = TaskStatus.PENDING;
+          }
+
+          // 清理任务分配映射
+          if (Memory.tasks.taskAssignments && Memory.tasks.taskAssignments[taskId]) {
+            const assignIndex = Memory.tasks.taskAssignments[taskId].indexOf(creepName);
+            if (assignIndex > -1) {
+              Memory.tasks.taskAssignments[taskId].splice(assignIndex, 1);
             }
+          }
         }
+      }
     });
+  }
+
+  /**
+   * 获取指定房间任务信息
+   */
+  public getTasksByRoom(roomName: string): Task[] {
+    if (!Memory.tasks) return [];
+    return Memory.tasks.taskQueue.filter(task => task.roomName === roomName);
   }
 }

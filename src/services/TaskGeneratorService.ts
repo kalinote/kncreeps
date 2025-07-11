@@ -39,43 +39,33 @@ export class TaskGeneratorService extends BaseService {
     const existingHarvestTasks = this.taskStateService.getActiveTasks()
       .filter(task => task.type === TaskType.HARVEST && task.roomName === room.name);
 
-    const sourceStats = SourceAnalyzer.getRoomSourceStats(sources);
-
-    for (let sourceIndex = 0; sourceIndex < sourceStats.sourceDetails.length; sourceIndex++) {
-      const sourceDetail = sourceStats.sourceDetails[sourceIndex];
+    for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
       const source = sources[sourceIndex];
 
-      for (let posIndex = 0; posIndex < sourceDetail.positions.length; posIndex++) {
-        const harvestPosition = sourceDetail.positions[posIndex];
+      // 检查是否已经有针对这个source的任务（不考虑具体位置）
+      const hasTask = existingHarvestTasks.some(task => {
+        const harvestTask = task as HarvestTask;
+        return harvestTask.params.sourceId === source.id;
+      });
 
-        const hasTask = existingHarvestTasks.some(task => {
-          const harvestTask = task as HarvestTask;
-          if (harvestTask.params.sourceId !== source.id) return false;
+      if (!hasTask) {
+        // 修复：所有source使用相同的优先级，确保公平分配
+        const priority = TaskPriority.HIGH;
 
-          if (!harvestTask.params.harvestPosition) return true;
+        // 根据source周围的实际可采集位置数量设置maxAssignees
+        const maxWorkers = SourceAnalyzer.getHarvestPositionCount(source);
 
-          return harvestTask.params.harvestPosition.x === harvestPosition.x &&
-            harvestTask.params.harvestPosition.y === harvestPosition.y &&
-            harvestTask.params.harvestPosition.roomName === harvestPosition.roomName;
+        this.taskStateService.createTask({
+          type: TaskType.HARVEST,
+          priority: priority,
+          roomName: room.name,
+          maxRetries: 3,
+          maxAssignees: maxWorkers, // 根据实际可采集位置数量设置
+          params: {
+            sourceId: source.id
+            // 不指定具体采集位置，让HarvestTaskExecutor动态分配
+          }
         });
-
-        if (!hasTask) {
-          const priority = sourceIndex < 2 ? TaskPriority.HIGH : TaskPriority.LOW;
-          this.taskStateService.createTask({
-            type: TaskType.HARVEST,
-            priority: priority,
-            roomName: room.name,
-            maxRetries: 3,
-            params: {
-              sourceId: source.id,
-              harvestPosition: {
-                x: harvestPosition.x,
-                y: harvestPosition.y,
-                roomName: harvestPosition.roomName
-              }
-            }
-          });
-        }
       }
     }
   }
@@ -85,11 +75,13 @@ export class TaskGeneratorService extends BaseService {
       filter: r => r.amount > 50
     });
 
+    // 获取所有活跃的transport任务（包括PENDING、ASSIGNED、IN_PROGRESS）
     const existingTransportTasks = this.taskStateService.getActiveTasks()
       .filter(task => task.type === TaskType.TRANSPORT && task.roomName === room.name);
 
     for (const resource of droppedResources) {
-      const hasTask = existingTransportTasks.some(task => {
+      // 检查是否已经有针对这个具体资源的活跃任务
+      const hasActiveTask = existingTransportTasks.some(task => {
         const transportTask = task as TransportTask;
         return transportTask.params.sourcePos &&
           transportTask.params.sourcePos.x === resource.pos.x &&
@@ -97,7 +89,7 @@ export class TaskGeneratorService extends BaseService {
           transportTask.params.resourceType === resource.resourceType;
       });
 
-      if (!hasTask) {
+      if (!hasActiveTask) {
         const storageTarget = this.findStorageTarget(room, resource.resourceType);
 
         if (storageTarget) {
@@ -119,28 +111,59 @@ export class TaskGeneratorService extends BaseService {
   }
 
   private findStorageTarget(room: Room, resourceType: ResourceConstant): Structure | null {
-    // ... (logic from TaskGenerator)
+    // 1. 优先寻找有空间的storage
     const storages = room.find(FIND_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_STORAGE &&
-          'store' in s && s.store && s.store.getFreeCapacity(resourceType) > 0
+      filter: s => s.structureType === STRUCTURE_STORAGE &&
+        'store' in s && s.store && s.store.getFreeCapacity(resourceType) > 0
+    });
+    if (storages.length > 0) return storages[0];
+
+    // 2. 寻找有空间的container
+    const containers = room.find(FIND_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_CONTAINER &&
+        'store' in s && s.store && s.store.getFreeCapacity(resourceType) > 0
+    });
+    if (containers.length > 0) return containers[0];
+
+    // 3. 如果是能量，寻找有空间的extension或spawn
+    if (resourceType === RESOURCE_ENERGY) {
+      const energyStructures = room.find(FIND_STRUCTURES, {
+        filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
+          'store' in s && s.store && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
       });
-      if (storages.length > 0) return storages[0];
+      if (energyStructures.length > 0) return energyStructures[0];
+    }
 
-      const containers = room.find(FIND_STRUCTURES, {
-        filter: s => s.structureType === STRUCTURE_CONTAINER &&
-          'store' in s && s.store && s.store.getFreeCapacity(resourceType) > 0
+    // 4. 备用策略：如果没有找到理想的存储目标，寻找任何可能的存储建筑
+    // 这样可以确保transport任务能够被创建，即使存储建筑已满
+
+    // 4.1 尝试任何storage（即使满了）
+    const anyStorages = room.find(FIND_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_STORAGE && 'store' in s
+    });
+    if (anyStorages.length > 0) return anyStorages[0];
+
+    // 4.2 尝试任何container（即使满了）
+    const anyContainers = room.find(FIND_STRUCTURES, {
+      filter: s => s.structureType === STRUCTURE_CONTAINER && 'store' in s
+    });
+    if (anyContainers.length > 0) return anyContainers[0];
+
+    // 4.3 如果是能量，尝试任何能量建筑（即使满了）
+    if (resourceType === RESOURCE_ENERGY) {
+      const anyEnergyStructures = room.find(FIND_STRUCTURES, {
+        filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
+          'store' in s
       });
-      if (containers.length > 0) return containers[0];
+      if (anyEnergyStructures.length > 0) return anyEnergyStructures[0];
+    }
 
-      if (resourceType === RESOURCE_ENERGY) {
-        const energyStructures = room.find(FIND_STRUCTURES, {
-          filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
-            'store' in s && s.store && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-        });
-        if (energyStructures.length > 0) return energyStructures[0];
-      }
+    // 5. 最后的备用策略：如果连存储建筑都没有，至少要创建任务让creep清理资源
+    // 返回spawn作为默认目标，让TransportTaskExecutor处理具体的放置逻辑
+    const spawns = room.find(FIND_MY_SPAWNS);
+    if (spawns.length > 0) return spawns[0];
 
-      return null;
+    return null;
   }
 
   private generateUpgradeTasks(room: Room): void {
@@ -169,23 +192,23 @@ export class TaskGeneratorService extends BaseService {
     const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
 
     const existingBuildTasks = this.taskStateService.getActiveTasks()
-        .filter(task => task.type === TaskType.BUILD && task.roomName === room.name) as BuildTask[];
+      .filter(task => task.type === TaskType.BUILD && task.roomName === room.name) as BuildTask[];
 
     for (const site of constructionSites) {
-        const hasTask = existingBuildTasks.some(task => task.params.targetId === site.id);
+      const hasTask = existingBuildTasks.some(task => task.params.targetId === site.id);
 
-        if (!hasTask) {
-            this.taskStateService.createTask({
-                type: TaskType.BUILD,
-                priority: TaskPriority.NORMAL,
-                roomName: room.name,
-                maxRetries: 3,
-                params: {
-                    targetId: site.id,
-                    sourceConstructionIds: []
-                }
-            });
-        }
+      if (!hasTask) {
+        this.taskStateService.createTask({
+          type: TaskType.BUILD,
+          priority: TaskPriority.NORMAL,
+          roomName: room.name,
+          maxRetries: 3,
+          params: {
+            targetId: site.id,
+            sourceConstructionIds: []
+          }
+        });
+      }
     }
   }
 
@@ -194,61 +217,59 @@ export class TaskGeneratorService extends BaseService {
     const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
 
     const existingAttackTasks = this.taskStateService.getActiveTasks()
-        .filter(task => task.type === TaskType.ATTACK && task.roomName === room.name) as AttackTask[];
+      .filter(task => task.type === TaskType.ATTACK && task.roomName === room.name) as AttackTask[];
 
     this.createAttackTasksForHostileCreeps(room, hostileCreeps, existingAttackTasks);
     this.createAttackTasksForHostileStructures(room, hostileStructures, existingAttackTasks);
   }
 
-    private createAttackTasksForHostileCreeps(room: Room, hostileCreeps: Creep[], existingTasks: AttackTask[]): void {
-        for (const hostile of hostileCreeps) {
-            if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
-                this.taskStateService.createTask({
-                    type: TaskType.ATTACK,
-                    priority: this.calculateAttackTaskPriority(hostile),
-                    roomName: room.name,
-                    maxRetries: 1,
-                    params: {
-                        targetId: hostile.id,
-                        targetType: 'creep'
-                    }
-                });
-            }
-        }
+  private createAttackTasksForHostileCreeps(room: Room, hostileCreeps: Creep[], existingTasks: AttackTask[]): void {
+    for (const hostile of hostileCreeps) {
+      if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
+        this.taskStateService.createTask({
+          type: TaskType.ATTACK,
+          priority: this.calculateAttackTaskPriority(hostile),
+          roomName: room.name,
+          maxRetries: 1,
+          params: {
+            targetId: hostile.id,
+            targetType: 'creep'
+          }
+        });
+      }
     }
+  }
 
-    private createAttackTasksForHostileStructures(room: Room, hostileStructures: Structure[], existingTasks: AttackTask[]): void {
-        for (const structure of hostileStructures) {
-            if (this.shouldCreateAttackTask(room, structure, existingTasks)) {
-                this.taskStateService.createTask({
-                    type: TaskType.ATTACK,
-                    priority: this.calculateAttackTaskPriority(structure),
-                    roomName: room.name,
-                    maxRetries: 1,
-                    params: {
-                        targetId: structure.id,
-                        targetType: 'structure'
-                    }
-                });
-            }
-        }
+  private createAttackTasksForHostileStructures(room: Room, hostileStructures: Structure[], existingTasks: AttackTask[]): void {
+    for (const structure of hostileStructures) {
+      if (this.shouldCreateAttackTask(room, structure, existingTasks)) {
+        this.taskStateService.createTask({
+          type: TaskType.ATTACK,
+          priority: this.calculateAttackTaskPriority(structure),
+          roomName: room.name,
+          maxRetries: 1,
+          params: {
+            targetId: structure.id,
+            targetType: 'structure'
+          }
+        });
+      }
     }
+  }
 
-    private shouldCreateAttackTask(room: Room, target: Creep | Structure, existingTasks: AttackTask[]): boolean {
-        // ... (logic from TaskGenerator)
-        return !existingTasks.some(task => task.params.targetId === target.id);
-    }
+  private shouldCreateAttackTask(room: Room, target: Creep | Structure, existingTasks: AttackTask[]): boolean {
+    return !existingTasks.some(task => task.params.targetId === target.id);
+  }
 
-    private calculateAttackTaskPriority(target: Creep | Structure): TaskPriority {
-        // ... (logic from TaskGenerator)
-        if (target instanceof Creep) {
-            if (target.getActiveBodyparts(ATTACK) > 0 || target.getActiveBodyparts(RANGED_ATTACK) > 0) {
-                return TaskPriority.CRITICAL;
-            }
-            if (target.getActiveBodyparts(HEAL) > 0) {
-                return TaskPriority.HIGH;
-            }
-        }
-        return TaskPriority.NORMAL;
+  private calculateAttackTaskPriority(target: Creep | Structure): TaskPriority {
+    if (target instanceof Creep) {
+      if (target.getActiveBodyparts(ATTACK) > 0 || target.getActiveBodyparts(RANGED_ATTACK) > 0) {
+        return TaskPriority.CRITICAL;
+      }
+      if (target.getActiveBodyparts(HEAL) > 0) {
+        return TaskPriority.HIGH;
+      }
     }
+    return TaskPriority.NORMAL;
+  }
 }

@@ -219,6 +219,10 @@ declare global {
     patrolPoint?: { x: number; y: number; roomName: string }; // 巡逻点
     lastEnemySeen?: number;    // 最后发现敌人的时间
     enemyMemory?: { [enemyId: string]: number }; // 敌人记忆，存储最后见到的时间
+    // 任务中断保护标志
+    canBeInterrupted?: boolean; // 是否可以被中断，用于防止运输任务中途被打断
+    // 采集位置分配
+    assignedHarvestPos?: { x: number; y: number; roomName: string }; // 分配给creep的采集位置
   }
 
   interface RoomMemory {
@@ -260,6 +264,12 @@ declare global {
       log: any;
       gameEngine?: any; // 避免循环引用，使用any类型
       taskDebug?: any; // 添加任务调试工具
+      production?: { // 生产调试工具
+        plan: (roomName?: string) => void;
+        tasks: (roomName?: string) => void;
+        queue: () => void;
+        refresh: () => void;
+      };
     }
   }
 }
@@ -297,6 +307,18 @@ export enum TaskPriority {
   BACKGROUND = 10
 }
 
+// 任务分配模式枚举
+export enum TaskAssignmentType {
+  EXCLUSIVE = 'exclusive',  // 独占任务 - 只能分配给一个creep
+  SHARED = 'shared'         // 共享任务 - 可以分配给多个creep
+}
+
+// 任务生命周期枚举
+export enum TaskLifetime {
+  ONCE = 'once',           // 一次性任务 - 有明确完成标准
+  PERSISTENT = 'persistent' // 持久性任务 - 持续存在直到对象消失
+}
+
 // 任务基础接口
 export interface BaseTask {
   id: string;
@@ -304,7 +326,10 @@ export interface BaseTask {
   priority: TaskPriority;
   status: TaskStatus;
   roomName: string;
-  assignedCreep?: string;
+  assignmentType: TaskAssignmentType;
+  lifetime: TaskLifetime;
+  maxAssignees: number;
+  assignedCreeps: string[];
   createdAt: number;
   updatedAt: number;
   startedAt?: number;
@@ -406,6 +431,7 @@ export interface TaskExecutor {
 export interface TaskSystemMemory {
   taskQueue: Task[];
   creepTasks: { [creepName: string]: string }; // creep -> taskId 映射
+  taskAssignments: { [taskId: string]: string[] }; // taskId -> creepNames 映射
   completedTasks: string[]; // 已完成的任务ID列表（用于清理）
   lastCleanup: number;
   stats: {

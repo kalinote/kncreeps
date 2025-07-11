@@ -36,6 +36,11 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
     const hasResource = creep.store.getUsedCapacity(resourceType) > 0;
     const hasAnyResource = creep.store.getUsedCapacity() > 0;
 
+    // 初始化中断保护状态
+    if (creep.memory.canBeInterrupted === undefined) {
+      creep.memory.canBeInterrupted = true;
+    }
+
     if (!hasResource && hasAnyResource) {
       // 有其他资源但没有目标资源，先丢弃其他资源
       return this.dropOtherResources(creep, resourceType);
@@ -74,6 +79,8 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
 
           switch (withdrawResult) {
             case OK:
+              // 成功拾取资源后，设置中断保护
+              creep.memory.canBeInterrupted = false;
               return { success: true, completed: false, message: '正在拾取资源' };
             case ERR_NOT_IN_RANGE:
               this.moveToTarget(creep, source);
@@ -81,6 +88,8 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
             case ERR_NOT_ENOUGH_RESOURCES:
               return { success: false, completed: true, message: '源建筑资源不足，任务完成' };
             case ERR_FULL:
+              // 已满时也算成功拾取，设置中断保护
+              creep.memory.canBeInterrupted = false;
               return { success: true, completed: false, message: 'creep已满，开始传输' };
             default:
               return { success: false, completed: false, message: `拾取失败: ${withdrawResult}` };
@@ -111,8 +120,12 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
 
           switch (pickupResult) {
             case OK:
+              // 成功拾取资源后，设置中断保护
+              creep.memory.canBeInterrupted = false;
               return { success: true, completed: false, message: '正在拾取目标资源' };
             case ERR_FULL:
+              // 已满时也算成功拾取，设置中断保护
+              creep.memory.canBeInterrupted = false;
               return { success: true, completed: false, message: 'creep已满，开始传输' };
             default:
               return { success: false, completed: false, message: `拾取失败: ${pickupResult}` };
@@ -145,8 +158,12 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
           const pickupResult = creep.pickup(nearbyResources[0].resource);
           switch (pickupResult) {
             case OK:
+              // 成功拾取资源后，设置中断保护
+              creep.memory.canBeInterrupted = false;
               return { success: true, completed: false, message: '正在拾取附近的目标资源' };
             case ERR_FULL:
+              // 已满时也算成功拾取，设置中断保护
+              creep.memory.canBeInterrupted = false;
               return { success: true, completed: false, message: 'creep已满，开始传输' };
             default:
               return { success: false, completed: false, message: `拾取附近资源失败: ${pickupResult}` };
@@ -172,8 +189,12 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
 
       switch (pickupResult) {
         case OK:
+          // 成功拾取资源后，设置中断保护
+          creep.memory.canBeInterrupted = false;
           return { success: true, completed: false, message: '正在拾取附近资源' };
         case ERR_FULL:
+          // 已满时也算成功拾取，设置中断保护
+          creep.memory.canBeInterrupted = false;
           return { success: true, completed: false, message: 'creep已满，开始传输' };
         default:
           return { success: false, completed: false, message: `拾取失败: ${pickupResult}` };
@@ -192,6 +213,8 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
     const carriedAmount = creep.store.getUsedCapacity(resourceType);
 
     if (carriedAmount === 0) {
+      // 没有资源可传输，解除中断保护
+      creep.memory.canBeInterrupted = true;
       return { success: false, completed: true, message: '没有资源可传输，任务完成' };
     }
 
@@ -199,6 +222,8 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
     if (params.targetId) {
       const target = Game.getObjectById<Structure>(params.targetId as Id<Structure>);
       if (!target) {
+        // 目标不存在，解除中断保护
+        creep.memory.canBeInterrupted = true;
         return { success: false, completed: true, message: '目标建筑不存在，任务完成' };
       }
 
@@ -208,18 +233,23 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
 
         switch (transferResult) {
           case OK:
+            // 成功传输资源后，解除中断保护
+            creep.memory.canBeInterrupted = true;
             return { success: true, completed: true, message: '资源传输完成，任务完成' };
           case ERR_NOT_IN_RANGE:
             this.moveToTarget(creep, target);
             return { success: true, completed: false, message: '移动到目标建筑' };
           case ERR_FULL:
-            // 目标已满，尝试丢弃
+            // 目标已满，尝试丢弃后解除中断保护
             creep.drop(resourceType);
+            creep.memory.canBeInterrupted = true;
             return { success: true, completed: true, message: '目标已满，已丢弃资源，任务完成' };
           default:
             return { success: false, completed: false, message: `传输失败: ${transferResult}` };
         }
       } else {
+        // 目标建筑不支持存储，解除中断保护
+        creep.memory.canBeInterrupted = true;
         return { success: false, completed: true, message: '目标建筑不支持存储，任务完成' };
       }
     }
@@ -230,8 +260,9 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
 
       // 检查是否已经到达目标位置
       if (creep.pos.isEqualTo(targetPos)) {
-        // 已在目标位置，直接丢弃资源
+        // 已在目标位置，直接丢弃资源并解除中断保护
         creep.drop(resourceType);
+        creep.memory.canBeInterrupted = true;
         return { success: true, completed: true, message: '资源已精确丢弃到目标位置，任务完成' };
       }
 
@@ -239,16 +270,18 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
       const moveResult = this.smartMoveTo(creep, targetPos, true);
 
       if (!moveResult.success) {
-        // 无法到达精确位置，在当前位置丢弃
+        // 无法到达精确位置，在当前位置丢弃并解除中断保护
         creep.drop(resourceType);
+        creep.memory.canBeInterrupted = true;
         return { success: true, completed: true, message: `无法到达目标位置，已在当前位置丢弃资源: ${moveResult.message}` };
       }
 
       // 检查是否在传输范围内（可以丢弃）
       const distance = creep.pos.getRangeTo(targetPos);
       if (distance <= 1) {
-        // 在范围内，可以丢弃资源
+        // 在范围内，可以丢弃资源并解除中断保护
         creep.drop(resourceType);
+        creep.memory.canBeInterrupted = true;
         return { success: true, completed: true, message: `资源已丢弃到目标附近 (距离${distance})，任务完成` };
       } else {
         // 继续移动
@@ -256,8 +289,9 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
       }
     }
 
-    // 默认：在当前位置丢弃
+    // 默认：在当前位置丢弃并解除中断保护
     creep.drop(resourceType);
+    creep.memory.canBeInterrupted = true;
     return { success: true, completed: true, message: '资源已丢弃，任务完成' };
   }
 
