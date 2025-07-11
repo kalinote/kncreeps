@@ -6,7 +6,7 @@ export const ConstructionConfig = {
    * 规划延迟（ticks）
    * 在房间被控制后，延迟多少个tick开始执行自动规划，以避开CPU高峰。
    */
-  PLANNING_DELAY: 5,
+  PLANNING_DELAY: 25,
 
   /**
    * 定义【计算蓝图】的逻辑顺序

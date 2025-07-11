@@ -568,6 +568,19 @@ function showSpawnStatus(room: Room): void {
   });
 }
 
+(global as any).visual = {
+  // 关闭任务追踪显示
+  showTaskTrack: (show: boolean) => {
+    if (!Memory.visuals) {
+      return;
+    }
+    Memory.visuals.layerSettings['TaskTrackLayer'] = {
+      enabled: show
+    };
+  }
+}
+
+
 // 当将TS编译为JS并使用rollup打包时，错误消息中的行号和文件名会发生变化
 // 此实用工具使用源映射来获取原始TS源代码的行号和文件名
 export const loop = ErrorMapper.wrapLoop(() => {

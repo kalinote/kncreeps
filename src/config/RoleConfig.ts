@@ -43,7 +43,7 @@ export class RoleConfig {
     // 按房间控制器等级的角色数量限制
     BY_RCL: {
       1: {
-        [RoleConfig.ROLES.WORKER]: { min: 4, max: 12, priority: RoleConfig.PRIORITIES.HIGH },
+        [RoleConfig.ROLES.WORKER]: { min: 4, max: 16, priority: RoleConfig.PRIORITIES.HIGH },
         [RoleConfig.ROLES.TRANSPORTER]: { min: 2, max:8, priority: RoleConfig.PRIORITIES.MEDIUM },
         [RoleConfig.ROLES.SHOOTER]: { min: 0, max: 0, priority: RoleConfig.PRIORITIES.MINIMAL }
       },
