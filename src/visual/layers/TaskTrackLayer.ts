@@ -23,6 +23,7 @@ export class TaskTrackLayer extends VisualLayer {
    */
   public render(): void {
     if (!this.taskStateService) {
+      console.log('[TaskTrackLayer] TaskStateService not found');
       return;
     }
 

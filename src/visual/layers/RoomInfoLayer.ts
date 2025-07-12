@@ -23,7 +23,7 @@ export class RoomInfoLayer extends VisualLayer {
    */
   public render(): void {
     if (!this.roomManager) {
-      console.log('RoomInfoLayer: RoomManager not found');
+      console.log('[RoomInfoLayer] RoomManager not found');
       return;
     }
     const visualManager = this.serviceContainer.get<VisualManager>('visualManager');

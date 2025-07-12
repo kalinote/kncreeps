@@ -4,28 +4,49 @@
 export const VisualConfig = {
   // 样式定义
   STYLES: {
-    // ... (保留现有的样式)
+    // 房间信息
     ROOM_INFO_STYLE: {
       color: '#FFFFFF',
       font: 0.8,
       align: 'left'
     },
+    // 路径
     PATH_STYLE: {
       stroke: '#FF0000',
       strokeWidth: 0.1,
       opacity: 0.5
     },
+    // 建筑
     STRUCTURE_STYLE: {
       fill: 'transparent',
       stroke: '#00FFFF',
       strokeWidth: 0.1
     },
+    // 任务路径跟踪
     TASK_TRACK_STYLE: {
       stroke: '#8888FF',
       strokeWidth: 0.07,
       opacity: 0.7,
       font: 0.5,
       color: '#8888FF'
+    },
+    // 未建造的道路
+    ROAD_PLAN_STYLE: {
+      color: '#FFD700',
+      width: 0.1,
+      opacity: 0.7
+    },
+    // 建造中的道路
+    ROAD_UNDER_CONSTRUCTION_STYLE: {
+      color: '#00FF00',
+      width: 0.1,
+      opacity: 0.8
+    },
+    // 已完成的道路
+    ROAD_COMPLETED_STYLE: {
+      color: '#888888',
+      width: 0.05,
+      opacity: 0.3
     }
   },
 
@@ -79,7 +100,8 @@ export const VisualConfig = {
   LAYERS: {
     // 定义所有图层的名称常量
     ROOM_INFO: 'RoomInfoLayer',
-    TASK_TRACK: 'TaskTrackLayer'
+    TASK_TRACK: 'TaskTrackLayer',
+    ROAD_PLAN: 'RoadPlanLayer',
   },
 
   LAYER_DEFAULTS: {
@@ -91,6 +113,10 @@ export const VisualConfig = {
     ['TaskTrackLayer']: {
       enabled: true,
       priority: 20 // 优先级较低，在RoomInfo之后渲染
+    },
+    ['RoadPlanLayer']: {
+      enabled: true,
+      priority: 30 // 优先级较低，在任务跟踪之后渲染
     }
   }
 };

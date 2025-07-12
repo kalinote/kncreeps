@@ -72,7 +72,7 @@ export class TaskGeneratorService extends BaseService {
 
   private generateTransportTasks(room: Room): void {
     const droppedResources = room.find(FIND_DROPPED_RESOURCES, {
-      filter: r => r.amount > 50
+      filter: r => r.amount > 20
     });
 
     // 获取所有活跃的transport任务（包括PENDING、ASSIGNED、IN_PROGRESS）

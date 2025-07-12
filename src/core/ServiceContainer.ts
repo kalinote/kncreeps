@@ -15,8 +15,6 @@ import { VisualManager } from "../managers/VisualManager";
 import { LayerService } from '../services/LayerService';
 import { StatsService } from '../services/StatsService';
 import { SystemService } from '../services/SystemService';
-
-// Task Services
 import { TaskStateService } from "../services/TaskStateService";
 import { TaskGeneratorService } from "../services/TaskGeneratorService";
 import { TaskSchedulerService } from "../services/TaskSchedulerService";
@@ -24,6 +22,7 @@ import { CreepCoordinationService } from "../services/CreepCoordinationService";
 import { RoomService } from "../services/RoomService";
 import { TaskExecutionService } from "../services/TaskExecutionService";
 import { ConstructionManager } from "../managers/ConstructionManager";
+import { ConstructPlannerService } from "../services/ConstructPlannerService";
 
 const serviceConfig = {
   // 核心服务，需要最先初始化
@@ -57,6 +56,7 @@ const serviceConfig = {
     'taskExecutionService',
     'layerService',
     'statsService',
+    'constructPlannerService',
   ]
 };
 
@@ -122,6 +122,9 @@ export class ServiceContainer {
 
     // 注册建筑管理器
     this.registerSingleton('constructionManager', () => new ConstructionManager(this.get('eventBus'), this));
+    this.registerSingleton('constructPlannerService', () =>
+      new ConstructPlannerService(this.get('eventBus'), this)
+    );
 
     // 注册可视化管理器和服务
     this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus'), this));

@@ -6,6 +6,7 @@ import { RoomInfoLayer } from '../visual/layers/RoomInfoLayer';
 import { TaskTrackLayer } from '../visual/layers/TaskTrackLayer';
 import { VisualConfig } from '../config/VisualConfig';
 import { EventConfig } from '../config/EventConfig';
+import { RoadPlanLayer } from '../visual/layers/RoadPlanLayer';
 
 /**
  * 图层服务 - 负责管理所有可视化图层的生命周期和状态
@@ -49,6 +50,7 @@ export class LayerService extends BaseService {
   private initializeLayers(): void {
     this.registerLayer(new RoomInfoLayer(this.eventBus, this.serviceContainer));
     this.registerLayer(new TaskTrackLayer(this.eventBus, this.serviceContainer));
+    this.registerLayer(new RoadPlanLayer(this.eventBus, this.serviceContainer));
   }
 
   /**
@@ -79,7 +81,7 @@ export class LayerService extends BaseService {
       try {
         layer.render();
       } catch (error: any) {
-        console.log(`Error rendering layer ${layer.getName()}: ${error.stack || error}`);
+        console.log(`[LayerService] 图层渲染失败: ${layer.getName()}: ${error.stack || error}`);
       }
     }
   }

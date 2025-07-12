@@ -20,6 +20,13 @@ export class EventConfig {
     CONSTRUCTION_COMPLETED: 'construction.completed',   // 建筑完成
     CONSTRUCTION_RESOURCE_DEPLETED: 'construction.resource.depleted', // 建筑资源耗尽
 
+    // 建筑规划相关事件
+    CONSTRUCTION_PLAN_CREATED: 'construction.plan.created', // 建筑规划创建
+    CONSTRUCTION_PLAN_UPDATED: 'construction.plan.updated', // 建筑规划更新
+    CONSTRUCTION_PLAN_FAILED: 'construction.plan.failed', // 建筑规划失败
+    CONSTRUCTION_PLAN_CANCELLED: 'construction.plan.cancelled', // 建筑规划取消
+    CONSTRUCTION_PLAN_COMPLETED: 'construction.plan.completed', // 建筑规划完成
+
     // 战斗相关事件
     COMBAT_ENEMY_SPOTTED: 'combat.enemy.spotted',                     // 敌人出现
     COMBAT_STARTED: 'combat.started',                   // 战斗开始

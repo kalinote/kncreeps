@@ -4,7 +4,9 @@ import { ServiceContainer } from "../core/ServiceContainer";
 import { GameConfig } from "../config/GameConfig";
 import { PlannerRegistry } from "../construct-planner/PlannerRegistry";
 import { EventStrategyRegistry } from "../construct-planner/EventStrategyRegistry";
-import { RoomLayout, StructurePosition } from "types";
+import { RoomLayout } from "types";
+import { ConstructPlannerService } from "../services/ConstructPlannerService";
+import { EventConfig } from "../config/EventConfig";
 
 /**
  * 建筑管理器
@@ -13,11 +15,13 @@ import { RoomLayout, StructurePosition } from "types";
 export class ConstructionManager extends BaseManager {
   private plannerRegistry: PlannerRegistry;
   private strategyRegistry: EventStrategyRegistry;
+  private constructPlannerService: ConstructPlannerService;
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
     this.plannerRegistry = new PlannerRegistry();
     this.strategyRegistry = new EventStrategyRegistry();
+    this.constructPlannerService = serviceContainer.get('constructPlannerService') as ConstructPlannerService;
 
     // 修复运行时错误：直接在此处设置事件监听，而不是在被父类构造函数过早调用的重写方法中
     for (const eventType of this.strategyRegistry.getMonitoredEvents()) {
@@ -27,7 +31,15 @@ export class ConstructionManager extends BaseManager {
     // this.on(GameConfig.EVENTS.RCL_LEVEL_CHANGED, (data: any) => this.handleRclChange(data));
   }
 
-  // 此处不再需要重写 setupEventListeners 方法
+  /**
+   * 设置事件监听
+   */
+  protected setupEventListeners(): void {
+    // 监听建造完成事件
+    this.on(EventConfig.EVENTS.CONSTRUCTION_COMPLETED, (data: any) => {
+      this.handleConstructionCompleted(data);
+    });
+  }
 
   private initializeMemory(): void {
     if (!Memory.constructPlanner) {
@@ -51,6 +63,8 @@ export class ConstructionManager extends BaseManager {
           this.runPlannerStateMachine(room);
           // 2. 运行建造决策逻辑
           this.runBuilder(room);
+          // 3. 更新建造状态并触发事件
+          this.constructPlannerService.updateConstructionStatus();
         }
       }
     }, 'ConstructionManager.update');
@@ -148,7 +162,24 @@ export class ConstructionManager extends BaseManager {
     }
 
     // 决策二：如果紧急建造无事可做（或没有紧急情况），则执行常规建造
-    this.tryBuild(room, layout, GameConfig.CONSTRUCTION.BUILD_PRIORITY_ORDER);
+    const buildStarted = this.tryBuild(room, layout, GameConfig.CONSTRUCTION.BUILD_PRIORITY_ORDER);
+
+    // 如果开始建造，触发建造开始事件
+    if (buildStarted) {
+      // 检查具体开始建造的是什么类型的建筑
+      const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+      if (constructionSites.length > 0) {
+        // 获取最新创建的工地
+        const latestSite = constructionSites[constructionSites.length - 1];
+
+        this.emit(EventConfig.EVENTS.CONSTRUCTION_PLAN_UPDATED, {
+          roomName: room.name,
+          structureType: latestSite.structureType,
+          status: 'construction_started',
+          position: { x: latestSite.pos.x, y: latestSite.pos.y }
+        });
+      }
+    }
   }
 
   /**
@@ -175,6 +206,15 @@ export class ConstructionManager extends BaseManager {
           const result = pos.createConstructionSite(structureType);
           if (result === OK) {
             console.log(`[Builder] 在 [${pos.x},${pos.y}] 创建 ${structureType} 工地。`);
+
+            // 触发建造开始事件
+            this.emit(EventConfig.EVENTS.CONSTRUCTION_PLAN_UPDATED, {
+              roomName: room.name,
+              structureType: structureType,
+              status: 'construction_started',
+              position: { x: pos.x, y: pos.y }
+            });
+
             return true;
           }
         }
@@ -205,28 +245,45 @@ export class ConstructionManager extends BaseManager {
 
     // 如果需要，立即触发一次快速规划
     if (strategy.triggerPlanner) {
-       console.log(`[Emergency] 为 ${roomName} 触发快速防御规划...`);
-       const layout = Memory.constructPlanner!.layouts[roomName];
-       // 确保布局已初始化
-       if (!layout) {
-         console.log(`[Emergency] 无法执行快速规划：房间 ${roomName} 尚未有基础布局。`);
-         return;
-       }
+      console.log(`[Emergency] 为 ${roomName} 触发快速防御规划...`);
+      const layout = Memory.constructPlanner!.layouts[roomName];
+      // 确保布局已初始化
+      if (!layout) {
+        console.log(`[Emergency] 无法执行快速规划：房间 ${roomName} 尚未有基础布局。`);
+        return;
+      }
 
-       for (const plannerName of strategy.priorityPlanners) {
-         const planner = this.plannerRegistry.getPlanner(plannerName);
-         if (planner) {
-           console.log(`[Emergency] 正在规划 [${plannerName}]...`);
-           const positions = planner.plan(room);
-           // 更新或覆盖布局中的相应建筑部分
-           layout.buildings[planner.name] = positions.map(p => ({
-             pos: { x: p.x, y: p.y, roomName: room.name }
-           }));
-           console.log(`[Emergency] 规划了 ${positions.length} 个 [${plannerName}]。`);
-         }
-       }
-       // 更新布局的时间戳
-       layout.lastUpdated = Game.time;
+      for (const plannerName of strategy.priorityPlanners) {
+        const planner = this.plannerRegistry.getPlanner(plannerName);
+        if (planner) {
+          console.log(`[Emergency] 正在规划 [${plannerName}]...`);
+          const positions = planner.plan(room);
+          // 更新或覆盖布局中的相应建筑部分
+          layout.buildings[planner.name] = positions.map(p => ({
+            pos: { x: p.x, y: p.y, roomName: room.name }
+          }));
+          console.log(`[Emergency] 规划了 ${positions.length} 个 [${plannerName}]。`);
+        }
+      }
+      // 更新布局的时间戳
+      layout.lastUpdated = Game.time;
+    }
+  }
+
+  /**
+   * 处理建造完成事件
+   */
+  private handleConstructionCompleted(data: any): void {
+    const { roomName, structureType, position } = data;
+
+    // 如果是道路建造完成，触发相应事件
+    if (structureType === STRUCTURE_ROAD) {
+      this.emit(EventConfig.EVENTS.CONSTRUCTION_PLAN_UPDATED, {
+        roomName,
+        structureType,
+        status: 'construction_progress',
+        position
+      });
     }
   }
 }
