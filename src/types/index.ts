@@ -155,6 +155,12 @@ export interface VisualsMemory {
   };
 }
 
+// 可视化图层类型
+export enum LayerType {
+  DATA = 'data', // 在屏幕固定位置显示文本信息
+  MAP = 'map'    // 在游戏世界地图上绘制图形
+}
+
 // 建筑状态枚举
 export enum ConstructionStatus {
   PLANNED = 'planned',           // 已规划但未开始建造

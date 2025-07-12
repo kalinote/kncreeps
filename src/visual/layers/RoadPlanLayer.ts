@@ -1,15 +1,16 @@
-import { VisualLayer } from '../VisualLayer';
+import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
 import { ServiceContainer } from '../../core/ServiceContainer';
 import { EventBus } from '../../core/EventBus';
 import { ConstructPlannerService } from '../../services/ConstructPlannerService';
-import { ConstructionStatus } from '../../types';
+import { ConstructionStatus, LayerType } from '../../types';
 
 /**
  * 道路规划图层
  */
-export class RoadPlanLayer extends VisualLayer {
-  protected name: string = VisualConfig.LAYERS.ROAD_PLAN;
+export class RoadPlanLayer extends BaseLayer {
+  protected name: string = "RoadPlanLayer";
+  public layerType: LayerType = LayerType.MAP;
   private constructPlannerService: ConstructPlannerService;
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
@@ -21,7 +22,7 @@ export class RoadPlanLayer extends VisualLayer {
   /**
    * 渲染道路规划
    */
-  public render(): void {
+  public render(room: Room): void {
     if (!this.constructPlannerService) {
       console.log('[RoadPlanLayer] ConstructPlannerService not found');
       return;
@@ -50,7 +51,7 @@ export class RoadPlanLayer extends VisualLayer {
     }
 
     // 显示统计信息
-    this.renderStatistics(room, planInfo);
+    // this.renderStatistics(room, planInfo);
   }
 
   /**
@@ -76,16 +77,15 @@ export class RoadPlanLayer extends VisualLayer {
         style = VisualConfig.STYLES.ROAD_PLAN_STYLE;
     }
 
+    // 使用RoomVisual进行绘制
+    const visual = new RoomVisual(room.name);
+
     // 绘制道路路径
     for (let i = 0; i < segment.positions.length - 1; i++) {
       const current = segment.positions[i];
       const next = segment.positions[i + 1];
 
-      Game.map.visual.line(
-        new RoomPosition(current.x, current.y, room.name),
-        new RoomPosition(next.x, next.y, room.name),
-        style
-      );
+      visual.line(current.x, current.y, next.x, next.y, style);
     }
 
     // 在起点和终点添加标记
@@ -94,21 +94,16 @@ export class RoadPlanLayer extends VisualLayer {
       const end = segment.positions[segment.positions.length - 1];
 
       // 起点标记（Spawn）
-      Game.map.visual.circle(
-        new RoomPosition(start.x, start.y, room.name),
-        { ...style, fill: 'transparent', radius: 0.3 }
-      );
+      visual.circle(start.x, start.y, { ...style, fill: 'transparent', radius: 0.3 });
 
       // 终点标记（Source/Controller）
-      Game.map.visual.circle(
-        new RoomPosition(end.x, end.y, room.name),
-        { ...style, fill: 'transparent', radius: 0.3 }
-      );
+      visual.circle(end.x, end.y, { ...style, fill: 'transparent', radius: 0.3 });
     }
   }
 
   /**
    * 渲染统计信息
+   * 暂时不显示，后续放到一个统一的统计图层中
    */
   private renderStatistics(room: Room, planInfo: any): void {
     const status = this.constructPlannerService.getRoadConstructionStatus(room);
@@ -117,9 +112,10 @@ export class RoadPlanLayer extends VisualLayer {
     const text = `Roads: ${status.completedPositions}/${status.totalPositions}`;
     const color = status.completedPositions === status.totalPositions ? '#00FF00' : '#FFD700';
 
-    Game.map.visual.text(text, new RoomPosition(2, 4, room.name), {
+    const visual = new RoomVisual(room.name);
+    visual.text(text, 2, 4, {
       color: color,
-      fontSize: 0.6,
+      font: 0.6,
       align: 'left'
     });
   }

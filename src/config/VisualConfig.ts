@@ -8,7 +8,7 @@ export const VisualConfig = {
     ROOM_INFO_STYLE: {
       color: '#FFFFFF',
       font: 0.8,
-      align: 'left'
+      align: 'left' as 'left' | 'center' | 'right',
     },
     // 路径
     PATH_STYLE: {
@@ -97,15 +97,12 @@ export const VisualConfig = {
   // 可视化更新频率
   UPDATE_INTERVAL: 0,
 
-  LAYERS: {
-    // 定义所有图层的名称常量
-    ROOM_INFO: 'RoomInfoLayer',
-    TASK_TRACK: 'TaskTrackLayer',
-    ROAD_PLAN: 'RoadPlanLayer',
-  },
-
   LAYER_DEFAULTS: {
     // 定义每个图层的默认设置
+    ['GlobalInfoLayer']: {
+      enabled: true,
+      priority: 5
+    },
     ['RoomInfoLayer']: {
       enabled: true, // 默认是否启用
       priority: 10 // 渲染优先级，数字越小越先渲染
@@ -118,5 +115,38 @@ export const VisualConfig = {
       enabled: true,
       priority: 30 // 优先级较低，在任务跟踪之后渲染
     }
+  }
+};
+
+
+/**
+ * 屏幕锚点定义
+ * 定义了数据类图层可以停靠的屏幕位置。
+ */
+export const ANCHORS = {
+  TOP_LEFT: { x: 0, y: 0 },
+  TOP_CENTER: { x: 0.5, y: 0 },
+  TOP_RIGHT: { x: 1, y: 0 },
+  MIDDLE_LEFT: { x: 0, y: 0.5 },
+  MIDDLE_CENTER: { x: 0.5, y: 0.5 },
+  MIDDLE_RIGHT: { x: 1, y: 0.5 },
+  BOTTOM_LEFT: { x: 0, y: 1 },
+  BOTTOM_CENTER: { x: 0.5, y: 1 },
+  BOTTOM_RIGHT: { x: 1, y: 1 }
+};
+
+/**
+ * 数据类图层的布局配置
+ */
+export const DATA_LAYER_LAYOUTS: { [layerName: string]: any } = {
+  GlobalInfoLayer: {
+    anchor: ANCHORS.TOP_LEFT,
+    order: 1,
+    padding: { x: 0.5, y: 0.5 }
+  },
+  RoomInfoLayer: {
+    anchor: ANCHORS.TOP_LEFT,
+    order: 2,
+    padding: { x: 0.5, y: 0.5 }
   }
 };

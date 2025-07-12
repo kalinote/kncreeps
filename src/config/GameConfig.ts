@@ -35,7 +35,6 @@ export class GameConfig {
   public static readonly STRUCTURE_CATEGORIES = EnergyConfig.STRUCTURE_CATEGORIES;
 
   // 导出可视化配置
-  public static readonly VISUAL = VisualConfig.LAYERS;
   public static readonly VISUAL_PERFORMANCE = VisualConfig.PERFORMANCE;
 
   // 导出建筑规划配置

@@ -296,6 +296,10 @@ export class RoomService extends BaseService {
     return Array.from(this.rooms.keys());
   }
 
+  public getCreepsInRoom(roomName: string): Creep[] {
+    return _.filter(Game.creeps, c => c.pos.roomName === roomName);
+  }
+
   public hasEnemyThreat(roomName: string): boolean {
     return this.threatStates.get(roomName)?.hasThreat || false;
   }

@@ -1,57 +1,51 @@
-import { RoomManager } from '../../managers/RoomManager';
-import { VisualLayer } from '../VisualLayer';
+import { LayerType } from '../../types';
+import { RoomService } from '../../services/RoomService';
+import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
-import { ServiceContainer } from '../../core/ServiceContainer';
-import { EventBus } from '../../core/EventBus';
-import { VisualManager } from '../../managers/VisualManager';
 
 /**
  * 房间信息图层
+ * 在左上角显示当前房间的核心信息。
  */
-export class RoomInfoLayer extends VisualLayer {
-  protected name: string = VisualConfig.LAYERS.ROOM_INFO;
-  private roomManager: RoomManager;
+export class RoomInfoLayer extends BaseLayer {
+  protected name = 'RoomInfoLayer';
+  public layerType: LayerType = LayerType.DATA;
+  private roomService: RoomService;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+  constructor(eventBus: any, serviceContainer: any) {
     super(eventBus, serviceContainer);
-    this.roomManager = this.serviceContainer.get<RoomManager>('roomManager');
-    this.priority = VisualConfig.LAYER_DEFAULTS.RoomInfoLayer.priority;
+    this.roomService = serviceContainer.get('roomService');
+  }
+
+  /**
+   * 根据要显示的内容，计算此图层需要的高度
+   */
+  public calculateDimensions(visual: RoomVisual): { width: number; height: number } {
+    // 假设每行文本高度为1，可以根据字体大小调整
+    const lineHeight = 1;
+    const lineCount = 4; // 我们将显示4行信息
+    return { width: 10, height: lineCount * lineHeight }; // 宽度可以给一个大概值
   }
 
   /**
    * 渲染房间信息
    */
-  public render(): void {
-    if (!this.roomManager) {
-      console.log('[RoomInfoLayer] RoomManager not found');
-      return;
-    }
-    const visualManager = this.serviceContainer.get<VisualManager>('visualManager');
+  public render(room: Room, offset?: { x: number; y: number }): void {
+    if (!offset) return;
 
-    const ownedRooms = this.roomManager.getMyRoomNames();
-    if (ownedRooms.length === 0) {
-      return;
-    }
+    const { x, y } = offset;
+    let line = 0;
 
-    // 在顶部显示RoomManager的更新周期
-    const { nextUpdateIn, updateInterval } = this.roomManager.getUpdateCycleInfo();
-    const updateText = `RM Scan: ${nextUpdateIn}/${updateInterval}`;
-    Game.map.visual.text(updateText, new RoomPosition(2, 1, ownedRooms[0]), {
-      color: VisualConfig.STYLES.ROOM_INFO_STYLE.color,
-      fontSize: 0.7
-    });
+    // 获取房间信息
+    const rcl = room.controller ? room.controller.level : 'N/A';
+    const energy = `${room.energyAvailable} / ${room.energyCapacityAvailable}`;
+    const myCreeps = this.roomService.getCreepsInRoom(room.name).length;
 
-    // 渲染每个房间的信息
-    ownedRooms.forEach((roomName: string, index: number) => {
-      const room = this.roomManager.getRoom(roomName);
-      if (room && room.controller) {
-        const text = `[${roomName}] RCL: ${room.controller.level} | Energy: ${room.energyAvailable}/${room.energyCapacityAvailable}`;
-        // 使用MapVisual进行绘制，y坐标下移以避免与周期显示重叠
-        Game.map.visual.text(text, new RoomPosition(2, 2.2 + index * 1.2, roomName), {
-          ...VisualConfig.STYLES.ROOM_INFO_STYLE,
-          align: 'left'
-        });
-      }
-    });
+    // 使用RoomVisual进行绘制
+    const visual = new RoomVisual(room.name);
+    visual.text(`房间: ${room.name}`, x, y + (line++ * 1.2), VisualConfig.STYLES.ROOM_INFO_STYLE);
+    visual.text(`RCL: ${rcl}`, x, y + (line++ * 1.2), VisualConfig.STYLES.ROOM_INFO_STYLE);
+    visual.text(`能量: ${energy}`, x, y + (line++ * 1.2), VisualConfig.STYLES.ROOM_INFO_STYLE);
+    visual.text(`Creeps: ${myCreeps}`, x, y + (line++ * 1.2), VisualConfig.STYLES.ROOM_INFO_STYLE);
   }
 }

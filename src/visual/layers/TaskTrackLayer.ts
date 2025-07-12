@@ -1,15 +1,16 @@
-import { VisualLayer } from '../VisualLayer';
+import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
 import { ServiceContainer } from '../../core/ServiceContainer';
 import { EventBus } from '../../core/EventBus';
-import { Task, TaskType } from '../../types';
+import { LayerType, Task, TaskType } from '../../types';
 import { TaskStateService } from '../../services/TaskStateService';
 
 /**
  * 任务追踪图层
  */
-export class TaskTrackLayer extends VisualLayer {
-  protected name: string = VisualConfig.LAYERS.TASK_TRACK;
+export class TaskTrackLayer extends BaseLayer {
+  protected name: string = "TaskTrackLayer";
+  public layerType: LayerType = LayerType.MAP;
   private taskStateService: TaskStateService;
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
@@ -21,7 +22,7 @@ export class TaskTrackLayer extends VisualLayer {
   /**
    * 渲染任务信息
    */
-  public render(): void {
+  public render(room: Room): void {
     if (!this.taskStateService) {
       console.log('[TaskTrackLayer] TaskStateService not found');
       return;
@@ -37,14 +38,17 @@ export class TaskTrackLayer extends VisualLayer {
 
         const taskInfo = this.getTaskInfo(task);
         if (taskInfo.targetPos) {
+          // 使用RoomVisual进行绘制
+          const visual = new RoomVisual(creep.pos.roomName);
+
           // 绘制从 creep 到目标的连线
-          Game.map.visual.line(creep.pos, taskInfo.targetPos, {
+          visual.line(creep.pos.x, creep.pos.y, taskInfo.targetPos.x, taskInfo.targetPos.y, {
             ...taskInfo.style,
             lineStyle: 'dashed'
           });
 
           // 在目标位置显示任务类型
-          Game.map.visual.text(task.type.substring(0, 2).toUpperCase(), taskInfo.targetPos, {
+          visual.text(task.type.substring(0, 2).toUpperCase(), taskInfo.targetPos.x, taskInfo.targetPos.y, {
             ...taskInfo.style
           });
         }
