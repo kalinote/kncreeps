@@ -2,6 +2,7 @@ import { BaseService } from "./BaseService";
 import { TaskStateService } from "./TaskStateService";
 import { HarvestTask, TransportTask, UpgradeTask, BuildTask, AttackTask, TaskPriority, TaskType } from "../types";
 import { SourceAnalyzer } from "../utils/SourceAnalyzer";
+import { TransportService } from "./TransportService";
 
 /**
  * 任务生成器服务 - 根据房间状态自动创建任务
@@ -9,6 +10,10 @@ import { SourceAnalyzer } from "../utils/SourceAnalyzer";
 export class TaskGeneratorService extends BaseService {
   private get taskStateService(): TaskStateService {
     return this.serviceContainer.get('taskStateService');
+  }
+
+  private get transportService(): TransportService {
+    return this.serviceContainer.get('transportService');
   }
 
   /**
@@ -71,100 +76,31 @@ export class TaskGeneratorService extends BaseService {
   }
 
   private generateTransportTasks(room: Room): void {
-    // 搜索所有掉落资源，数量大于20的
-    const droppedResources = room.find(FIND_DROPPED_RESOURCES, {
-      filter: r => r.amount > 20
-    });
+    // 从TransportService获取经过智能匹配的运输任务“请求”
+    const transportTaskRequests = this.transportService.generateTransportTasks(room);
 
-    // 获取所有活跃的transport任务（包括PENDING、ASSIGNED、IN_PROGRESS）
+    if (transportTaskRequests.length === 0) {
+      return;
+    }
+
+    // 获取当前已存在的运输任务，用于防止重复创建
     const existingTransportTasks = this.taskStateService.getActiveTasks()
-      .filter(task => task.type === TaskType.TRANSPORT && task.roomName === room.name);
+      .filter(task => task.type === TaskType.TRANSPORT && task.roomName === room.name) as TransportTask[];
 
-    for (const resource of droppedResources) {
-      // 检查是否已经有针对这个具体资源的活跃任务
-      const hasActiveTask = existingTransportTasks.some(task => {
-        const transportTask = task as TransportTask;
-        return transportTask.params.sourcePos &&
-          transportTask.params.sourcePos.x === resource.pos.x &&
-          transportTask.params.sourcePos.y === resource.pos.y &&
-          transportTask.params.resourceType === resource.resourceType;
-      });
+    for (const taskRequest of transportTaskRequests) {
+      // 检查是否已经有针对这个特定供需对的任务
+      const hasExistingTask = existingTransportTasks.some(existing =>
+        existing.params.sourceId === taskRequest.params.sourceId &&
+        existing.params.targetId === taskRequest.params.targetId &&
+        existing.params.resourceType === taskRequest.params.resourceType
+      );
 
-      if (!hasActiveTask) {
-        const storageTarget = this.findStorageTarget(room, resource.resourceType);
-
-        if (storageTarget) {
-          this.taskStateService.createTask({
-            type: TaskType.TRANSPORT,
-            priority: TaskPriority.NORMAL,
-            roomName: room.name,
-            maxRetries: 3,
-            params: {
-              sourcePos: { x: resource.pos.x, y: resource.pos.y, roomName: room.name },
-              targetId: storageTarget.id,
-              resourceType: resource.resourceType,
-              amount: resource.amount
-            }
-          });
-        }
+      if (!hasExistingTask) {
+        // 使用从TransportService生成的信息来创建任务
+        this.taskStateService.createTask(taskRequest);
+        console.log(`[TaskGenerator] 创建运输任务: 从 ${taskRequest.params.sourceId || taskRequest.params.sourcePos} 到 ${taskRequest.params.targetId}，运输 ${taskRequest.params.amount} ${taskRequest.params.resourceType}`);
       }
     }
-  }
-
-  private findStorageTarget(room: Room, resourceType: ResourceConstant): Structure | null {
-    // 1. 优先寻找有空间的storage
-    const storages = room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_STORAGE &&
-        'store' in s && s.store && s.store.getFreeCapacity(resourceType) > 0
-    });
-    if (storages.length > 0) return storages[0];
-
-    // 2. 寻找有空间的container
-    const containers = room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_CONTAINER &&
-        'store' in s && s.store && s.store.getFreeCapacity(resourceType) > 0
-    });
-    if (containers.length > 0) return containers[0];
-
-    // 3. 如果是能量，寻找有空间的extension或spawn
-    if (resourceType === RESOURCE_ENERGY) {
-      const energyStructures = room.find(FIND_STRUCTURES, {
-        filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
-          'store' in s && s.store && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-      });
-      if (energyStructures.length > 0) return energyStructures[0];
-    }
-
-    // 4. 备用策略：如果没有找到理想的存储目标，寻找任何可能的存储建筑
-    // 这样可以确保transport任务能够被创建，即使存储建筑已满
-
-    // 4.1 尝试任何storage（即使满了）
-    const anyStorages = room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_STORAGE && 'store' in s
-    });
-    if (anyStorages.length > 0) return anyStorages[0];
-
-    // 4.2 尝试任何container（即使满了）
-    const anyContainers = room.find(FIND_STRUCTURES, {
-      filter: s => s.structureType === STRUCTURE_CONTAINER && 'store' in s
-    });
-    if (anyContainers.length > 0) return anyContainers[0];
-
-    // 4.3 如果是能量，尝试任何能量建筑（即使满了）
-    if (resourceType === RESOURCE_ENERGY) {
-      const anyEnergyStructures = room.find(FIND_STRUCTURES, {
-        filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
-          'store' in s
-      });
-      if (anyEnergyStructures.length > 0) return anyEnergyStructures[0];
-    }
-
-    // 5. 最后的备用策略：如果连存储建筑都没有，至少要创建任务让creep清理资源
-    // 返回spawn作为默认目标，让TransportTaskExecutor处理具体的放置逻辑
-    const spawns = room.find(FIND_MY_SPAWNS);
-    if (spawns.length > 0) return spawns[0];
-
-    return null;
   }
 
   private generateUpgradeTasks(room: Room): void {

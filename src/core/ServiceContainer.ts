@@ -24,6 +24,8 @@ import { TaskExecutionService } from "../services/TaskExecutionService";
 import { ConstructionManager } from "../managers/ConstructionManager";
 import { ConstructPlannerService } from "../services/ConstructPlannerService";
 import { LayerManager } from "../managers/LayerManager";
+import { LogisticsManager } from "../managers/LogisticsManager";
+import { TransportService } from "../services/TransportService";
 
 const serviceConfig = {
   // 核心服务，需要最先初始化
@@ -37,12 +39,13 @@ const serviceConfig = {
   systemManagers: ['systemManager', 'statsManager', 'coordinationManager'],
   // 业务管理器，将被注册到 ManagerRegistry
   managers: [
-    'taskManager',
+    'logisticsManager', // 感知
     'roomManager',
     'creepManager',
-    'taskExecutionManager',
-    'visualManager',
     'constructionManager',
+    'taskManager', // 决策
+    'taskExecutionManager', // 执行
+    'visualManager',
     'layerManager'
   ],
   // 业务服务
@@ -127,6 +130,10 @@ export class ServiceContainer {
     this.registerSingleton('constructPlannerService', () =>
       new ConstructPlannerService(this.get('eventBus'), this)
     );
+
+    // 注册后勤系统
+    this.registerSingleton('logisticsManager', () => new LogisticsManager(this.get('eventBus'), this));
+    this.registerSingleton('transportService', () => new TransportService(this.get('eventBus'), this));
 
     // 注册可视化管理器和服务
     this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus'), this));

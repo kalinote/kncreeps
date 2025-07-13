@@ -1,4 +1,5 @@
 import { BasePlanner } from "./planners/BasePlanner";
+import { ContainerPlanner } from "./planners/ContainerPlanner";
 import { RoadPlanner } from "./planners/RoadPlanner";
 
 /**
@@ -16,8 +17,8 @@ export class PlannerRegistry {
    * 注册所有的规划器实例
    */
   private registerPlanners(): void {
-    // 对于最小实现，我们只注册道路规划器
     this.register(new RoadPlanner());
+    this.register(new ContainerPlanner());
   }
 
   /**

@@ -227,8 +227,8 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
   }
 
   private findAndUseNearbyStorage(creep: Creep): TaskResult {
-    // 搜索5x5范围内的存储设施
-    const storageStructures = creep.pos.findInRange(FIND_STRUCTURES, 2, {
+    // 搜索7x7范围内的存储设施
+    const storageStructures = creep.pos.findInRange(FIND_STRUCTURES, 3, {
       filter: (structure) => {
         // 检查是否是存储设施且有空间
         if (!('store' in structure)) return false;

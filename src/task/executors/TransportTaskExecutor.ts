@@ -1,5 +1,6 @@
 import { BaseTaskExecutor } from "./BaseTaskExecutor";
 import { Task, TaskResult, CapabilityRequirement, TaskType, TransportTask } from "../../types";
+import { EnergyService } from "../../services/EnergyService";
 
 /**
  * 运输任务执行器
@@ -26,6 +27,19 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
 
   private executeTransport(creep: Creep, task: TransportTask): TaskResult {
     const resourceType = task.params.resourceType;
+
+    // 添加调试信息
+    if (Game.time % 10 === 0) { // 每10个tick输出一次，避免日志过多
+      console.log(`[${creep.name}] Transport任务状态: 资源类型=${resourceType}, 携带量=${creep.store.getUsedCapacity(resourceType)}/${creep.store.getCapacity()}`);
+      if (task.params.sourceId) {
+        const source = Game.getObjectById(task.params.sourceId as Id<Structure>);
+        if (source) {
+          const storeStructure = source as any;
+          const sourceAmount = storeStructure.store ? storeStructure.store.getUsedCapacity(resourceType) : 0;
+          console.log(`[${creep.name}] 源建筑: ${source.structureType} ${source.id}, 资源量: ${sourceAmount}`);
+        }
+      }
+    }
 
     // 如果creep即将死亡，完成任务让其他creep接管
     if (creep.ticksToLive && creep.ticksToLive < 50) {
@@ -72,10 +86,19 @@ export class TransportTaskExecutor extends BaseTaskExecutor {
       if ('store' in source) {
         const storeStructure = source as any;
         if (storeStructure.store && storeStructure.store.getUsedCapacity(params.resourceType) > 0) {
-          // 使用安全取用方法，确保spawn保留足够能量
-          const withdrawResult = params.resourceType === RESOURCE_ENERGY ?
-            this.withdrawEnergySafely(creep, source, params.amount) :
-            creep.withdraw(source, params.resourceType, params.amount);
+          // 根据建筑类型选择不同的取用策略
+          let withdrawResult: ScreepsReturnCode;
+
+          if (source.structureType === STRUCTURE_SPAWN && params.resourceType === RESOURCE_ENERGY) {
+            // 对于spawn的能量，使用安全取用方法
+            withdrawResult = this.withdrawEnergySafely(creep, source, params.amount);
+          } else if (params.resourceType === RESOURCE_ENERGY) {
+            // 对于其他建筑的能量，使用EnergyService的通用处理逻辑
+            withdrawResult = EnergyService.handleEnergyCollection(creep, source);
+          } else {
+            // 对于非能量资源，直接取用
+            withdrawResult = creep.withdraw(source, params.resourceType, params.amount);
+          }
 
           switch (withdrawResult) {
             case OK:

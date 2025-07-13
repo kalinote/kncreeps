@@ -222,6 +222,50 @@ export interface RoadConstructionStatus {
   completedPositions: number;
 }
 
+// ==================== 后勤系统类型定义 ====================
+
+// 提供点类型
+export type ProviderType = 'container' | 'storage' | 'terminal' | 'link' | 'droppedResource' | 'tombstone';
+
+// 消耗点类型
+export type ConsumerType = 'container' | 'storage' | 'terminal' | 'link' | 'spawn' | 'extension' | 'tower' | 'lab' | 'nuker' | 'powerSpawn';
+
+// 提供点信息接口
+export interface ProviderInfo {
+  id: string;
+  type: ProviderType;
+  pos: { x: number; y: number; roomName: string };
+  resourceType: ResourceConstant;
+  // 动态属性，由TransportService在运行时计算和更新
+  amount?: number; // 当前可提供的资源数量
+}
+
+// 消耗点信息接口
+export interface ConsumerInfo {
+  id: string;
+  type: ConsumerType;
+  pos: { x: number; y: number; roomName: string };
+  resourceType: ResourceConstant;
+  // 动态属性，由TransportService在运行时计算和更新
+  needs?: number; // 当前需要的资源数量
+  priority?: number; // 动态计算的优先级
+}
+
+// 运输网络内存接口
+export interface TransportNetworkMemory {
+  providers: { [id: string]: ProviderInfo };
+  consumers: { [id: string]: ConsumerInfo };
+  lastUpdated: number;
+}
+
+// 后勤系统内存接口
+export interface LogisticsMemory {
+  transportNetwork?: TransportNetworkMemory;
+  // 未来可扩展其他后勤子系统
+  // market?: MarketMemory;
+  // labManagement?: LabManagementMemory;
+}
+
 // 全局类型扩展
 declare global {
   interface Memory {
@@ -278,6 +322,7 @@ declare global {
     creepCounts: { [role: string]: number };
     threatLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
     lastUpdated: number;
+    logistics?: LogisticsMemory;
   }
 
   interface CreepProductionMemory {

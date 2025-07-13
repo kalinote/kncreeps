@@ -199,185 +199,67 @@ console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
         console.log(`      总能量: ${totalEnergy}/${totalCapacity}`);
       }
 
-      // 模拟findStorageTarget的行为
-      console.log(`  🎯 存储目标分析:`);
-      for (const resource of droppedResources) {
-        console.log(`    资源 ${resource.resourceType} 的存储目标:`);
+      // 2. 检查transport任务状态
+      console.log(`  🚚 Transport任务状态:`);
+      const transportCreeps = room.find(FIND_MY_CREEPS, {
+        filter: c => c.memory.role === 'transporter'
+      });
+      console.log(`    Transporter数量: ${transportCreeps.length}`);
 
-        // 模拟findStorageTarget逻辑
-        const resourceType = resource.resourceType;
-        let targetFound = false;
+      transportCreeps.forEach((creep, index) => {
+        const taskId = creep.memory.targetId;
+        console.log(`    ${index + 1}. ${creep.name}:`);
+        console.log(`      状态: ${creep.memory.state || 'unknown'}`);
+        console.log(`      任务: ${taskId || '无'}`);
+        console.log(`      携带: ${creep.store.getUsedCapacity()}/${creep.store.getCapacity()}`);
 
-        // 检查有空间的storage
-        const availableStorages = room.find(FIND_STRUCTURES, {
-          filter: s => s.structureType === STRUCTURE_STORAGE &&
-            'store' in s && (s as any).store && (s as any).store.getFreeCapacity(resourceType) > 0
-        });
-        if (availableStorages.length > 0) {
-          console.log(`      ✅ 找到有空间的storage: ${availableStorages[0].id}`);
-          targetFound = true;
-        }
-
-        // 检查有空间的container
-        if (!targetFound) {
-          const availableContainers = room.find(FIND_STRUCTURES, {
-            filter: s => s.structureType === STRUCTURE_CONTAINER &&
-              'store' in s && (s as any).store && (s as any).store.getFreeCapacity(resourceType) > 0
-          });
-          if (availableContainers.length > 0) {
-            console.log(`      ✅ 找到有空间的container: ${availableContainers[0].id}`);
-            targetFound = true;
-          }
-        }
-
-        // 检查能量建筑（仅限能量资源）
-        if (!targetFound && resourceType === RESOURCE_ENERGY) {
-          const availableEnergyStructures = room.find(FIND_STRUCTURES, {
-            filter: s => (s.structureType === STRUCTURE_EXTENSION || s.structureType === STRUCTURE_SPAWN) &&
-              'store' in s && (s as any).store && (s as any).store.getFreeCapacity(RESOURCE_ENERGY) > 0
-          });
-          if (availableEnergyStructures.length > 0) {
-            console.log(`      ✅ 找到有空间的能量建筑: ${availableEnergyStructures[0].id}`);
-            targetFound = true;
-          }
-        }
-
-        // 检查备用策略
-        if (!targetFound) {
-          console.log(`      ⚠️ 没有找到理想存储目标，使用备用策略`);
-          if (storages.length > 0) {
-            console.log(`      📦 备用目标: Storage (可能已满)`);
-          } else if (containers.length > 0) {
-            console.log(`      📦 备用目标: Container (可能已满)`);
-          } else if (resourceType === RESOURCE_ENERGY && energyStructures.length > 0) {
-            console.log(`      📦 备用目标: 能量建筑 (可能已满)`);
-          } else {
-            const spawns = room.find(FIND_MY_SPAWNS);
-            if (spawns.length > 0) {
-              console.log(`      📦 最后备用目标: Spawn`);
-            } else {
-              console.log(`      ❌ 没有找到任何存储目标`);
+        if (taskId) {
+          // 尝试获取任务详情
+          const serviceContainer = (global as any).serviceContainer;
+          if (serviceContainer) {
+            const taskManager = serviceContainer.get('taskManager');
+            if (taskManager) {
+              const task = taskManager.getTask(taskId);
+              if (task) {
+                console.log(`      任务类型: ${task.type}`);
+                console.log(`      任务状态: ${task.status}`);
+                if (task.params) {
+                  console.log(`      源ID: ${task.params.sourceId || '无'}`);
+                  console.log(`      目标ID: ${task.params.targetId || '无'}`);
+                  console.log(`      资源类型: ${task.params.resourceType || '无'}`);
+                }
+              }
             }
           }
         }
-      }
+      });
 
-      // 2. 检查transport任务
-      try {
-        const serviceContainer = (global as any).serviceContainer;
-        const taskStateService = serviceContainer.get('taskStateService');
+      // 3. 检查运输网络状态
+      console.log(`  🌐 运输网络状态:`);
+      if (room.memory.logistics?.transportNetwork) {
+        const network = room.memory.logistics.transportNetwork;
+        console.log(`    提供者: ${Object.keys(network.providers).length} 个`);
+        console.log(`    消费者: ${Object.keys(network.consumers).length} 个`);
+        console.log(`    最后更新: Tick ${network.lastUpdated}`);
 
-        if (taskStateService) {
-          const roomTasks = taskStateService.getTasksByRoom(room.name);
-          const transportTasks = roomTasks.filter((task: any) => task.type === TaskType.TRANSPORT);
-
-          console.log(`  🚚 Transport任务: ${transportTasks.length} 个`);
-          if (transportTasks.length > 0) {
-            transportTasks.forEach((task: any, index: number) => {
-              const creepNames = task.assignedCreeps.join(', ') || '无';
-              console.log(`    ${index + 1}. ${task.id} | 状态: ${task.status} | 分配: ${task.assignedCreeps.length}/${task.maxAssignees}`);
-              console.log(`       资源: ${task.params.resourceType} | 源位置: (${task.params.sourcePos?.x},${task.params.sourcePos?.y})`);
-              console.log(`       目标: ${task.params.targetId} | 分配给: ${creepNames}`);
-            });
+        // 显示具体的提供者和消费者
+        for (const [id, provider] of Object.entries(network.providers)) {
+          const obj = Game.getObjectById(id as Id<AnyStructure | Resource>);
+          if (obj) {
+            const amount = obj instanceof Resource ? obj.amount : (obj as any).store?.getUsedCapacity(provider.resourceType) || 0;
+            console.log(`      提供者 ${id}: ${provider.type} - ${provider.resourceType} x${amount}`);
           }
         }
-      } catch (error) {
-        console.log('  ❌ 获取transport任务失败:', error);
-      }
 
-      // 3. 检查transporter数量
-      const transporters = Object.values(Game.creeps).filter(creep =>
-        creep.memory.role === GameConfig.ROLES.TRANSPORTER &&
-        (creep.memory.room === room.name || creep.room.name === room.name)
-      );
-      console.log(`  👷 Transporter数量: ${transporters.length} 个`);
-      if (transporters.length > 0) {
-        transporters.forEach((creep, index) => {
-          const taskId = Memory.tasks?.creepTasks?.[creep.name] || '无任务';
-          const carryUsed = creep.store.getUsedCapacity();
-          const carryCapacity = creep.store.getCapacity();
-          console.log(`    ${index + 1}. ${creep.name} | 任务: ${taskId} | 载货: ${carryUsed}/${carryCapacity}`);
-          console.log(`       位置: (${creep.pos.x},${creep.pos.y}) | 生命值: ${creep.ticksToLive}/1500`);
-        });
-      }
-
-      // 4. 检查生产需求
-      try {
-        const serviceContainer = (global as any).serviceContainer;
-        const creepProductionService = serviceContainer.get('creepProductionService');
-
-        if (creepProductionService) {
-          const queue = creepProductionService.getProductionQueue();
-          const transporterNeeds = queue.filter((need: ProductionNeed) =>
-            need.role === GameConfig.ROLES.TRANSPORTER && need.roomName === room.name
-          );
-
-          console.log(`  🏭 Transporter生产需求: ${transporterNeeds.length} 个`);
-          if (transporterNeeds.length > 0) {
-            transporterNeeds.forEach((need: ProductionNeed, index: number) => {
-              console.log(`    ${index + 1}. 优先级: ${need.priority} | 原因: ${need.reason}`);
-              console.log(`       任务类型: ${need.taskType} | 任务数量: ${need.taskCount}`);
-            });
+        for (const [id, consumer] of Object.entries(network.consumers)) {
+          const obj = Game.getObjectById(id as Id<AnyStructure>);
+          if (obj) {
+            const needs = (obj as any).store?.getFreeCapacity(consumer.resourceType) || 0;
+            console.log(`      消费者 ${id}: ${consumer.type} - 需要 ${consumer.resourceType} x${needs}`);
           }
         }
-      } catch (error) {
-        console.log('  ❌ 获取生产需求失败:', error);
-      }
-
-      // 5. 分析问题
-      console.log('  🔍 问题分析:');
-      if (droppedResources.length > 0) {
-        console.log(`    - 地面有 ${droppedResources.length} 个资源需要运输`);
-      }
-
-      try {
-        const serviceContainer = (global as any).serviceContainer;
-        const taskStateService = serviceContainer.get('taskStateService');
-
-        if (taskStateService) {
-          const roomTasks = taskStateService.getTasksByRoom(room.name);
-          const transportTasks = roomTasks.filter((task: any) => task.type === TaskType.TRANSPORT);
-          const pendingTransportTasks = transportTasks.filter((task: any) => task.status === TaskStatus.PENDING);
-          const activeTransportTasks = transportTasks.filter((task: any) =>
-            task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.ASSIGNED
-          );
-
-          if (droppedResources.length > transportTasks.length) {
-            console.log(`    - 资源比任务多 ${droppedResources.length - transportTasks.length} 个，可能需要创建更多transport任务`);
-          }
-
-          if (pendingTransportTasks.length > 0) {
-            console.log(`    - 有 ${pendingTransportTasks.length} 个未分配的transport任务`);
-          }
-
-          if (activeTransportTasks.length > transporters.length) {
-            console.log(`    - 活跃任务(${activeTransportTasks.length})多于transporter数量(${transporters.length})，可能需要更多transporter`);
-          }
-
-          if (transportTasks.length === 0 && droppedResources.length > 0) {
-            console.log(`    - ⚠️ 地面有资源但没有transport任务，可能存在任务生成问题`);
-            console.log(`    - 💡 修复建议：检查findStorageTarget是否返回了有效目标`);
-          }
-
-          // 新增：检查存储设施是否都满了
-          if (storages.length === 0 && containers.length === 0) {
-            console.log(`    - ⚠️ 房间没有storage或container，依赖能量建筑存储`);
-          }
-
-          const totalEnergyCapacity = energyStructures.reduce((total, structure) =>
-            total + (structure as any).store.getCapacity(RESOURCE_ENERGY), 0
-          );
-          const totalEnergyUsed = energyStructures.reduce((total, structure) =>
-            total + (structure as any).store.getUsedCapacity(RESOURCE_ENERGY), 0
-          );
-
-          if (totalEnergyCapacity > 0 && totalEnergyUsed >= totalEnergyCapacity) {
-            console.log(`    - ⚠️ 所有能量建筑都已满(${totalEnergyUsed}/${totalEnergyCapacity})，可能影响transport任务创建`);
-            console.log(`    - 💡 修复：新的备用策略应该能解决这个问题`);
-          }
-        }
-      } catch (error) {
-        console.log('    - ❌ 分析过程中出错:', error);
+      } else {
+        console.log(`    运输网络未初始化`);
       }
 
       console.log('');
