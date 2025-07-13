@@ -71,6 +71,7 @@ export class TaskGeneratorService extends BaseService {
   }
 
   private generateTransportTasks(room: Room): void {
+    // 搜索所有掉落资源，数量大于20的
     const droppedResources = room.find(FIND_DROPPED_RESOURCES, {
       filter: r => r.amount > 20
     });
