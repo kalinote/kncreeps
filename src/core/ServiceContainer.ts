@@ -91,12 +91,12 @@ export class ServiceContainer {
     this.registerSingleton('coordinationManager', () => new CoordinationManager(this.get('eventBus'), this));
 
     // 注册业务服务
-    this.registerSingleton('energyService', () => new EnergyService());
+    this.registerSingleton('energyService', () => new EnergyService(this.get('eventBus'), this));
     this.registerSingleton('creepProductionService', () =>
-      new CreepProductionService(this.get('eventBus'))
+      new CreepProductionService(this.get('eventBus'), this)
     );
     this.registerSingleton('creepLifecycleService', () =>
-      new CreepLifecycleService(this.get('eventBus'), this.get('creepProductionService'))
+      new CreepLifecycleService(this.get('eventBus'), this)
     );
     this.registerSingleton('creepCoordinationService', () => new CreepCoordinationService(this.get('eventBus'), this));
     this.registerSingleton('roomService', () => new RoomService(this.get('eventBus'), this));

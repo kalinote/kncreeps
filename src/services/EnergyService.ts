@@ -1,43 +1,17 @@
+import { EnergySource, EnergySourceConfig, EnergySourceStrategy } from "../types";
 import { GameConfig } from "../config/GameConfig";
-
-/**
- * 能量源类型
- */
-export interface EnergySource {
-  type: 'storage' | 'container' | 'spawn' | 'extension' | 'dropped' | 'source';
-  object: Structure | Resource | Source;
-  energy: number;
-  distance: number;
-}
-
-/**
- * 能量获取策略
- */
-export enum EnergySourceStrategy {
-  STORAGE_ONLY = "storage_only",           // 只从存储建筑获取（升级工、建筑工）
-  INCLUDE_GROUND = "include_ground",       // 包括地面资源（搬运工）
-  HARVEST_DIRECT = "harvest_direct",       // 直接采集（采集工）
-  BALANCED = "balanced"                    // 平衡策略（工程师等）
-}
-
-/**
- * 能量获取配置
- */
-export interface EnergySourceConfig {
-  strategy: EnergySourceStrategy;
-  allowSpawn: boolean;                     // 是否允许从spawn获取
-  allowExtensions: boolean;                // 是否允许从extension获取
-  allowContainers: boolean;                // 是否允许从container获取
-  allowStorage: boolean;                   // 是否允许从storage获取
-  allowDroppedResources: boolean;          // 是否允许捡拾地面资源
-  allowDirectHarvest: boolean;             // 是否允许直接采集
-  minEnergyThreshold: number;              // 最小能量阈值
-}
+import { BaseService } from "./BaseService";
+import { EventBus } from "core/EventBus";
+import { ServiceContainer } from "core/ServiceContainer";
 
 /**
  * 能量服务 - 处理所有能量相关的逻辑
  */
-export class EnergyService {
+export class EnergyService extends BaseService {
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+    super(eventBus, serviceContainer);
+  }
+
   /**
    * 为creep寻找能量源
    */

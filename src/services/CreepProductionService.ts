@@ -3,24 +3,25 @@ import { GameConfig } from "../config/GameConfig";
 import { TaskRoleMapping } from "../config/TaskConfig";
 import { BodyBuilder } from "../utils/BodyBuilder";
 import { ProductionNeed, Task, TaskType, TaskStatus, TaskAssignmentType } from "../types";
+import { BaseService } from "./BaseService";
+import { ServiceContainer } from "../core/ServiceContainer";
 
 /**
  * Creep生产服务 - 基于任务需求的生产系统
  */
-export class CreepProductionService {
-  private eventBus: EventBus;
+export class CreepProductionService extends BaseService {
   private lastProductionCheck: number = 0;
   private lastTaskAnalysis: number = 0;
 
-  constructor(eventBus: EventBus) {
-    this.eventBus = eventBus;
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+    super(eventBus, serviceContainer);
     this.setupEventListeners();
   }
 
   /**
    * 设置事件监听器
    */
-  private setupEventListeners(): void {
+  protected setupEventListeners(): void {
     // 监听任务创建事件
     this.eventBus.on(GameConfig.EVENTS.TASK_CREATED, (task: Task) => {
       this.updateProductionDemands();
@@ -40,7 +41,7 @@ export class CreepProductionService {
   /**
    * 发送事件
    */
-  private emit(eventType: string, data: any): void {
+  protected emit(eventType: string, data: any): void {
     this.eventBus.emit(eventType, data);
   }
 

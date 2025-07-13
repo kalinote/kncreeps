@@ -26,7 +26,7 @@ const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
   lab: 0.4,
   nuker: 0.3,
   powerSpawn: 0.7,
-  link: 0.6 // FIX 3: 添加'link'类型以解决索引错误
+  link: 0.6
 };
 
 /**

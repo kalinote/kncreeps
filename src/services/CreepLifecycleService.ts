@@ -2,25 +2,26 @@ import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { CreepState } from "../types";
 import { CreepProductionService } from "./CreepProductionService";
+import { BaseService } from "./BaseService";
+import { ServiceContainer } from "../core/ServiceContainer";
 
 /**
  * Creep生命周期服务 - 处理所有Creep的生命周期管理
  * 从CreepManager中提取出来，保持原有逻辑不变
  */
-export class CreepLifecycleService {
-  private eventBus: EventBus;
+export class CreepLifecycleService extends BaseService {
   private productionService: CreepProductionService;
   private previousCreepNames: Set<string> = new Set();
 
-  constructor(eventBus: EventBus, productionService: CreepProductionService) {
-    this.eventBus = eventBus;
-    this.productionService = productionService;
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+    super(eventBus, serviceContainer);
+    this.productionService = this.serviceContainer.get('creepProductionService');
   }
 
   /**
    * 发送事件到事件总线
    */
-  private emit(eventType: string, data: any): void {
+  protected emit(eventType: string, data: any): void {
     this.eventBus.emit(eventType, data);
   }
 

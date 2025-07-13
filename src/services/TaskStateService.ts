@@ -1,11 +1,17 @@
+import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
-import { Task, TaskType, TaskStatus, TaskSystemMemory, TaskAssignmentType, TaskLifetime } from "../types";
+import { Task, TaskType, TaskStatus, TaskAssignmentType, TaskLifetime } from "../types";
 import { BaseService } from "./BaseService";
+import { ServiceContainer } from "core/ServiceContainer";
 
 /**
  * 任务状态服务 - 管理任务的状态和生命周期
  */
 export class TaskStateService extends BaseService {
+
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+    super(eventBus, serviceContainer);
+  }
 
   public initialize(): void {
     this.initializeMemory();
