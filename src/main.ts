@@ -209,7 +209,6 @@ console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
       transportCreeps.forEach((creep, index) => {
         const taskId = creep.memory.targetId;
         console.log(`    ${index + 1}. ${creep.name}:`);
-        console.log(`      状态: ${creep.memory.state || 'unknown'}`);
         console.log(`      任务: ${taskId || '无'}`);
         console.log(`      携带: ${creep.store.getUsedCapacity()}/${creep.store.getCapacity()}`);
 

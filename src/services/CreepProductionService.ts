@@ -128,7 +128,7 @@ export class CreepProductionService extends BaseService {
 
         // 尝试生产creep
         const result = spawn.spawnCreep([...config.body], creepName, {
-          memory: { role: role, state: 'idle', room: room.name, working: false }
+          memory: { role: role, room: room.name, working: false }
         });
 
         if (result === OK) {
@@ -576,7 +576,7 @@ export class CreepProductionService extends BaseService {
 
     // 尝试生产creep
     const result = spawn.spawnCreep(body, creepName, {
-      memory: { role: need.role, state: 'idle', room: need.roomName, working: false }
+      memory: { role: need.role, room: need.roomName, working: false }
     });
 
     if (result === OK) {

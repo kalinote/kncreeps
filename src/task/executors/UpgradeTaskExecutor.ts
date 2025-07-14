@@ -29,18 +29,15 @@ export class UpgradeTaskExecutor extends BaseTaskExecutor {
       return { success: false, completed: true, message: '目标控制器不存在，任务完成' };
     }
 
-    // 如果creep即将死亡，完成任务让其他creep接管
-    if (creep.ticksToLive && creep.ticksToLive < 50) {
+    // 检查creep是否即将死亡
+    if (this.isCreepDying(creep)) {
       return { success: true, completed: true, message: 'creep即将死亡，任务完成' };
     }
 
     // 检查creep是否有能量
-    const energyAmount = creep.store.getUsedCapacity(RESOURCE_ENERGY);
-    const hasEnergy = energyAmount > 0;
-
-    if (!hasEnergy) {
+    if (!this.hasResource(creep, RESOURCE_ENERGY)) {
       // 没有能量，去获取能量
-      return this.getEnergy(creep, task);
+      return this.getEnergy(creep, this.getEnergySources(task));
     } else {
       // 有能量，执行升级
       return this.performUpgrade(creep, task);
@@ -48,14 +45,14 @@ export class UpgradeTaskExecutor extends BaseTaskExecutor {
   }
 
   /**
-   * 获取能量
+   * 获取能量源列表
    */
-  private getEnergy(creep: Creep, task: UpgradeTask): TaskResult {
+  private getEnergySources(task: UpgradeTask): Structure[] {
     const sourceIds = task.params.sourceConstructionIds || [];
+    const sourceStructures: Structure[] = [];
 
     // 如果指定了源建筑列表，优先从列表中获取
     if (sourceIds.length > 0) {
-      const sourceStructures: Structure[] = [];
       for (const sourceId of sourceIds) {
         const source = Game.getObjectById<Structure>(sourceId as Id<Structure>);
         if (source && 'store' in source) {
@@ -65,56 +62,9 @@ export class UpgradeTaskExecutor extends BaseTaskExecutor {
           }
         }
       }
-
-      if (sourceStructures.length > 0) {
-        const result = this.getEnergyFromStructures(creep, sourceStructures);
-        if (result.success) {
-          return { success: true, completed: false, message: result.message };
-        }
-      }
     }
 
-    // 从任意符合条件的建筑中获取能量
-    const energyStructures = creep.room.find(FIND_STRUCTURES, {
-      filter: (structure) => {
-        if (!('store' in structure)) return false;
-        const storeStructure = structure as any;
-        return storeStructure.store && storeStructure.store.getUsedCapacity(RESOURCE_ENERGY) > 0;
-      }
-    });
-
-    if (energyStructures.length > 0) {
-      const result = this.getEnergyFromStructures(creep, energyStructures);
-      if (result.success) {
-        return { success: true, completed: false, message: result.message };
-      }
-    }
-
-    // 尝试从地面拾取能量
-    const droppedEnergy = creep.room.find(FIND_DROPPED_RESOURCES, {
-      filter: (resource) => resource.resourceType === RESOURCE_ENERGY
-    });
-
-    if (droppedEnergy.length > 0) {
-      const closestEnergy = creep.pos.findClosestByPath(droppedEnergy);
-      if (closestEnergy) {
-        const pickupResult = creep.pickup(closestEnergy);
-
-        switch (pickupResult) {
-          case OK:
-            return { success: true, completed: false, message: '正在拾取地面能量' };
-          case ERR_NOT_IN_RANGE:
-            this.moveToTarget(creep, closestEnergy);
-            return { success: true, completed: false, message: '移动到地面能量' };
-          case ERR_FULL:
-            return { success: true, completed: false, message: 'creep已满，开始升级' };
-          default:
-            return { success: false, completed: false, message: `拾取能量失败: ${pickupResult}` };
-        }
-      }
-    }
-
-    return { success: false, completed: false, message: '找不到可用的能量源' };
+    return sourceStructures;
   }
 
   /**
@@ -141,7 +91,7 @@ export class UpgradeTaskExecutor extends BaseTaskExecutor {
 
       case ERR_NOT_ENOUGH_RESOURCES:
         // 能量不足，重新获取能量
-        return this.getEnergy(creep, task);
+        return this.getEnergy(creep, this.getEnergySources(task));
 
       case ERR_BUSY:
         return { success: true, completed: false, message: '控制器正在被其他creep升级' };

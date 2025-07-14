@@ -331,9 +331,8 @@ declare global {
     room: string;
     working: boolean;
     // 扩展creep内存
-    state?: string;
     targetId?: string;
-    targetSourceId?: string;    // 后续合并到task中
+    // targetSourceId?: string;    // 后续合并到task中
     // Defender专用内存(后续合并到task中)
     target?: string;           // 当前攻击目标ID
     patrolPoint?: { x: number; y: number; roomName: string }; // 巡逻点
@@ -561,4 +560,14 @@ export interface TaskSystemMemory {
     tasksFailed: number;
     averageExecutionTime: number;
   };
+}
+
+// 任务执行器状态枚举
+
+// 控制器升级任务
+export enum UpgradeTaskState {
+  INITIALIZING = 'initializing',                    // 初始化
+  GETTING_ENERGY = 'getting_energy',                // 获取能量
+  MOVING_TO_CONTROLLER = 'moving_to_controller',    // 移动到控制器
+  UPGRADING = 'upgrading'                           // 升级控制器
 }

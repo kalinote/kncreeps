@@ -76,8 +76,8 @@ export class AttackTaskExecutor extends BaseTaskExecutor {
   }
 
   private executeAttack(creep: Creep, task: AttackTask): TaskResult {
-    // 如果creep即将死亡，完成任务让其他creep接管
-    if (creep.ticksToLive && creep.ticksToLive < 50) {
+    // 检查creep是否即将死亡
+    if (this.isCreepDying(creep)) {
       return { success: true, completed: true, message: 'creep即将死亡，任务完成' };
     }
 

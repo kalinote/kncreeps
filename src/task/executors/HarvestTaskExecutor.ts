@@ -31,13 +31,13 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
       return { success: false, completed: true, message: '源不存在，任务完成' };
     }
 
-    // 如果creep即将死亡，完成任务让其他creep接管
-    if (creep.ticksToLive && creep.ticksToLive < 50) {
+    // 检查creep是否即将死亡
+    if (this.isCreepDying(creep)) {
       return { success: true, completed: true, message: 'creep即将死亡，任务完成' };
     }
 
     // 如果creep已满，处理存储
-    if (creep.store.getFreeCapacity() === 0) {
+    if (!this.hasCapacity(creep, RESOURCE_ENERGY)) {
       return this.handleStorage(creep, task);
     }
 
@@ -50,7 +50,7 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
 
     // 如果不在指定位置，先移动到指定位置
     if (!creep.pos.isEqualTo(harvestPosition)) {
-      const moveResult = creep.moveTo(harvestPosition);
+      const moveResult = this.moveToTarget(creep, harvestPosition);
       if (moveResult === OK || moveResult === ERR_TIRED) {
         return { success: true, completed: false, message: '移动到采集位置' };
       } else {
@@ -185,23 +185,11 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
     if (task.params.targetId) {
       const target = Game.getObjectById<Structure>(task.params.targetId as Id<Structure>);
       if (target && 'store' in target) {
-        const transferResult = creep.transfer(target, RESOURCE_ENERGY);
-
-        switch (transferResult) {
-          case OK:
-            return { success: true, completed: false, message: '已存储到指定目标，继续采集' };
-
-          case ERR_NOT_IN_RANGE:
-            this.moveToTarget(creep, target);
-            return { success: true, completed: false, message: '移动到指定存储点' };
-
-          case ERR_FULL:
-            // 指定目标已满，尝试寻找附近容器
-            return this.findAndUseNearbyStorage(creep);
-
-          default:
-            return { success: false, completed: false, message: `存储失败: ${transferResult}` };
+        const result = this.transferResource(creep, target, RESOURCE_ENERGY);
+        if (result.success && !result.completed) {
+          return { success: true, completed: false, message: '已存储到指定目标，继续采集' };
         }
+        return result;
       }
     }
 
@@ -217,7 +205,7 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
         creep.drop(RESOURCE_ENERGY);
         return { success: true, completed: false, message: '已丢弃到指定位置，继续采集' };
       } else {
-        creep.moveTo(targetPos);
+        this.moveToTarget(creep, targetPos);
         return { success: true, completed: false, message: '移动到指定丢弃点' };
       }
     }
@@ -263,27 +251,19 @@ export class HarvestTaskExecutor extends BaseTaskExecutor {
 
       // 检查是否已经在目标旁边
       if (creep.pos.isNearTo(targetStructure)) {
-        const transferResult = creep.transfer(targetStructure, RESOURCE_ENERGY);
-
-        switch (transferResult) {
-          case OK:
-            const structureType = targetStructure.structureType;
-            return {
-              success: true,
-              completed: false,
-              message: `已存储到附近${structureType}，继续采集`
-            };
-
-          case ERR_FULL:
-            creep.drop(RESOURCE_ENERGY);
-            return { success: true, completed: false, message: '存储设施已满，已丢弃能量，继续采集' };
-
-          default:
-            return { success: false, completed: false, message: `传输失败: ${transferResult}` };
+        const result = this.transferResource(creep, targetStructure, RESOURCE_ENERGY);
+        if (result.success && !result.completed) {
+          const structureType = targetStructure.structureType;
+          return {
+            success: true,
+            completed: false,
+            message: `已存储到附近${structureType}，继续采集`
+          };
         }
+        return result;
       } else {
         // 移动到目标设施
-        const moveResult = creep.moveTo(targetStructure);
+        const moveResult = this.moveToTarget(creep, targetStructure);
 
         if (moveResult === OK || moveResult === ERR_TIRED) {
           return { success: true, completed: false, message: '移动到附近存储设施' };

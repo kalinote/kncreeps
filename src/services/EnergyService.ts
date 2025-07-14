@@ -5,7 +5,7 @@ import { EventBus } from "core/EventBus";
 import { ServiceContainer } from "core/ServiceContainer";
 
 /**
- * 能量服务 - 处理所有能量相关的逻辑
+ * 能量服务 - 专注于能量源查找和配置管理
  */
 export class EnergyService extends BaseService {
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
@@ -181,28 +181,6 @@ export class EnergyService extends BaseService {
     }
 
     return false;
-  }
-
-  /**
-   * 通用的能量获取处理逻辑
-   */
-  public static handleEnergyCollection(creep: Creep, target: Structure | Resource | Source): ScreepsReturnCode {
-    // 结构建筑 - 使用withdraw
-    if (target instanceof Structure) {
-      return creep.withdraw(target, RESOURCE_ENERGY);
-    }
-
-    // 地面资源 - 使用pickup
-    if (target instanceof Resource) {
-      return creep.pickup(target);
-    }
-
-    // 采集源 - 使用harvest
-    if (target instanceof Source) {
-      return creep.harvest(target);
-    }
-
-    return ERR_INVALID_TARGET;
   }
 
   /**
