@@ -129,7 +129,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
           return TransportState.PICKUP;
         } else {
           // 不在拾取范围内，移动到目标位置
-          this.moveService.move(creep, targetPos);
+          this.moveService.moveTo(creep, targetPos);
           return TransportState.PICKUP;
         }
       } else {
@@ -161,7 +161,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
         } else {
           // 附近没有可拾取的资源，移动到目标位置附近寻找
           if (creep.pos.getRangeTo(targetPos) > 2) {
-            this.moveService.move(creep, targetPos);
+            this.moveService.moveTo(creep, targetPos);
             return TransportState.PICKUP;
           } else {
             return TransportState.FINISHED;
@@ -191,6 +191,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
    */
   private handleDeliver(creep: Creep): TransportState {
     const task = this.getTask(creep);
+    // console.log(`[TransportFSMExecutor] handleDeliver creep: ${creep.name} task: ${JSON.stringify(task)}`);
     if (!task) {
       return TransportState.FINISHED;
     }
@@ -205,20 +206,31 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
       return TransportState.FINISHED;
     }
 
+    // console.log(`[TransportFSMExecutor] task.params.targetId: ${params.targetId}`);
+
     // 优先传输到指定建筑
     if (params.targetId) {
       const target = Game.getObjectById<Structure>(params.targetId as Id<Structure>);
+      // console.log(`[TransportFSMExecutor] target: ${JSON.stringify(target)}`);
       if (!target) {
         // 目标不存在，解除中断保护
         this.setInterruptible(true);
         return TransportState.FINISHED;
       }
 
-      const result = this.transferResource(creep, target, resourceType);
-      if (result.success && result.completed) {
-        // 成功传输资源后，解除中断保护
-        this.setInterruptible(true);
-        return TransportState.FINISHED;
+      // console.log(`[TransportFSMExecutor] creep.pos.getRangeTo(target.pos): ${creep.pos.getRangeTo(target.pos)}`);
+
+      // 移动到指定建筑
+      if (creep.pos.getRangeTo(target.pos) > 1) {
+        this.moveService.moveTo(creep, target.pos);
+      } else {
+        const result = this.transferResource(creep, target, resourceType);
+        // console.log(`[TransportFSMExecutor] result: ${JSON.stringify(result)}`);
+        if (result.success && result.completed) {
+          // 成功传输资源后，解除中断保护
+          this.setInterruptible(true);
+          return TransportState.FINISHED;
+        }
       }
       return TransportState.DELIVER;
     }
@@ -236,7 +248,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
       }
 
       // 移动到目标位置
-      this.moveService.move(creep, targetPos);
+      this.moveService.moveTo(creep, targetPos);
       return TransportState.DELIVER;
     }
 

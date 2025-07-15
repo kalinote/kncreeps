@@ -19,6 +19,7 @@ export abstract class TaskStateMachine<TState extends string> {
    * 由 TaskExecutionService 调用
    */
   public tick(creep: Creep): void {
+    console.log(`[TaskStateMachine] creep: ${creep.name} 当前执行状态机: ${this.memory.currentState}`);
     const handlers = this.handlers();
     const currentState = this.memory.currentState;
     const handler = handlers[currentState];
@@ -34,7 +35,7 @@ export abstract class TaskStateMachine<TState extends string> {
       // 如果处理器返回了新状态，则进行状态转换
       if (nextState && nextState !== currentState) {
         this.memory.currentState = nextState;
-        console.log(`[TaskStateMachine] 状态转换: ${currentState} -> ${nextState}`);
+        console.log(`[TaskStateMachine] creep: ${creep.name} 状态转换: ${currentState} -> ${nextState}`);
       }
     } catch (error) {
       console.log(`[TaskStateMachine] 状态处理器执行错误: ${currentState}`, error);

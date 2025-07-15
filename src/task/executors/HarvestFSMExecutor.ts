@@ -30,11 +30,15 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
       [HarvestState.DUMPING]: (creep: Creep) => {
         return this.handleDumping(creep);
       },
+      [HarvestState.TRANSFER]: (creep: Creep) => {
+        return this.handleTransfer(creep);
+      },
       [HarvestState.FINISHED]: (creep: Creep) => {
         return this.handleFinished(creep);
       }
     };
   }
+
 
   protected getFinishedState(): HarvestState {
     return HarvestState.FINISHED;
@@ -106,7 +110,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
     }
 
     // 移动到目标位置
-    const moveResult = this.moveService.move(creep, targetPos);
+    const moveResult = this.moveService.moveTo(creep, targetPos);
     if (moveResult === ERR_NO_PATH) {
       // 路径不可达，清除分配位置并重新初始化
       this.clearAssignedPosition(creep);
@@ -197,13 +201,20 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
         creep.drop(RESOURCE_ENERGY);
         return HarvestState.HARVESTING;
       } else {
-        this.moveService.move(creep, targetPos);
+        this.moveService.moveTo(creep, targetPos);
         return HarvestState.DUMPING;
       }
     }
 
     // 默认策略：寻找附近容器，如果没有则丢弃
     return this.findAndUseNearbyStorage(creep);
+  }
+
+  /**
+   * 传输能量到容器
+   */
+  private handleTransfer(creep: Creep) {
+    throw new Error("Method not implemented.");
   }
 
   /**
@@ -405,7 +416,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
       case OK:
         return { success: true, completed: true };
       case ERR_NOT_IN_RANGE:
-        this.moveService.move(creep, target);
+        this.moveService.moveTo(creep, target);
         return { success: true, completed: false };
       case ERR_FULL:
         return { success: false, completed: true };

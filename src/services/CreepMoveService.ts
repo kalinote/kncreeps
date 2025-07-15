@@ -18,7 +18,7 @@ export class CreepMoveService extends BaseService {
    * @param opts 移动选项
    * @returns 移动结果
    */
-  public move(creep: Creep, target: RoomPosition | RoomObject, opts: MoveToOpts = {}): ScreepsReturnCode {
+  public moveTo(creep: Creep, target: RoomPosition | RoomObject, opts: MoveToOpts = {}): ScreepsReturnCode {
     // TODO: 后续可以在这里插入路径缓存和动态避障逻辑
     return creep.moveTo(target, {
       visualizePathStyle: { stroke: '#ffffff' },
@@ -50,7 +50,7 @@ export class CreepMoveService extends BaseService {
       }
     }
 
-    return this.move(creep, target);
+    return this.moveTo(creep, target);
   }
 
   /**
