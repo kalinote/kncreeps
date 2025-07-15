@@ -396,6 +396,69 @@ declare global {
 
 // ==================== 任务系统类型定义 ====================
 
+// 任务类型枚举 - 用于区分不同的任务大类
+export enum TaskKind {
+  HARVEST = 'HARVEST',
+  TRANSPORT = 'TRANSPORT',
+  BUILD = 'BUILD',
+  UPGRADE = 'UPGRADE',
+  ATTACK = 'ATTACK'
+}
+
+// 各任务的子状态枚举
+export enum HarvestState {
+  INIT = 'INIT',
+  MOVING = 'MOVING',
+  HARVESTING = 'HARVESTING',
+  DUMPING = 'DUMPING',
+  FINISHED = 'FINISHED'
+}
+
+export enum TransportState {
+  INIT = 'INIT',
+  PICKUP = 'PICKUP',
+  DELIVER = 'DELIVER',
+  DROPPING = 'DROPPING',
+  FINISHED = 'FINISHED'
+}
+
+export enum BuildState {
+  INIT = 'INIT',
+  GET_ENERGY = 'GET_ENERGY',
+  BUILDING = 'BUILDING',
+  FINISHED = 'FINISHED'
+}
+
+export enum UpgradeState {
+  INIT = 'INIT',
+  GET_ENERGY = 'GET_ENERGY',
+  UPGRADING = 'UPGRADING',
+  FINISHED = 'FINISHED'
+}
+
+export enum AttackState {
+  INIT = 'INIT',
+  MOVE = 'MOVE',
+  MELEE = 'MELEE',
+  RANGED = 'RANGED',
+  FINISHED = 'FINISHED'
+}
+
+// 任务内存结构 - 存储状态机相关信息
+export interface TaskFSMMemory<TState extends string = string> {
+  kind: TaskKind;                    // 任务大类
+  currentState: TState;              // 当前状态（枚举值字符串）
+  interruptible: boolean;            // 可中断标记
+  context?: Record<string, any>;     // 业务上下文
+  groupId?: string;                  // 协同组ID，可选
+}
+
+// 状态机处理器函数类型
+export type StateHandler<TState extends string> = (creep: Creep) => TState | void;
+
+// 状态机处理器映射类型
+export type StateHandlers<TState extends string> = Record<TState, StateHandler<TState>>;
+
 // 任务类型枚举
 export enum TaskType {
   HARVEST = 'harvest',
@@ -456,6 +519,7 @@ export interface BaseTask {
   completedAt?: number;
   retryCount: number;
   maxRetries: number;
+  fsm?: TaskFSMMemory;
 }
 
 // 采集任务参数

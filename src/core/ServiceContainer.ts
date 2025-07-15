@@ -26,6 +26,8 @@ import { ConstructPlannerService } from "../services/ConstructPlannerService";
 import { LayerManager } from "../managers/LayerManager";
 import { LogisticsManager } from "../managers/LogisticsManager";
 import { TransportService } from "../services/TransportService";
+import { CreepMoveService } from "../services/CreepMoveService";
+import { TaskGroupService } from "../services/TaskGroupService";
 
 const serviceConfig = {
   // 核心服务，需要最先初始化
@@ -53,12 +55,14 @@ const serviceConfig = {
     'energyService',
     'creepProductionService',
     'creepLifecycleService',
+    'creepMoveService',
     'creepCoordinationService',
     'roomService',
     'taskStateService',
     'taskGeneratorService',
     'taskSchedulerService',
     'taskExecutionService',
+    'taskGroupService',
     'visualLayoutService',
     'statsService',
     'constructPlannerService',
@@ -98,6 +102,8 @@ export class ServiceContainer {
     this.registerSingleton('creepLifecycleService', () =>
       new CreepLifecycleService(this.get('eventBus'), this)
     );
+    // 注册移动缓存服务
+    this.registerSingleton('creepMoveService', () => new CreepMoveService(this.get('eventBus'), this));
     this.registerSingleton('creepCoordinationService', () => new CreepCoordinationService(this.get('eventBus'), this));
     this.registerSingleton('roomService', () => new RoomService(this.get('eventBus'), this));
 
@@ -106,6 +112,7 @@ export class ServiceContainer {
     this.registerSingleton('taskGeneratorService', () => new TaskGeneratorService(this.get('eventBus'), this));
     this.registerSingleton('taskSchedulerService', () => new TaskSchedulerService(this.get('eventBus'), this));
     this.registerSingleton('taskExecutionService', () => new TaskExecutionService(this.get('eventBus'), this));
+    this.registerSingleton('taskGroupService', () => new TaskGroupService(this.get('eventBus'), this));
 
     // 注册任务系统
     this.registerSingleton('taskManager', () => new TaskManager(this.get('eventBus'), this));

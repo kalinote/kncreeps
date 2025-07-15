@@ -1,6 +1,9 @@
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
-import { Task, TaskType, TaskStatus, TaskAssignmentType, TaskLifetime } from "../types";
+import {
+  Task, TaskType, TaskStatus, TaskAssignmentType, TaskLifetime, TaskFSMMemory,
+  TaskKind, HarvestState, TransportState, BuildState, UpgradeState, AttackState
+} from "../types";
 import { BaseService } from "./BaseService";
 import { ServiceContainer } from "core/ServiceContainer";
 
@@ -79,7 +82,8 @@ export class TaskStateService extends BaseService {
       createdAt: Game.time,
       updatedAt: Game.time,
       retryCount: 0,
-      maxRetries: 3
+      maxRetries: 3,
+      fsm: this.initializeTaskFSMMemory(task.type)
     } as Task;
 
     if (Memory.tasks) {
@@ -372,5 +376,61 @@ export class TaskStateService extends BaseService {
   public getTasksByRoom(roomName: string): Task[] {
     if (!Memory.tasks) return [];
     return Memory.tasks.taskQueue.filter(task => task.roomName === roomName);
+  }
+
+  /**
+   * 初始化任务的状态机内存
+   */
+  private initializeTaskFSMMemory(taskType: TaskType): TaskFSMMemory {
+    const kind = this.mapTaskTypeToKind(taskType);
+    const initialState = this.getInitialState(taskType);
+
+    return {
+      kind,
+      currentState: initialState,
+      interruptible: true, // 默认可中断
+      context: {},
+      groupId: undefined
+    };
+  }
+
+  /**
+   * 将 TaskType 映射到 TaskKind
+   */
+  private mapTaskTypeToKind(taskType: TaskType): TaskKind {
+    switch (taskType) {
+      case TaskType.HARVEST:
+        return TaskKind.HARVEST;
+      case TaskType.TRANSPORT:
+        return TaskKind.TRANSPORT;
+      case TaskType.BUILD:
+        return TaskKind.BUILD;
+      case TaskType.UPGRADE:
+        return TaskKind.UPGRADE;
+      case TaskType.ATTACK:
+        return TaskKind.ATTACK;
+      default:
+        throw new Error(`未知的任务类型: ${taskType}`);
+    }
+  }
+
+  /**
+   * 获取任务的初始状态
+   */
+  private getInitialState(taskType: TaskType): string {
+    switch (taskType) {
+      case TaskType.HARVEST:
+        return HarvestState.INIT;
+      case TaskType.TRANSPORT:
+        return TransportState.INIT;
+      case TaskType.BUILD:
+        return BuildState.INIT;
+      case TaskType.UPGRADE:
+        return UpgradeState.INIT;
+      case TaskType.ATTACK:
+        return AttackState.INIT;
+      default:
+        throw new Error(`未知的任务类型: ${taskType}`);
+    }
   }
 }

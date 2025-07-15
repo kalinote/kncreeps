@@ -1,23 +1,27 @@
 import { TaskExecutorRegistry } from "../task/TaskExecutorRegistry";
 import { EventBus } from "../core/EventBus";
-import { Task, TaskType, TaskStatus, TaskPriority, TaskSystemMemory } from "../types";
+import { Task, TaskType, TaskStatus, TaskPriority, TaskSystemMemory, TaskFSMMemory } from "../types";
 import { BaseManager } from "./BaseManager";
 import { TaskRoleMapping } from "../config/TaskConfig";
 import { GameConfig } from "../config/GameConfig";
 import { TaskGeneratorService } from "../services/TaskGeneratorService";
 import { TaskSchedulerService } from "../services/TaskSchedulerService";
 import { TaskStateService } from "../services/TaskStateService";
+import { FSMExecutorRegistry } from "../task/FSMExecutorRegistry";
+import { TaskStateMachine } from "../task/fsm/StateMachine";
 
 /**
  * 任务管理器 - 管理所有任务的生命周期
  */
 export class TaskManager extends BaseManager {
   private executorRegistry: TaskExecutorRegistry;
+  private fsmExecutorRegistry: FSMExecutorRegistry;
 
   constructor(eventBus: EventBus, serviceContainer: any) {
     super(eventBus, serviceContainer);
     this.updateInterval = GameConfig.MANAGER_CONFIGS.TASK_MANAGER.UPDATE_INTERVAL;
     this.executorRegistry = new TaskExecutorRegistry();
+    this.fsmExecutorRegistry = new FSMExecutorRegistry(serviceContainer);
     this.taskStateService.initialize();
   }
 
@@ -87,5 +91,27 @@ export class TaskManager extends BaseManager {
 
   public updateTaskStatus(taskId: string, status: TaskStatus): void {
     this.taskStateService.updateTaskStatus(taskId, status);
+  }
+
+  // 下面的代码是状态机重构新增的
+  /**
+   * 获取 FSM 执行器
+   */
+  public getFSMExecutor(taskType: TaskType) {
+    return this.fsmExecutorRegistry.getExecutor(taskType);
+  }
+
+  /**
+   * 创建 FSM 执行器实例
+   */
+  public createFSMExecutor(taskType: TaskType, memory: TaskFSMMemory): TaskStateMachine<any> | undefined {
+    return this.fsmExecutorRegistry.createExecutor(taskType, memory);
+  }
+
+  /**
+   * 检查任务是否使用 FSM 执行器
+   */
+  public isFSMTask(taskType: TaskType): boolean {
+    return this.fsmExecutorRegistry.hasExecutor(taskType);
   }
 }
