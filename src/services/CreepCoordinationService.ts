@@ -35,18 +35,9 @@ export class CreepCoordinationService extends BaseService {
    * 设置事件监听器
    */
   protected setupEventListeners(): void {
-    this.on(GameConfig.EVENTS.CREEP_DIED, (data: any) => {
-      this.handleCreepDeath(data);
-    });
-
     this.on(GameConfig.EVENTS.ROOM_UNDER_ATTACK, (data: any) => {
       this.handleRoomUnderAttack(data);
     });
-  }
-
-  private handleCreepDeath(data: any): void {
-    console.log(`[CreepCoordinationService] 收到creep死亡事件: ${data.creepName} (${data.role})`);
-    this.lifecycleService.handleCreepDeath(data);
   }
 
   private handleRoomUnderAttack(data: any): void {

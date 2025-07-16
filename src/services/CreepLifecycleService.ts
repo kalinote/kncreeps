@@ -26,6 +26,15 @@ export class CreepLifecycleService extends BaseService {
   }
 
   /**
+   * 设置事件监听器
+   */
+  protected setupEventListeners(): void {
+    this.on(GameConfig.EVENTS.CREEP_DIED, (data: any) => {
+      this.handleCreepDeath(data);
+    });
+  }
+
+  /**
    * 初始化creepStates内存
    */
   public initializeCreepStatesMemory(): void {
