@@ -11,9 +11,13 @@ import { TaskManager } from "managers/TaskManager";
 export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
   private moveService: CreepMoveService;
 
-  constructor(memory: TaskFSMMemory<HarvestState>, serviceContainer: ServiceContainer) {
-    super(memory, serviceContainer);
+  constructor(taskMemory: TaskFSMMemory<HarvestState>, creep: Creep, serviceContainer: ServiceContainer) {
+    super(taskMemory, creep, serviceContainer);
     this.moveService = this.serviceContainer.get('creepMoveService');
+  }
+
+  protected getInitialState(): HarvestState {
+    return HarvestState.INIT;
   }
 
   protected handlers() {
@@ -39,7 +43,6 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
     };
   }
 
-
   protected getFinishedState(): HarvestState {
     return HarvestState.FINISHED;
   }
@@ -64,7 +67,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
       return HarvestState.FINISHED;
     }
 
-    // 初始化上下文
+    // 初始化该creep的私有上下文
     this.setContext({
       sourceId: task.params.sourceId,
       targetId: task.params.targetId,
@@ -79,11 +82,12 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
 
     // 获取或分配采集位置
     const harvestPosition = this.getOrAssignHarvestPosition(creep, task, source);
+    console.log(`[HarvestFSMExecutor] ${creep.name} harvestPosition: ${JSON.stringify(harvestPosition)}`);
     if (!harvestPosition) {
       return HarvestState.FINISHED;
     }
 
-    // 设置目标位置
+    // 设置目标位置到该creep的私有上下文
     this.setContext({ ...this.getContext(), targetPosition: harvestPosition });
 
     return HarvestState.MOVING;

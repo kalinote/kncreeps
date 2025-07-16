@@ -79,6 +79,8 @@ export class TaskGeneratorService extends BaseService {
     // 从TransportService获取经过智能匹配的运输任务“请求”
     const transportTaskRequests = this.transportService.generateTransportTasks(room);
 
+    // console.log(`[TaskGeneratorService] 生成运输任务请求: ${JSON.stringify(transportTaskRequests)}`);
+
     if (transportTaskRequests.length === 0) {
       return;
     }
@@ -98,7 +100,7 @@ export class TaskGeneratorService extends BaseService {
       if (!hasExistingTask) {
         // 使用从TransportService生成的信息来创建任务
         this.taskStateService.createTask(taskRequest);
-        console.log(`[TaskGenerator] 创建运输任务: 从 ${taskRequest.params.sourceId || taskRequest.params.sourcePos} 到 ${taskRequest.params.targetId}，运输 ${taskRequest.params.amount} ${taskRequest.params.resourceType}`);
+        // console.log(`[TaskGenerator] 创建运输任务: 从 ${taskRequest.params.sourceId || taskRequest.params.sourcePos} 到 ${taskRequest.params.targetId}，运输 ${taskRequest.params.amount} ${taskRequest.params.resourceType}`);
       }
     }
   }

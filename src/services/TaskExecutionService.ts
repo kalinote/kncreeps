@@ -42,11 +42,11 @@ export class TaskExecutionService extends BaseService {
     // 检查是否使用 FSM 执行器
     if (this.taskManager.isFSMTask(task.type) && task.fsm) {
       // 调试输出，后续删除
-      console.log(`[TaskExecutionService] 使用 FSM 执行器: ${task.type}`);
+      // console.log(`[TaskExecutionService] 使用 FSM 执行器: ${task.type}`);
       return this.executeFSMTask(creep, task);
     } else {
       // 调试输出，后续删除
-      console.log(`[TaskExecutionService] 使用传统执行器: ${task.type}`);
+      // console.log(`[TaskExecutionService] 使用传统执行器: ${task.type}`);
       return this.executeLegacyTask(creep, task);
     }
   }
@@ -54,7 +54,7 @@ export class TaskExecutionService extends BaseService {
   // 添加新的 FSM 执行方法：
   private executeFSMTask(creep: Creep, task: Task): { success: boolean; message?: string } {
     try {
-      const fsmExecutor = this.taskManager.createFSMExecutor(task.type, task.fsm!);
+      const fsmExecutor = this.taskManager.createFSMExecutor(task.type, task.fsm!, creep);
       if (!fsmExecutor) {
         const errorMessage = `未找到任务类型 '${task.type}' 的 FSM 执行器`;
         console.log(`[TaskExecutionService] ${errorMessage} for task ID: ${task.id}`);
@@ -67,18 +67,20 @@ export class TaskExecutionService extends BaseService {
       }
 
       // 执行 FSM tick
-      fsmExecutor.tick(creep);
+      fsmExecutor.tick();
 
-      // 检查任务是否完成
+      // 检查该creep的任务是否完成
       if (fsmExecutor.isFinished()) {
-        this.taskManager.updateTaskStatus(task.id, TaskStatus.COMPLETED);
-        this.emit(GameConfig.EVENTS.TASK_COMPLETED, {
-          taskId: task.id,
-          taskType: task.type,
-          creepName: creep.name,
-          roomName: task.roomName
-        });
-        return { success: true, message: '任务完成' };
+        // 检查任务是否整体完成（所有creep都完成）
+        if (fsmExecutor.isTaskFinished()) {
+          this.taskManager.updateTaskStatus(task.id, TaskStatus.COMPLETED);
+          this.emit(GameConfig.EVENTS.TASK_COMPLETED, {
+            taskId: task.id,
+            taskType: task.type,
+            roomName: task.roomName
+          });
+        }
+        return { success: true, message: '该creep任务完成' };
       }
 
       // 更新任务状态为进行中

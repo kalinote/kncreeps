@@ -10,9 +10,13 @@ import { TaskManager } from "managers/TaskManager";
 export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
   private moveService: CreepMoveService;
 
-  constructor(memory: TaskFSMMemory<TransportState>, serviceContainer: ServiceContainer) {
-    super(memory, serviceContainer);
+  constructor(taskMemory: TaskFSMMemory<TransportState>, creep: Creep, serviceContainer: ServiceContainer) {
+    super(taskMemory, creep, serviceContainer);
     this.moveService = this.serviceContainer.get('creepMoveService');
+  }
+
+  protected getInitialState(): TransportState {
+    return TransportState.INIT;
   }
 
   protected handlers() {
@@ -53,7 +57,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
       return TransportState.FINISHED;
     }
 
-    // 初始化上下文
+    // 初始化该creep的私有上下文
     this.setContext({
       resourceType: task.params.resourceType,
       sourceId: task.params.sourceId,

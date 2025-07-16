@@ -445,13 +445,20 @@ export enum AttackState {
   FINISHED = 'FINISHED'
 }
 
-// 任务内存结构 - 存储状态机相关信息
+// 任务级协调FSM内存
 export interface TaskFSMMemory<TState extends string = string> {
   kind: TaskKind;                    // 任务大类
-  currentState: TState;              // 当前状态（枚举值字符串）
+  taskState: TState;                 // TODO 任务状态
+  context?: Record<string, any>;     // 任务级业务上下文
+  groupId?: string;                  // 协同组ID
+  creepStates: { [creepName: string]: CreepFSMState<TState> }; // creep -> state 映射
+}
+
+// Creep级别的执行FSM
+export interface CreepFSMState<TState extends string = string> {
   interruptible: boolean;            // 可中断标记
-  context?: Record<string, any>;     // 业务上下文
-  groupId?: string;                  // 协同组ID，可选
+  currentState: TState;              // 该creep的当前执行状态
+  context?: Record<string, any>;     // creep上下文
 }
 
 // 状态机处理器函数类型

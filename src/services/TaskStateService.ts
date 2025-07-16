@@ -387,10 +387,10 @@ export class TaskStateService extends BaseService {
 
     return {
       kind,
-      currentState: initialState,
-      interruptible: true, // 默认可中断
+      taskState: initialState,
       context: {},
-      groupId: undefined
+      groupId: undefined,
+      creepStates: {}
     };
   }
 

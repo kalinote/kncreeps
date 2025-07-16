@@ -104,8 +104,8 @@ export class TaskManager extends BaseManager {
   /**
    * 创建 FSM 执行器实例
    */
-  public createFSMExecutor(taskType: TaskType, memory: TaskFSMMemory): TaskStateMachine<any> | undefined {
-    return this.fsmExecutorRegistry.createExecutor(taskType, memory);
+  public createFSMExecutor(taskType: TaskType, memory: TaskFSMMemory, creep: Creep): TaskStateMachine<any> | undefined {
+    return this.fsmExecutorRegistry.createExecutor(taskType, memory, creep);
   }
 
   /**

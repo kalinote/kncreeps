@@ -71,7 +71,7 @@ export class TransportService extends BaseService {
     network.providers = {};
     network.consumers = {};
 
-    // FIX 1: 使用FIND_STRUCTURES以包含Container等中立建筑
+    // 使用FIND_STRUCTURES以包含Container等中立建筑
     const structures = room.find(FIND_STRUCTURES);
     for (const s of structures) {
       // 识别消耗点
@@ -131,6 +131,9 @@ export class TransportService extends BaseService {
     const openRequests = this.getOpenRequests(room, network);
     const availableSources = this.getAvailableSources(room, network);
 
+    // console.log(`[TransportService] openRequests: ${JSON.stringify(openRequests)}`);
+    // console.log(`[TransportService] availableSources: ${JSON.stringify(availableSources)}`);
+
     if (openRequests.length === 0 || availableSources.length === 0) {
       return [];
     }
@@ -156,27 +159,35 @@ export class TransportService extends BaseService {
       let remainingNeeds = req.needs || 0;
       if (remainingNeeds <= 0) continue;
 
-      const potentialProviders = availableSources.filter(
-        p => p.resourceType === req.resourceType && (tempProviderAmounts.get(p.id) || 0) > 0
-      );
-      if (potentialProviders.length === 0) continue;
+      // 循环查找最近且仍有余量的 provider，直到需求满足
+      while (remainingNeeds > 0) {
+        const potentialProviders = availableSources.filter(
+          p => p.resourceType === req.resourceType && (tempProviderAmounts.get(p.id) || 0) > 0
+        );
+        if (potentialProviders.length === 0) break; // 没有可用供应
 
-      const consumerPos = new RoomPosition(req.pos.x, req.pos.y, req.pos.roomName);
-      const providerPositions = potentialProviders.map(p => new RoomPosition(p.pos.x, p.pos.y, p.pos.roomName));
-      const closestPos = consumerPos.findClosestByPath(providerPositions);
+        const consumerPos = new RoomPosition(req.pos.x, req.pos.y, req.pos.roomName);
+        const providerPositions = potentialProviders.map(p => new RoomPosition(p.pos.x, p.pos.y, p.pos.roomName));
+        const closestPos = consumerPos.findClosestByPath(providerPositions);
+        if (!closestPos) break; // 无法寻路
 
-      if (closestPos) {
         const providerInfo = potentialProviders.find(p => p.pos.x === closestPos.x && p.pos.y === closestPos.y);
-        if (providerInfo) {
-          const providerAmount = tempProviderAmounts.get(providerInfo.id) || 0;
-          const amountToTransport = Math.min(remainingNeeds, providerAmount);
+        if (!providerInfo) break;
 
-          if (amountToTransport > 0) {
-            tasks.push(this.createTransportTask(providerInfo, req, amountToTransport));
-            tempProviderAmounts.set(providerInfo.id, providerAmount - amountToTransport);
-            remainingNeeds -= amountToTransport;
-          }
+        const providerAmount = tempProviderAmounts.get(providerInfo.id) || 0;
+        const amountToTransport = Math.min(remainingNeeds, providerAmount);
+        if (amountToTransport <= 0) {
+          // provider 已无可用资源
+          tempProviderAmounts.set(providerInfo.id, 0);
+          continue;
         }
+
+        // 创建运输任务
+        tasks.push(this.createTransportTask(providerInfo, req, amountToTransport));
+
+        // 更新供需剩余量
+        remainingNeeds -= amountToTransport;
+        tempProviderAmounts.set(providerInfo.id, providerAmount - amountToTransport);
       }
     }
 

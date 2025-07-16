@@ -10,7 +10,7 @@ import { TaskStateMachine } from "./fsm/StateMachine";
  */
 export class FSMExecutorRegistry {
   // 修改类型定义，使用更宽松的泛型约束
-  private executors: Map<TaskType, new (memory: TaskFSMMemory<any>, serviceContainer: ServiceContainer) => TaskStateMachine<any>> = new Map();
+  private executors: Map<TaskType, new (memory: TaskFSMMemory<any>, creep: Creep, serviceContainer: ServiceContainer) => TaskStateMachine<any>> = new Map();
   private serviceContainer: ServiceContainer;
 
   constructor(serviceContainer: ServiceContainer) {
@@ -34,7 +34,7 @@ export class FSMExecutorRegistry {
   /**
    * 获取 FSM 执行器
    */
-  public getExecutor(taskType: TaskType): (new (memory: TaskFSMMemory<any>, serviceContainer: ServiceContainer) => TaskStateMachine<any>) | undefined {
+  public getExecutor(taskType: TaskType): (new (memory: TaskFSMMemory<any>, creep: Creep, serviceContainer: ServiceContainer) => TaskStateMachine<any>) | undefined {
     return this.executors.get(taskType);
   }
 
@@ -48,12 +48,12 @@ export class FSMExecutorRegistry {
   /**
    * 创建 FSM 执行器实例
    */
-  public createExecutor(taskType: TaskType, memory: TaskFSMMemory<any>): TaskStateMachine<any> | undefined {
+  public createExecutor(taskType: TaskType, memory: TaskFSMMemory<any>, creep: Creep): TaskStateMachine<any> | undefined {
     const ExecutorClass = this.executors.get(taskType);
     if (!ExecutorClass) {
       return undefined;
     }
-    return new ExecutorClass(memory, this.serviceContainer);
+    return new ExecutorClass(memory, creep, this.serviceContainer);
   }
 
   /**
