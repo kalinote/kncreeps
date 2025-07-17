@@ -34,9 +34,6 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
       [HarvestState.DUMPING]: (creep: Creep) => {
         return this.handleDumping(creep);
       },
-      [HarvestState.TRANSFER]: (creep: Creep) => {
-        return this.handleTransfer(creep);
-      },
       [HarvestState.FINISHED]: (creep: Creep) => {
         return this.handleFinished(creep);
       }
@@ -212,13 +209,6 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
 
     // 默认策略：寻找附近容器，如果没有则丢弃
     return this.findAndUseNearbyStorage(creep);
-  }
-
-  /**
-   * 传输能量到容器
-   */
-  private handleTransfer(creep: Creep) {
-    throw new Error("Method not implemented.");
   }
 
   /**

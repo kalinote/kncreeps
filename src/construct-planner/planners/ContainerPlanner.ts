@@ -34,7 +34,7 @@ export class ContainerPlanner extends BasePlanner {
       }
     }
 
-    // 2. 为矿物规划容器 (如果存在)
+    // 2. 为矿物规划容器
     const mineral = room.find(FIND_MINERALS)[0];
     if (mineral) {
       const containerPos = this.findBestPositionNear(mineral.pos, spawn.pos);

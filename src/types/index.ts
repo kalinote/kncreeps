@@ -411,7 +411,6 @@ export enum HarvestState {
   MOVING = 'MOVING',
   HARVESTING = 'HARVESTING',
   DUMPING = 'DUMPING',
-  TRANSFER = 'TRANSFER',
   FINISHED = 'FINISHED'
 }
 
