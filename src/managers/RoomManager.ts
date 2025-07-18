@@ -12,7 +12,7 @@ export class RoomManager extends BaseManager {
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
-    this.roomService = serviceContainer.get("roomService");
+    this.roomService = serviceContainer.get<RoomService>("roomService");
     this.updateInterval = GameConfig.MANAGER_CONFIGS.ROOM_MANAGER.UPDATE_INTERVAL;
   }
 

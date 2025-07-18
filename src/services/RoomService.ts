@@ -2,6 +2,7 @@ import { BaseService } from "./BaseService";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { ServiceContainer } from "../core/ServiceContainer";
+import { TransportService } from "./TransportService";
 
 /**
  * 房间服务 - 提供房间状态分析、威胁检测和信息管理
@@ -10,9 +11,11 @@ export class RoomService extends BaseService {
   private rooms: Map<string, Room> = new Map();
   private lastRoomScan: number = 0;
   private threatStates: Map<string, { hasThreat: boolean; lastCheck: number; lastReport: number }> = new Map();
+  private transportService: TransportService;
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
+    this.transportService = serviceContainer.get<TransportService>("transportService");
     this.initializeRoomsMemory();
   }
 
@@ -42,6 +45,43 @@ export class RoomService extends BaseService {
         this.initializeRoomMemory(roomName);
       }
     }
+  }
+
+  public initializeLogistics(room: Room): void {
+    // 简化检查，因为 bootstrapStatus 应该总是存在
+    if (room.memory.bootstrapStatus.logistics) {
+      return;
+    }
+
+    console.log(`[RoomService] 为房间 ${room.name} 首次初始化物流网络...`);
+
+    let registeredCount = 0;
+    const structures = room.find(FIND_MY_STRUCTURES);
+
+    for (const s of structures) {
+      try {
+        switch (s.structureType) {
+          case STRUCTURE_SPAWN:
+          case STRUCTURE_EXTENSION:
+          case STRUCTURE_TOWER:
+            this.transportService.setConsumer(s, room.name, RESOURCE_ENERGY);
+            registeredCount++;
+            break;
+
+          case STRUCTURE_STORAGE:
+          case STRUCTURE_TERMINAL:
+            this.transportService.setConsumer(s, room.name, RESOURCE_ENERGY);
+            this.transportService.setProvider(s, room.name, RESOURCE_ENERGY, 'ready');
+            registeredCount += 2;
+            break;
+        }
+      } catch (error) {
+        console.log(`[RoomService] 注册建筑 ${s.structureType} (${s.id}) 时出错: ${error}`);
+      }
+    }
+
+    room.memory.bootstrapStatus.logistics = true;
+    console.log(`[RoomService] 房间 ${room.name} 物流网络初始化完成，注册了 ${registeredCount} 个物流角色。`);
   }
 
   /**
@@ -77,6 +117,7 @@ export class RoomService extends BaseService {
   private updateRoomState(room: Room): void {
     const roomName = room.name;
     this.initializeRoomMemory(roomName);
+    this.initializeLogistics(room);
 
     const memory = Memory.rooms[roomName];
     const previousEnergy = memory.energyAvailable || 0;
@@ -241,7 +282,10 @@ export class RoomService extends BaseService {
         needsAttention: false,
         creepCounts: {},
         threatLevel: "none",
-        lastUpdated: Game.time
+        lastUpdated: Game.time,
+        bootstrapStatus: {
+          logistics: false
+        }
       };
     }
   }

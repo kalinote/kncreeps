@@ -1,4 +1,4 @@
-import { ConstructionStatus, RoadConstructionStatus, RoadPlanInfo, RoadSegment, StructurePosition } from "../../types";
+import { BuildingPlan, ConstructionStatus, RoadConstructionStatus, RoadPlanInfo, RoadSegment, StructurePosition } from "../../types";
 import { BasePlanner } from "./BasePlanner";
 
 /**
@@ -14,7 +14,7 @@ export class RoadPlanner extends BasePlanner {
    * @param room 需要规划的房间
    * @returns 返回所有道路的位置坐标
    */
-  public plan(room: Room): { x: number; y: number }[] {
+  public plan(room: Room): BuildingPlan[] {
     const from = room.find(FIND_MY_SPAWNS)[0];
     if (!from) {
       console.log(`[RoadPlanner] 房间 ${room.name} 中没有找到 Spawn，无法规划道路。`);
@@ -58,13 +58,18 @@ export class RoadPlanner extends BasePlanner {
       );
 
       if (!pathResult.incomplete) {
-        pathResult.path.forEach(pos => allPathPositions.add(`${pos.x},${pos.y}`));
+        pathResult.path.forEach(pos => allPathPositions.add(`${pos.x},${pos.y},${pos.roomName}`));
       }
     }
 
     return Array.from(allPathPositions).map(s => {
-      const [x, y] = s.split(',');
-      return { x: parseInt(x, 10), y: parseInt(y, 10) };
+      const [x, y, roomName] = s.split(',');
+      return {
+        pos: { x: parseInt(x, 10), y: parseInt(y, 10), roomName },
+        structureType: this.structureType,
+        logisticsRole: 'non_logistics_management_building',
+        resourceType: undefined
+      };
     });
   }
 

@@ -13,7 +13,9 @@ import {
   TaskType,
   TaskAssignmentType,
   TaskLifetime,
-  ProviderStatus
+  ProviderStatus,
+  Providers,
+  Consumers
 } from '../types';
 
 // 临时定义，后续可以移到Config文件中
@@ -64,39 +66,58 @@ export class TransportService extends BaseService {
         consumers: {},
         lastUpdated: Game.time
       };
+      return; // 如果是新创建的，则本 tick 不做任何事情
     }
 
     const network = room.memory.logistics.transportNetwork;
-    if (Game.time % 10 !== 0 && Game.time !== network.lastUpdated) {
-      return;
-    }
 
-    network.providers = {};
-    network.consumers = {};
-
-    // 使用FIND_STRUCTURES以包含Container等中立建筑
-    const structures = room.find(FIND_STRUCTURES);
-    for (const s of structures) {
-      // 识别消耗点
-      if (
-        (s.structureType === STRUCTURE_SPAWN ||
-          s.structureType === STRUCTURE_EXTENSION ||
-          s.structureType === STRUCTURE_TOWER) &&
-        s.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-      ) {
-        network.consumers[s.id] = this.createConsumerInfo(s, RESOURCE_ENERGY);
-      }
-
-      // 识别容器
-      if (s.structureType === STRUCTURE_CONTAINER) {
-        this.identifyContainerRole(room, s);
+    // 垃圾回收
+    // TODO 垃圾回收的频率需要进一步设计
+    // TODO 清理被捡起的掉落资源内存，后续可能需要改成事件触发(资源被捡起事件)
+    for (const id in network.providers) {
+      const provider = network.providers[id];
+      // 只对动态资源进行高频清理
+      if (provider.type === 'droppedResource' || provider.type === 'tombstone') {
+        if (!Game.getObjectById(id as Id<Resource | Tombstone>)) {
+          delete network.providers[id];
+        }
       }
     }
 
-    // 识别动态提供点
+    // 清理所有无效资源内存
+    if (Game.time % 100 === 0) {
+      // 清理无效的 provider
+      for (const id in network.providers) {
+        if (!Game.getObjectById(id as Id<Structure | Creep | Resource | Tombstone>)) {
+          delete network.providers[id];
+        }
+      }
+      // 清理无效的 consumer
+      for (const id in network.consumers) {
+        if (!Game.getObjectById(id as Id<Structure | Creep>)) {
+          delete network.consumers[id];
+        }
+      }
+    }
+
+    // 动态 Provider 扫描
+    // 扫描掉落的资源
     const droppedResources = room.find(FIND_DROPPED_RESOURCES);
     for (const res of droppedResources) {
-      network.providers[res.id] = this.createProviderInfo(res, res.resourceType);
+      // 添加或更新掉落资源到 providers 列表
+      if (!network.providers[res.id]) {
+        network.providers[res.id] = this.createProviderInfo(res, res.resourceType);
+      }
+    }
+
+    // 扫描墓碑
+    const tombstones = room.find(FIND_TOMBSTONES);
+    for (const tomb of tombstones) {
+      if (tomb.store.getUsedCapacity() > 0 && !network.providers[tomb.id]) {
+        // 简化处理：只将墓碑中第一种资源注册为可提供
+        const resourceType = Object.keys(tomb.store)[0] as ResourceConstant;
+        network.providers[tomb.id] = this.createProviderInfo(tomb, resourceType);
+      }
     }
 
     network.lastUpdated = Game.time;
@@ -132,7 +153,7 @@ export class TransportService extends BaseService {
   /**
    * 外部调用接口：设置 Provider
    */
-  public setProvider(target: Structure | Resource | Tombstone | Creep, roomName: string, resourceType: ResourceConstant, status: ProviderStatus): void {
+  public setProvider(target: Providers, roomName: string, resourceType: ResourceConstant, status: ProviderStatus): void {
     const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
     if (!network) return;
     const info = this.createProviderInfo(target, resourceType, status);
@@ -142,7 +163,7 @@ export class TransportService extends BaseService {
   /**
    * 外部调用接口：设置 Consumer
    */
-  public setConsumer(target: Structure | Creep, roomName: string, resourceType: ResourceConstant): void {
+  public setConsumer(target: Consumers, roomName: string, resourceType: ResourceConstant): void {
     const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
     if (!network) return;
     const info = this.createConsumerInfo(target, resourceType);
@@ -152,7 +173,7 @@ export class TransportService extends BaseService {
   /**
    * 外部调用接口：移除 Provider
    */
-  public removeProvider(target: Structure | Resource | Tombstone | Creep, roomName: string): void {
+  public removeProvider(target: Providers, roomName: string): void {
     const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
     if (!network) return;
     delete network.providers[target.id];
@@ -161,7 +182,7 @@ export class TransportService extends BaseService {
   /**
    * 外部调用接口：移除 Consumer
    */
-  public removeConsumer(target: Structure | Creep, roomName: string): void {
+  public removeConsumer(target: Consumers, roomName: string): void {
     const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
     if (!network) return;
     delete network.consumers[target.id];
@@ -170,7 +191,7 @@ export class TransportService extends BaseService {
   /**
    * 外部调用接口：更新 Provider 状态
    */
-  public updateProviderStatus(target: Structure | Resource | Tombstone | Creep, roomName: string, resourceType?: ResourceConstant, status?: ProviderStatus): void {
+  public updateProviderStatus(target: Providers, roomName: string, resourceType?: ResourceConstant, status?: ProviderStatus): void {
     const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
     if (!network) return;
     const info = network.providers[target.id];
@@ -188,7 +209,7 @@ export class TransportService extends BaseService {
   /**
    * 外部调用接口：更新 Consumer 状态
    */
-  public updateConsumerStatus(target: Structure | Creep, roomName: string, resourceType?: ResourceConstant): void {
+  public updateConsumerStatus(target: Consumers, roomName: string, resourceType?: ResourceConstant): void {
     const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
     if (!network) return;
     const info = network.consumers[target.id];
@@ -290,11 +311,15 @@ export class TransportService extends BaseService {
     return requests;
   }
 
-  // TODO 只获取状态为ready的provider
   private getAvailableSources(room: Room, network: TransportNetworkMemory): ProviderInfo[] {
     const sources: ProviderInfo[] = [];
     for (const id in network.providers) {
       const provider = network.providers[id];
+
+      if (provider.status !== 'ready') {
+        continue;
+      }
+
       const obj = Game.getObjectById(id as Id<AnyStructure | Resource | Tombstone>);
       if (obj) {
         let amount = 0;
@@ -312,14 +337,14 @@ export class TransportService extends BaseService {
     return sources;
   }
 
-  private createProviderInfo(target: Structure | Resource | Tombstone | Creep, resourceType: ResourceConstant, status: ProviderStatus = 'ready'): ProviderInfo {
+  private createProviderInfo(target: Providers, resourceType: ResourceConstant, status: ProviderStatus = 'ready'): ProviderInfo {
     const id = target.id;
     const type = target instanceof Resource ? 'droppedResource' : (target instanceof Creep ? 'creep' : (target instanceof Tombstone ? 'tombstone' : target.structureType as ProviderType));
     const pos = target.pos;
     return { id, type, pos, resourceType, status };
   }
 
-  private createConsumerInfo(target: Structure | Creep, resourceType: ResourceConstant): ConsumerInfo {
+  private createConsumerInfo(target: Consumers, resourceType: ResourceConstant): ConsumerInfo {
     const id = target.id;
     const type = target instanceof Creep ? 'creep' : target.structureType as ConsumerType;
     const pos = target.pos;

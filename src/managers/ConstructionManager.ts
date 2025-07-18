@@ -7,6 +7,7 @@ import { EventStrategyRegistry } from "../construct-planner/EventStrategyRegistr
 import { RoomLayout } from "../types";
 import { ConstructPlannerService } from "../services/ConstructPlannerService";
 import { EventConfig } from "../config/EventConfig";
+import { TransportService } from "services/TransportService";
 
 /**
  * 建筑管理器
@@ -16,12 +17,14 @@ export class ConstructionManager extends BaseManager {
   private plannerRegistry: PlannerRegistry;
   private strategyRegistry: EventStrategyRegistry;
   private constructPlannerService: ConstructPlannerService;
+  private transportService: TransportService;
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
     this.plannerRegistry = new PlannerRegistry();
     this.strategyRegistry = new EventStrategyRegistry();
-    this.constructPlannerService = serviceContainer.get('constructPlannerService') as ConstructPlannerService;
+    this.constructPlannerService = serviceContainer.get<ConstructPlannerService>('constructPlannerService');
+    this.transportService = serviceContainer.get<TransportService>('transportService');
 
     // 修复运行时错误：直接在此处设置事件监听，而不是在被父类构造函数过早调用的重写方法中
     for (const eventType of this.strategyRegistry.getMonitoredEvents()) {
@@ -116,10 +119,8 @@ export class ConstructionManager extends BaseManager {
 
       if (planner) {
         console.log(`[Planner] 为 ${room.name} 执行 [${plannerName}] 规划...`);
-        const positions = planner.plan(room);
-        layout.buildings[planner.name] = positions.map(p => ({
-          pos: { x: p.x, y: p.y, roomName: room.name }
-        }));
+        const plans = planner.plan(room);
+        layout.buildings[planner.name] = plans;
       }
 
       layout.nextPlannerIndex++;
@@ -191,14 +192,12 @@ export class ConstructionManager extends BaseManager {
    */
   private tryBuild(room: Room, layout: RoomLayout, priorityList: string[]): boolean {
     for (const plannerName of priorityList) {
-      const planner = this.plannerRegistry.getPlanner(plannerName);
-      if (!planner) continue;
+      const buildingPlans = layout.buildings[plannerName] || [];
 
-      const positions = layout.buildings[planner.name] || [];
-      const structureType = planner.structureType;
+      for (const plan of buildingPlans) {
+        const pos = new RoomPosition(plan.pos.x, plan.pos.y, room.name);
+        const structureType = plan.structureType;
 
-      for (const sPos of positions) {
-        const pos = new RoomPosition(sPos.pos.x, sPos.pos.y, room.name);
         const hasStructure = pos.lookFor(LOOK_STRUCTURES).some(s => s.structureType === structureType);
         const hasSite = pos.lookFor(LOOK_CONSTRUCTION_SITES).some(s => s.structureType === structureType);
 
@@ -206,6 +205,15 @@ export class ConstructionManager extends BaseManager {
           const result = pos.createConstructionSite(structureType);
           if (result === OK) {
             console.log(`[Builder] 在 [${pos.x},${pos.y}] 创建 ${structureType} 工地。`);
+
+            const site = pos.lookFor(LOOK_CONSTRUCTION_SITES).find(s => s.structureType === structureType);
+            if (site && plan.logisticsRole) {
+                if (plan.logisticsRole === 'provider') {
+                    this.transportService.setProvider(site, room.name, plan.resourceType || RESOURCE_ENERGY, 'underConstruction');
+                } else if (plan.logisticsRole === 'consumer') {
+                    this.transportService.setConsumer(site, room.name, plan.resourceType || RESOURCE_ENERGY);
+                }
+            }
 
             // 触发建造开始事件
             this.emit(EventConfig.EVENTS.CONSTRUCTION_PLAN_UPDATED, {
@@ -257,12 +265,9 @@ export class ConstructionManager extends BaseManager {
         const planner = this.plannerRegistry.getPlanner(plannerName);
         if (planner) {
           console.log(`[Emergency] 正在规划 [${plannerName}]...`);
-          const positions = planner.plan(room);
-          // 更新或覆盖布局中的相应建筑部分
-          layout.buildings[planner.name] = positions.map(p => ({
-            pos: { x: p.x, y: p.y, roomName: room.name }
-          }));
-          console.log(`[Emergency] 规划了 ${positions.length} 个 [${plannerName}]。`);
+          const buildingPlans = planner.plan(room);
+          layout.buildings[planner.name] = buildingPlans;
+          console.log(`[Emergency] 规划了 ${buildingPlans.length} 个 [${plannerName}]。`);
         }
       }
       // 更新布局的时间戳
@@ -272,17 +277,37 @@ export class ConstructionManager extends BaseManager {
 
   /**
    * 处理建造完成事件
+   * TODO 这里的处理方式需要进一步确认
    */
-  private handleConstructionCompleted(data: any): void {
-    const { roomName, structureType, position } = data;
+  private handleConstructionCompleted(data: { structureId: Id<Structure>, structureType: StructureConstant, roomName: string }): void {
+    const { structureId, structureType, roomName } = data;
 
-    // 如果是道路建造完成，触发相应事件
+    const structure = Game.getObjectById(structureId);
+    if (!structure) {
+      console.log(`[ConstructionManager] 警告：收到建筑完成事件，但无法通过ID找到建筑: ${structureId}`);
+      return;
+    }
+
+    console.log(`[ConstructionManager] 收到建筑完成事件: ${structureType} at ${structure.pos}`);
+
+    // 更新运输网络建筑状态
+    switch (structureType) {
+        case STRUCTURE_CONTAINER:
+        case STRUCTURE_STORAGE:
+        case STRUCTURE_TERMINAL:
+        case STRUCTURE_LINK:
+            this.transportService.updateProviderStatus(structure, roomName, undefined, 'ready');
+            console.log(`[TransportService] 已将 ${structureType} (${structure.id}) 状态更新为 'ready'`);
+            break;
+    }
+
+    // 原有的道路处理逻辑
     if (structureType === STRUCTURE_ROAD) {
       this.emit(EventConfig.EVENTS.CONSTRUCTION_PLAN_UPDATED, {
         roomName,
         structureType,
         status: 'construction_progress',
-        position
+        position: structure.pos
       });
     }
   }

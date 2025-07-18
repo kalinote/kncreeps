@@ -1,3 +1,4 @@
+import { BuildingPlan } from '../../types';
 import { BasePlanner } from './BasePlanner';
 
 /**
@@ -13,43 +14,57 @@ export class ContainerPlanner extends BasePlanner {
    * @param room 需要规划的房间对象
    * @returns 返回一个包含所有容器位置的数组
    */
-  public plan(room: Room): { x: number; y: number }[] {
+  public plan(room: Room): BuildingPlan[] {
     if (!room.controller) {
       return [];
     }
 
-    const positions: { x: number; y: number }[] = [];
+    const plans: BuildingPlan[] = [];
     const spawn = room.find(FIND_MY_SPAWNS)[0];
     if (!spawn) {
-      // 如果没有spawn，无法确定朝向，暂时不规划
       return [];
     }
 
-    // 1. 为能量源规划容器
+    // 1. 为能量源规划容器 -> Provider
     const sources = room.find(FIND_SOURCES);
     for (const source of sources) {
       const containerPos = this.findBestPositionNear(source.pos, spawn.pos);
       if (containerPos) {
-        positions.push({ x: containerPos.x, y: containerPos.y });
+        plans.push({
+          pos: { x: containerPos.x, y: containerPos.y, roomName: room.name },
+          structureType: this.structureType,
+          logisticsRole: 'provider',
+          resourceType: RESOURCE_ENERGY
+        });
       }
     }
 
-    // 2. 为矿物规划容器
+    // 2. 为矿物规划容器 -> Provider
     const mineral = room.find(FIND_MINERALS)[0];
     if (mineral) {
       const containerPos = this.findBestPositionNear(mineral.pos, spawn.pos);
       if (containerPos) {
-        positions.push({ x: containerPos.x, y: containerPos.y });
+        plans.push({
+          pos: { x: containerPos.x, y: containerPos.y, roomName: room.name },
+          structureType: this.structureType,
+          logisticsRole: 'provider',
+          resourceType: mineral.mineralType
+        });
       }
     }
 
-    // 3. 为控制器规划容器
+    // 3. 为控制器规划容器 -> Consumer
     const controllerPos = this.findBestPositionNear(room.controller.pos, spawn.pos, 3);
     if (controllerPos) {
-      positions.push({ x: controllerPos.x, y: controllerPos.y });
+      plans.push({
+        pos: { x: controllerPos.x, y: controllerPos.y, roomName: room.name },
+        structureType: this.structureType,
+        logisticsRole: 'consumer',
+        resourceType: RESOURCE_ENERGY
+      });
     }
 
-    return positions;
+    return plans;
   }
 
   /**

@@ -35,9 +35,11 @@ export interface EnergySourceConfig {
 // 提供者类型
 export type ProviderType = 'container' | 'storage' | 'terminal' | 'link' | 'droppedResource' | 'tombstone' | 'creep';
 export type ProviderStatus = 'underConstruction' | 'ready' | 'disabled';
+export type Providers = Structure | Resource | Tombstone | Creep | ConstructionSite;
 
 // 消费者类型
 export type ConsumerType = 'container' | 'storage' | 'terminal' | 'link' | 'spawn' | 'extension' | 'tower' | 'lab' | 'nuker' | 'powerSpawn' | 'creep';
+export type Consumers = Structure | Creep | ConstructionSite;
 
 // 提供者信息
 export interface ProviderInfo {

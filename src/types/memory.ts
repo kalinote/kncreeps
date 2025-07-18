@@ -73,6 +73,10 @@ declare global {
     threatLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
     lastUpdated: number;
     logistics?: LogisticsMemory;
+    bootstrapStatus: {
+      // 后面把各服务的初始化信息全部放到这里
+      logistics: boolean;
+    }
   }
 
   // 扩展全局对象

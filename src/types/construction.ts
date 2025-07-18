@@ -1,3 +1,6 @@
+// 后勤角色(后续可能进一步扩展)
+export type LogisticsRole = 'provider' | 'consumer' | 'non_logistics_management_building';
+
 // 建筑状态枚举
 export enum ConstructionStatus {
   PLANNED = 'planned',           // 已规划但未开始建造
@@ -10,6 +13,14 @@ export interface StructurePosition {
   pos: { x: number; y: number; roomName: string };
 }
 
+// 建造建筑规划
+export interface BuildingPlan {
+  pos: { x: number; y: number; roomName: string };
+  structureType: BuildableStructureConstant;
+  logisticsRole: LogisticsRole;
+  resourceType?: ResourceConstant;
+}
+
 // 房间布局蓝图
 export interface RoomLayout {
   version: number;
@@ -17,7 +28,7 @@ export interface RoomLayout {
   status: 'planning' | 'done';
   nextPlannerIndex: number;
   buildings: {
-    [plannerName: string]: StructurePosition[];
+    [plannerName: string]: BuildingPlan[];
   };
 }
 
