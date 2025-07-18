@@ -193,7 +193,7 @@ export class CreepProductionService extends BaseService {
       if (limits && currentCount < limits.min) {
         // 检查是否可以生产更多
         if (GameConfig.canProduceMoreCreeps(controllerLevel, role, currentCount, totalCreepsInRoom)) {
-          console.log(`[ensureMinimumRoleRequirements] 房间 ${roomName} ${role} 未达到最小配置: ${currentCount}/${limits.min}`);
+          // console.log(`[ensureMinimumRoleRequirements] 房间 ${roomName} ${role} 未达到最小配置: ${currentCount}/${limits.min}`);
 
           this.addProductionNeed(
             roomName,

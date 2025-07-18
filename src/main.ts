@@ -11,9 +11,9 @@ const gameEngine = new GameEngine();
 console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
 
 // 设置全局控制台指令
-(global as any).production = {
+(global as any).debug = {
   // 查看详细的生产计划
-  plan: (roomName?: string) => {
+  productionPlan: (roomName?: string) => {
     console.log('=== CREEP 生产计划详细报告 ===');
     console.log(`当前 Tick: ${Game.time}`);
     console.log('');
@@ -51,7 +51,7 @@ console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
   },
 
   // 查看任务详情
-  tasks: (roomName?: string) => {
+  taskStatus: (roomName?: string) => {
     console.log('=== 任务系统详细状态 ===');
 
     const rooms = roomName ? [Game.rooms[roomName]] : Object.values(Game.rooms);
@@ -68,7 +68,7 @@ console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
   },
 
   // 查看生产队列
-  queue: () => {
+  productionQueue: () => {
     console.log('=== 生产队列状态 ===');
 
     try {
@@ -110,7 +110,7 @@ console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
   },
 
   // 强制重新评估生产需求
-  refresh: () => {
+  refreshProductionNeeds: () => {
     console.log('🔄 强制重新评估生产需求...');
 
     try {
@@ -129,7 +129,7 @@ console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
   },
 
   // 诊断transport任务问题
-  transport: (roomName?: string) => {
+  transportStatus: (roomName?: string) => {
     console.log('=== TRANSPORT 任务诊断报告 ===');
     console.log(`当前 Tick: ${Game.time}`);
     console.log('');
@@ -268,7 +268,7 @@ console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
   },
 
   // 诊断生产需求计算过程 - 使用增强版调试
-  debug: (roomName?: string) => {
+  productionCalculation: (roomName?: string) => {
     try {
       const serviceContainer = (global as any).serviceContainer;
       const creepProductionService = serviceContainer.get('creepProductionService');

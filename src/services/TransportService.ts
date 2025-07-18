@@ -12,7 +12,8 @@ import {
   TaskStatus,
   TaskType,
   TaskAssignmentType,
-  TaskLifetime
+  TaskLifetime,
+  ProviderStatus
 } from '../types';
 
 // 临时定义，后续可以移到Config文件中
@@ -26,7 +27,8 @@ const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
   lab: 0.4,
   nuker: 0.3,
   powerSpawn: 0.7,
-  link: 0.6
+  link: 0.6,
+  creep: 0.4  // 暂定
 };
 
 /**
@@ -49,7 +51,8 @@ export class TransportService extends BaseService {
 
   /**
    * 更新房间的运输网络内存
-   * @param room 房间对象
+   * TODO 只保留掉落资源和tombstone等动态资源的扫描，其他建筑由建筑规划系统来设置，creep暂时不管
+   * TODO 新增垃圾回收，定期清理内存，这个还需要设计一下
    */
   private updateTransportNetwork(room: Room): void {
     if (!room.memory.logistics) {
@@ -86,7 +89,7 @@ export class TransportService extends BaseService {
 
       // 识别容器
       if (s.structureType === STRUCTURE_CONTAINER) {
-        this.identifyContainerRole(room, s, network);
+        this.identifyContainerRole(room, s);
       }
     }
 
@@ -101,17 +104,22 @@ export class TransportService extends BaseService {
 
   /**
    * 识别容器的角色
+   * TODO 由建筑规划系统来判断容器角色，并设置状态
+   * 后续可能提供由flag来手动标记的功能(在某个容器上放置制定规则的flag，来手动标记)
    */
-  private identifyContainerRole(room: Room, container: StructureContainer, network: TransportNetworkMemory): void {
+  private identifyContainerRole(room: Room, container: StructureContainer): void {
+    const network = room.memory.logistics?.transportNetwork;
+    if (!network) return;
+
     const nearbySource = container.pos.findInRange(FIND_SOURCES, 3)[0];
     if (nearbySource) {
-      network.providers[container.id] = this.createProviderInfo(container, RESOURCE_ENERGY);
+      network.providers[container.id] = this.createProviderInfo(container, RESOURCE_ENERGY, 'ready');
       return;
     }
 
     const nearbyMineral = container.pos.findInRange(FIND_MINERALS, 3)[0];
     if (nearbyMineral) {
-      network.providers[container.id] = this.createProviderInfo(container, nearbyMineral.mineralType);
+      network.providers[container.id] = this.createProviderInfo(container, nearbyMineral.mineralType, 'ready');
       return;
     }
 
@@ -122,7 +130,77 @@ export class TransportService extends BaseService {
   }
 
   /**
-   * 生成所有待处理的运输任务
+   * 外部调用接口：设置 Provider
+   */
+  public setProvider(target: Structure | Resource | Tombstone | Creep, roomName: string, resourceType: ResourceConstant, status: ProviderStatus): void {
+    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    if (!network) return;
+    const info = this.createProviderInfo(target, resourceType, status);
+    network.providers[target.id] = info;
+  }
+
+  /**
+   * 外部调用接口：设置 Consumer
+   */
+  public setConsumer(target: Structure | Creep, roomName: string, resourceType: ResourceConstant): void {
+    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    if (!network) return;
+    const info = this.createConsumerInfo(target, resourceType);
+    network.consumers[target.id] = info;
+  }
+
+  /**
+   * 外部调用接口：移除 Provider
+   */
+  public removeProvider(target: Structure | Resource | Tombstone | Creep, roomName: string): void {
+    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    if (!network) return;
+    delete network.providers[target.id];
+  }
+
+  /**
+   * 外部调用接口：移除 Consumer
+   */
+  public removeConsumer(target: Structure | Creep, roomName: string): void {
+    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    if (!network) return;
+    delete network.consumers[target.id];
+  }
+
+  /**
+   * 外部调用接口：更新 Provider 状态
+   */
+  public updateProviderStatus(target: Structure | Resource | Tombstone | Creep, roomName: string, resourceType?: ResourceConstant, status?: ProviderStatus): void {
+    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    if (!network) return;
+    const info = network.providers[target.id];
+    if (!info) return;
+
+    if (status) {
+      info.status = status;
+    }
+
+    if (resourceType) {
+      info.resourceType = resourceType;
+    }
+  }
+
+  /**
+   * 外部调用接口：更新 Consumer 状态
+   */
+  public updateConsumerStatus(target: Structure | Creep, roomName: string, resourceType?: ResourceConstant): void {
+    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    if (!network) return;
+    const info = network.consumers[target.id];
+    if (!info) return;
+
+    if (resourceType) {
+      info.resourceType = resourceType;
+    }
+  }
+
+  /**
+   * 外部调用接口：生成所有待处理的运输任务
    */
   public generateTransportTasks(room: Room): TransportTask[] {
     const network = room.memory.logistics?.transportNetwork;
@@ -212,6 +290,7 @@ export class TransportService extends BaseService {
     return requests;
   }
 
+  // TODO 只获取状态为ready的provider
   private getAvailableSources(room: Room, network: TransportNetworkMemory): ProviderInfo[] {
     const sources: ProviderInfo[] = [];
     for (const id in network.providers) {
@@ -233,14 +312,18 @@ export class TransportService extends BaseService {
     return sources;
   }
 
-  private createConsumerInfo(target: Structure, resourceType: ResourceConstant): ConsumerInfo {
-    return { id: target.id, type: target.structureType as ConsumerType, pos: target.pos, resourceType };
+  private createProviderInfo(target: Structure | Resource | Tombstone | Creep, resourceType: ResourceConstant, status: ProviderStatus = 'ready'): ProviderInfo {
+    const id = target.id;
+    const type = target instanceof Resource ? 'droppedResource' : (target instanceof Creep ? 'creep' : (target instanceof Tombstone ? 'tombstone' : target.structureType as ProviderType));
+    const pos = target.pos;
+    return { id, type, pos, resourceType, status };
   }
 
-  private createProviderInfo(target: StructureContainer | Resource, resourceType: ResourceConstant): ProviderInfo {
+  private createConsumerInfo(target: Structure | Creep, resourceType: ResourceConstant): ConsumerInfo {
     const id = target.id;
-    const type = target instanceof Resource ? 'droppedResource' : target.structureType;
-    return { id, type, pos: target.pos, resourceType };
+    const type = target instanceof Creep ? 'creep' : target.structureType as ConsumerType;
+    const pos = target.pos;
+    return { id, type, pos, resourceType};
   }
 
   private createTransportTask(provider: ProviderInfo, consumer: ConsumerInfo, amount: number): TransportTask {

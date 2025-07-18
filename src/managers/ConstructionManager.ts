@@ -81,7 +81,7 @@ export class ConstructionManager extends BaseManager {
     if (!layout) {
       if (!room.controller) return;
 
-      // 修复规划延迟逻辑：记录首次尝试规划的时间
+      // 记录首次尝试规划的时间
       if (room.memory.planningAttemptedAt === undefined) {
         room.memory.planningAttemptedAt = Game.time;
       }

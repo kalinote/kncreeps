@@ -33,10 +33,11 @@ export interface EnergySourceConfig {
 }
 
 // 提供者类型
-export type ProviderType = 'container' | 'storage' | 'terminal' | 'link' | 'droppedResource' | 'tombstone';
+export type ProviderType = 'container' | 'storage' | 'terminal' | 'link' | 'droppedResource' | 'tombstone' | 'creep';
+export type ProviderStatus = 'underConstruction' | 'ready' | 'disabled';
 
 // 消费者类型
-export type ConsumerType = 'container' | 'storage' | 'terminal' | 'link' | 'spawn' | 'extension' | 'tower' | 'lab' | 'nuker' | 'powerSpawn';
+export type ConsumerType = 'container' | 'storage' | 'terminal' | 'link' | 'spawn' | 'extension' | 'tower' | 'lab' | 'nuker' | 'powerSpawn' | 'creep';
 
 // 提供者信息
 export interface ProviderInfo {
@@ -46,6 +47,7 @@ export interface ProviderInfo {
   resourceType: ResourceConstant;
   // 动态属性，由TransportService在运行时计算和更新
   amount?: number; // 当前可提供的资源数量
+  status?: ProviderStatus; // 当前建筑状态
 }
 
 // 消费者信息
