@@ -4,7 +4,7 @@ import { ServiceContainer } from "../core/ServiceContainer";
 import { GameConfig } from "../config/GameConfig";
 import { PlannerRegistry } from "../construct-planner/PlannerRegistry";
 import { EventStrategyRegistry } from "../construct-planner/EventStrategyRegistry";
-import { RoomLayout } from "types";
+import { RoomLayout } from "../types";
 import { ConstructPlannerService } from "../services/ConstructPlannerService";
 import { EventConfig } from "../config/EventConfig";
 

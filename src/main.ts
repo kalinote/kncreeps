@@ -1,7 +1,7 @@
 import { ErrorMapper } from "utils/ErrorMapper";
 import { GameEngine } from "core/GameEngine";
 import { GameConfig } from "config/GameConfig";
-import { TaskStatus, TaskType, ProductionNeed } from "types";
+import { TaskStatus, TaskType, ProductionNeed } from "./types";
 
 // 导入类型定义
 import "./types";

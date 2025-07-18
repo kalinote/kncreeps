@@ -1,4 +1,4 @@
-import { RoomLayout } from "types";
+import { RoomLayout } from "../../types";
 
 /**
  * 规划器的基类

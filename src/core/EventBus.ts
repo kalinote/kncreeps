@@ -133,7 +133,7 @@ export class EventBus {
 
     try {
       let processedCount = 0;
-      const maxEvents = 100; // TODO 最大事件数量，后续统一放到配置文件中
+      const maxEvents = 100; // TODO 最大事件数量，后续统一放到配置系统中
 
       while (this.eventQueue.length > 0 && processedCount < maxEvents) {
         const event = this.removeEventFromQueue()!;

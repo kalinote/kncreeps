@@ -103,13 +103,13 @@ export class TransportService extends BaseService {
    * 识别容器的角色
    */
   private identifyContainerRole(room: Room, container: StructureContainer, network: TransportNetworkMemory): void {
-    const nearbySource = container.pos.findInRange(FIND_SOURCES, 2)[0];
+    const nearbySource = container.pos.findInRange(FIND_SOURCES, 3)[0];
     if (nearbySource) {
       network.providers[container.id] = this.createProviderInfo(container, RESOURCE_ENERGY);
       return;
     }
 
-    const nearbyMineral = container.pos.findInRange(FIND_MINERALS, 2)[0];
+    const nearbyMineral = container.pos.findInRange(FIND_MINERALS, 3)[0];
     if (nearbyMineral) {
       network.providers[container.id] = this.createProviderInfo(container, nearbyMineral.mineralType);
       return;

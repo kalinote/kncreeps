@@ -1,4 +1,4 @@
-import { ConstructionStatus, RoadConstructionStatus, RoadPlanInfo, RoadSegment, StructurePosition } from "types";
+import { ConstructionStatus, RoadConstructionStatus, RoadPlanInfo, RoadSegment, StructurePosition } from "../../types";
 import { BasePlanner } from "./BasePlanner";
 
 /**
