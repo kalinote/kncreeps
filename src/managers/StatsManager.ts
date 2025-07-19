@@ -14,7 +14,7 @@ export class StatsManager extends BaseManager {
     super(eventBus, serviceContainer);
     this.statsService = this.serviceContainer.get<StatsService>('statsService');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.STATS_MANAGER.UPDATE_INTERVAL;
-    this.initializeStatsMemory();
+
   }
 
   /**
@@ -46,6 +46,8 @@ export class StatsManager extends BaseManager {
     if (!this.shouldUpdate()) return;
 
     this.safeExecute(() => {
+      // TODO 初始化统计内存
+      this.initializeStatsMemory();
       this.statsService.run();
     }, 'StatsManager.update');
 

@@ -10,6 +10,12 @@ export const VisualConfig = {
       font: 0.8,
       align: 'left' as 'left' | 'center' | 'right',
     },
+    // 全局信息
+    GLOBAL_INFO_STYLE: {
+      color: '#FFFFFF',
+      font: 0.8,
+      align: 'left' as 'left' | 'center' | 'right',
+    },
     // 路径
     PATH_STYLE: {
       stroke: '#FF0000',

@@ -29,7 +29,6 @@ export class VisualLayoutService extends BaseService {
     if (!Memory.visuals.layerSettings) {
       Memory.visuals.layerSettings = {};
     }
-    // 注意：这里我们假设 VisualConfig.LAYER_DEFAULTS 仍然存在且有效
     for (const layerName in VisualConfig.LAYER_DEFAULTS) {
       if (Memory.visuals.layerSettings[layerName] === undefined) {
         Memory.visuals.layerSettings[layerName] =
@@ -61,56 +60,59 @@ export class VisualLayoutService extends BaseService {
 
   /**
    * 计算所有数据类图层的布局
-   * @param dataLayers 需要计算布局的数据图层数组
-   * @param visual RoomVisual 对象，用于尺寸计算
-   * @returns 返回一个 Map，键是图层名，值是其渲染的起始坐标 {x, y}
    */
-  public calculateLayout(dataLayers: BaseLayer[], visual: RoomVisual): Map<string, { x: number; y: number }> {
+  public calculateLayout(dataLayers: BaseLayer[]): Map<string, { x: number; y: number }> {
     const layoutMap = new Map<string, { x: number; y: number }>();
     const anchorGroups: { [anchorKey: string]: BaseLayer[] } = {};
 
-    // 1. 按锚点分组
-    for (const layer of dataLayers) {
-      const layoutConfig = DATA_LAYER_LAYOUTS[layer.getName()];
-      if (!layoutConfig) continue;
+    for (const roomName in Game.rooms) {
+      // 1. 按锚点分组
+      for (const layer of dataLayers) {
+        const layoutConfig = DATA_LAYER_LAYOUTS[layer.getName()];
+        if (!layoutConfig) continue;
 
-      const anchorKey = Object.keys(layoutConfig.anchor).join(','); // e.g., "0,0" for TOP_LEFT
-      if (!anchorGroups[anchorKey]) {
-        anchorGroups[anchorKey] = [];
+        const anchorKey = Object.keys(layoutConfig.anchor).join(','); // e.g., "0,0" for TOP_LEFT
+        if (!anchorGroups[anchorKey]) {
+          anchorGroups[anchorKey] = [];
+        }
+        anchorGroups[anchorKey].push(layer);
       }
-      anchorGroups[anchorKey].push(layer);
-    }
 
-    // 2. 对每个锚点分组进行布局计算
-    for (const anchorKey in anchorGroups) {
-      const layersInGroup = anchorGroups[anchorKey];
-      const layoutConfigSample = DATA_LAYER_LAYOUTS[layersInGroup[0].getName()];
-      const anchor = layoutConfigSample.anchor;
+      // 2. 对每个锚点分组进行布局计算
+      for (const anchorKey in anchorGroups) {
+        const layersInGroup = anchorGroups[anchorKey];
+        const layoutConfigSample = DATA_LAYER_LAYOUTS[layersInGroup[0].getName()];
+        const anchor = layoutConfigSample.anchor;
 
-      // 按 order 排序
-      layersInGroup.sort((a, b) => {
-        const orderA = DATA_LAYER_LAYOUTS[a.getName()]?.order ?? 99;
-        const orderB = DATA_LAYER_LAYOUTS[b.getName()]?.order ?? 99;
-        return orderA - orderB;
-      });
+        // 按 order 排序
+        layersInGroup.sort((a, b) => {
+          const orderA = DATA_LAYER_LAYOUTS[a.getName()]?.order ?? 99;
+          const orderB = DATA_LAYER_LAYOUTS[b.getName()]?.order ?? 99;
+          return orderA - orderB;
+        });
 
-      let cumulativeOffsetY = 0;
+        let cumulativeOffsetY = 0;
 
-      // 3. 遍历排序后的图层，计算最终坐标
-      for (const layer of layersInGroup) {
-        const config = DATA_LAYER_LAYOUTS[layer.getName()];
-        const padding = config.padding || { x: 0, y: 0 };
+        // 3. 遍历排序后的图层，计算最终坐标
+        for (const layer of layersInGroup) {
+          const config = DATA_LAYER_LAYOUTS[layer.getName()];
+          const padding = config.padding || { x: 0, y: 0 };
 
-        // 计算起始坐标
-        const startX = anchor.x === 1 ? 49.5 + padding.x : anchor.x + padding.x;
-        const startY = anchor.y === 1 ? 49.5 + padding.y : anchor.y + padding.y;
+          // 计算起始坐标
+          const startX = anchor.x === 1 ? 49.5 + padding.x : anchor.x + padding.x;
+          const startY = anchor.y === 1 ? 49.5 + padding.y : anchor.y + padding.y;
 
-        layoutMap.set(layer.getName(), { x: startX, y: startY + cumulativeOffsetY });
+          layoutMap.set(layer.getName(), { x: startX, y: startY + cumulativeOffsetY });
+          // console.log(`[VisualLayoutService] layer: ${layer.getName()} startX: ${startX} startY: ${startY + cumulativeOffsetY}`);
+          // console.log(`[VisualLayoutService] cumulativeOffsetY: ${cumulativeOffsetY}`);
 
-        // 累加高度，为下一个图层做准备
-        // TODO 优化计算方法
-        const dimensions = layer.calculateDimensions(visual);
-        cumulativeOffsetY += dimensions.height + 0.8; // 暂时固定间距为0.8
+          // 累加高度，为下一个图层做准备
+          // TODO 优化计算方法
+          layer.preRender(Game.rooms[roomName]);
+          const dimensions = layer.calculateDimensions();
+          // console.log(`[VisualLayoutService] layer: ${layer.getName()} dimensions: ${dimensions.height}`);
+          cumulativeOffsetY += dimensions.height + 0.8; // 暂时固定间距为0.8
+        }
       }
     }
 

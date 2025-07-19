@@ -17,35 +17,30 @@ export class RoomInfoLayer extends BaseLayer {
     this.roomService = serviceContainer.get('roomService');
   }
 
-  /**
-   * 根据要显示的内容，计算此图层需要的高度
-   */
-  public calculateDimensions(visual: RoomVisual): { width: number; height: number } {
-    // 假设每行文本高度为1，可以根据字体大小调整
-    const lineHeight = 1;
-    const lineCount = 4; // 我们将显示4行信息
-    return { width: 10, height: lineCount * lineHeight }; // 宽度可以给一个大概值
-  }
-
-  /**
-   * 渲染房间信息
-   */
-  public render(room: Room, offset?: { x: number; y: number }): void {
-    if (!offset) return;
-
-    const { x, y } = offset;
-    let line = 0;
-
+  public preRender(room: Room): void {
     // 获取房间信息
     const rcl = room.controller ? room.controller.level : 'N/A';
     const energy = `${room.energyAvailable} / ${room.energyCapacityAvailable}`;
     const myCreeps = this.roomService.getCreepsInRoom(room.name).length;
 
     // 使用RoomVisual进行绘制
+    this.clearBuffer();
+    this.buffer += `房间: ${room.name}\n`;
+    this.buffer += `RCL: ${rcl}\n`;
+    this.buffer += `能量: ${energy}\n`;
+    this.buffer += `Creeps: ${myCreeps}`;
+  }
+
+  /**
+   * 渲染房间信息
+   */
+  public render(room: Room, offset?: { x: number; y: number }): void {
+    console.log(`[RoomInfoLayer] render room: ${room.name} offset: x:${offset!.x} y:${offset!.y}`);
+    if (!offset) return;
+
+    const { x, y } = offset;
+
     const visual = new RoomVisual(room.name);
-    visual.text(`房间: ${room.name}`, x, y + (line++ * 1.2), VisualConfig.STYLES.ROOM_INFO_STYLE);
-    visual.text(`RCL: ${rcl}`, x, y + (line++ * 1.2), VisualConfig.STYLES.ROOM_INFO_STYLE);
-    visual.text(`能量: ${energy}`, x, y + (line++ * 1.2), VisualConfig.STYLES.ROOM_INFO_STYLE);
-    visual.text(`Creeps: ${myCreeps}`, x, y + (line++ * 1.2), VisualConfig.STYLES.ROOM_INFO_STYLE);
+    this.drawTextLine(visual, this.buffer, x, y, VisualConfig.STYLES.ROOM_INFO_STYLE);
   }
 }

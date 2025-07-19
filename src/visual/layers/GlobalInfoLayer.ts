@@ -1,5 +1,6 @@
 import { LayerType } from '../../types';
 import { BaseLayer } from './BaseLayer';
+import { VisualConfig } from '../../config/VisualConfig';
 
 /**
  * 全局信息图层
@@ -13,13 +14,17 @@ export class GlobalInfoLayer extends BaseLayer {
     super(eventBus, serviceContainer);
   }
 
-  /**
-   * 计算此图层需要的高度
-   */
-  public calculateDimensions(visual: RoomVisual): { width: number; height: number } {
-    const lineHeight = 1;
-    const lineCount = 4; // Tick, CPU, Bucket, GCL
-    return { width: 15, height: lineCount * lineHeight }; // 宽度给一个大概值
+  public preRender(room: Room): void {
+    const tick = `Tick: ${Game.time}`;
+    const cpu = `CPU: ${Game.cpu.getUsed().toFixed(2)} / ${Game.cpu.limit}`;
+    const bucket = `Bucket: ${Game.cpu.bucket}`;
+    const gcl = `GCL: ${Game.gcl.level} (${((Game.gcl.progress / Game.gcl.progressTotal) * 100).toFixed(2)}%)`;
+
+    this.clearBuffer();
+    this.buffer += `${tick}\n`;
+    this.buffer += `${cpu}\n`;
+    this.buffer += `${bucket}\n`;
+    this.buffer += `${gcl}`;
   }
 
   /**
@@ -34,20 +39,8 @@ export class GlobalInfoLayer extends BaseLayer {
     }
 
     const { x, y } = offset;
-    let line = 0;
-    const textStyle: TextStyle = { align: 'left', color: '#FFFFFF', font: 0.8 };
 
-    // 获取全局信息
-    const tick = `Tick: ${Game.time}`;
-    const cpu = `CPU: ${Game.cpu.getUsed().toFixed(2)} / ${Game.cpu.limit}`;
-    const bucket = `Bucket: ${Game.cpu.bucket}`;
-    const gcl = `GCL: ${Game.gcl.level} (${((Game.gcl.progress / Game.gcl.progressTotal) * 100).toFixed(2)}%)`;
-
-    // 使用RoomVisual进行绘制
     const visual = new RoomVisual(room.name);
-    visual.text(tick, x, y + (line++ * 1.2), textStyle);
-    visual.text(cpu, x, y + (line++ * 1.2), textStyle);
-    visual.text(bucket, x, y + (line++ * 1.2), textStyle);
-    visual.text(gcl, x, y + (line++ * 1.2), textStyle);
+    this.drawTextLine(visual, this.buffer, x, y, VisualConfig.STYLES.GLOBAL_INFO_STYLE);
   }
 }
