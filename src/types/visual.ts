@@ -22,6 +22,10 @@ export interface TextBufferItem {
   data: {
     text: string;
   };
+  offset?: {
+    x: number;
+    y: number;
+  };
 }
 
 export interface ProgressBarBufferItem {
@@ -36,6 +40,10 @@ export interface ProgressBarBufferItem {
      */
     width?: number;
   };
+  offset?: {
+    x: number;
+    y: number;
+  };
 }
 
 export interface LineChartBufferItem {
@@ -46,9 +54,13 @@ export interface LineChartBufferItem {
     label: string;
     width?: number;
   };
+  offset?: {
+    x: number;
+    y: number;
+  };
 }
 
-export type ChartBufferItem = TextBufferItem | ProgressBarBufferItem;
+export type ChartBufferItem = TextBufferItem | ProgressBarBufferItem | LineChartBufferItem;
 
 // 图表缓冲区，用于表示数据
 export type ChartBuffer = ChartBufferItem[];

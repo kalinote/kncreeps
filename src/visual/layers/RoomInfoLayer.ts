@@ -16,31 +16,42 @@ export class RoomInfoLayer extends BaseLayer {
   constructor(eventBus: any, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
     this.roomService = serviceContainer.get('roomService');
+    this.textStyle = VisualConfig.STYLES.ROOM_INFO_STYLE;
   }
 
   public preRender(room: Room): void {
     // 获取房间信息
     const rcl = room.controller ? room.controller.level : 'N/A';
-    const energy = `${room.energyAvailable} / ${room.energyCapacityAvailable}`;
     const myCreeps = this.roomService.getCreepsInRoom(room.name).length;
 
     // 使用RoomVisual进行绘制
     this.clearBuffer();
-    this.buffer += `房间: ${room.name}\n`;
-    this.buffer += `RCL: ${rcl}\n`;
-    this.buffer += `能量: ${energy}\n`;
-    this.buffer += `Creeps: ${myCreeps}`;
-  }
-
-  /**
-   * 渲染房间信息
-   */
-  public render(room: Room, offset?: { x: number; y: number }): void {
-    if (!offset) return;
-
-    const { x, y } = offset;
-
-    const visual = new RoomVisual(room.name);
-    this.drawTextLine(visual, this.buffer, x, y, VisualConfig.STYLES.ROOM_INFO_STYLE);
+    this.buffer.push({
+      type: 'text',
+      data: {
+        text: `房间: ${room.name}`,
+      },
+    });
+    this.buffer.push({
+      type: 'text',
+      data: {
+        text: `RCL: ${rcl}`,
+      },
+    });
+    this.buffer.push({
+      type: 'progressBar',
+      data: {
+        width: 5,
+        progress: room.energyAvailable,
+        total: room.energyCapacityAvailable,
+        label: `能量`,
+      },
+    });
+    this.buffer.push({
+      type: 'text',
+      data: {
+        text: `Creeps: ${myCreeps}`,
+      },
+    });
   }
 }

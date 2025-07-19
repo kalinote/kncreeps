@@ -10,24 +10,34 @@ export class TaskAssignmentLayer extends BaseLayer {
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
+    this.textStyle = VisualConfig.STYLES.TASK_ASSIGNMENT_STYLE;
   }
 
   public preRender(room: Room): void {
     // 使用RoomVisual进行绘制
     this.clearBuffer();
-    this.buffer += "任务分配展示预留位置\n";
+    this.buffer.push({
+      type: 'text',
+      data: {
+        text: "任务分配展示预留位置",
+      },
+    });
+    this.buffer.push({
+      type: 'progressBar',
+      data: {
+        width: 5,
+        progress: Game.time % 10,
+        total: 10,
+        label: "进度条测试",
+      },
+    });
     for (let i = 0; i < Game.time % 9; i++) {
-      this.buffer += "目前暂时用作测试...\n";
+      this.buffer.push({
+        type: 'text',
+        data: {
+          text: "目前暂时用作测试...",
+        },
+      });
     }
-    this.buffer += "目前暂时用作测试...";
-  }
-
-  public render(room: Room, offset?: { x: number; y: number; }): void {
-    if (!offset) return;
-
-    const { x, y } = offset;
-
-    const visual = new RoomVisual(room.name);
-    this.drawTextLine(visual, this.buffer, x, y, VisualConfig.STYLES.TASK_ASSIGNMENT_STYLE);
   }
 }
