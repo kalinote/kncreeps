@@ -4,6 +4,7 @@ import { BaseLayer } from './layers/BaseLayer';
 import { GlobalInfoLayer } from './layers/GlobalInfoLayer';
 import { RoadPlanLayer } from './layers/RoadPlanLayer';
 import { RoomInfoLayer } from './layers/RoomInfoLayer';
+import { TaskAssignmentLayer } from './layers/TaskAssignmentLayer';
 import { TaskTrackLayer } from './layers/TaskTrackLayer';
 
 /**
@@ -25,6 +26,7 @@ export class LayerRegistry {
     this.register(new RoomInfoLayer(eventBus, serviceContainer));
     this.register(new TaskTrackLayer(eventBus, serviceContainer));
     this.register(new RoadPlanLayer(eventBus, serviceContainer));
+    this.register(new TaskAssignmentLayer(eventBus, serviceContainer));
   }
 
   /**

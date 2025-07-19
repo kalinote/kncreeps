@@ -14,3 +14,41 @@ export interface VisualsMemory {
     };
   };
 }
+
+export type ChartType = 'text' | 'progressBar' | 'lineChart' | 'barChart' | 'pieChart';
+
+export interface TextBufferItem {
+  type: 'text';
+  data: {
+    text: string;
+  };
+}
+
+export interface ProgressBarBufferItem {
+  type: 'progressBar';
+  data: {
+    progress: number;
+    total: number;
+    label: string;
+    /**
+     * 自定义宽度，如果设置自定义宽带，则在渲染时会使用该宽度作为进度条总长度
+     * 如果为0或未定义，则使用默认宽度
+     */
+    width?: number;
+  };
+}
+
+export interface LineChartBufferItem {
+  type: 'lineChart';
+  data: {
+    xAxis: any[];
+    datas: any[];
+    label: string;
+    width?: number;
+  };
+}
+
+export type ChartBufferItem = TextBufferItem | ProgressBarBufferItem;
+
+// 图表缓冲区，用于表示数据
+export type ChartBuffer = ChartBufferItem[];

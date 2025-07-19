@@ -16,6 +16,12 @@ export const VisualConfig = {
       font: 0.8,
       align: 'left' as 'left' | 'center' | 'right',
     },
+    // 任务分配
+    TASK_ASSIGNMENT_STYLE: {
+      color: '#FFFFFF',
+      font: 0.8,
+      align: 'left' as 'left' | 'center' | 'right',
+    },
     // 路径
     PATH_STYLE: {
       stroke: '#FF0000',
@@ -113,13 +119,17 @@ export const VisualConfig = {
       enabled: true, // 默认是否启用
       priority: 10 // 渲染优先级，数字越小越先渲染
     },
+    ['TaskAssignmentLayer']: {
+      enabled: true,
+      priority: 15
+    },
     ['TaskTrackLayer']: {
       enabled: true,
-      priority: 20 // 优先级较低，在RoomInfo之后渲染
+      priority: 50
     },
     ['RoadPlanLayer']: {
       enabled: true,
-      priority: 30 // 优先级较低，在任务跟踪之后渲染
+      priority: 55
     }
   }
 };
@@ -153,6 +163,11 @@ export const DATA_LAYER_LAYOUTS: { [layerName: string]: any } = {
   RoomInfoLayer: {
     anchor: ANCHORS.TOP_LEFT,
     order: 2,
+    padding: { x: 0.5, y: 0.5 }
+  },
+  TaskAssignmentLayer: {
+    anchor: ANCHORS.TOP_LEFT,
+    order: 3,
     padding: { x: 0.5, y: 0.5 }
   }
 };

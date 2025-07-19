@@ -31,17 +31,34 @@ export abstract class BaseLayer {
    * @returns 返回包含宽度和高度的对象
    */
   public calculateDimensions(): { width: number; height: number } {
-    // 通过this.buffer的行数计算高度，以及长的一行来计算长度
+    // 通过this.buffer的行数计算高度，以及最长的一行来计算长度（实际上这样算可能不太准确，字数最多的不一定是占用最宽的）
     const lineHeight = 1;
     const lineCount = this.buffer.split('\n').length;
-    // TODO 宽度圆角符号及中文字符取0.8，英文取0.5，这个需要优化
-    const maxLineLength = Math.max(...this.buffer.split('\n').map(line => line.length));
-    // console.log(`[BaseLayer] calculateDimensions: ${maxLineLength} ${lineCount} ${lineHeight}`);
-    return { width: maxLineLength * 0.8, height: lineCount * lineHeight };
+
+    // 计算每一行的宽度，英文和常见符号按0.5宽度，其他字符按0.8宽度（暂时这么算，实际上不同字符宽度不一样）
+    function getLineWidth(line: string): number {
+      let width = 0;
+      for (const char of line) {
+        // 英文、数字、常见符号
+        if (/^[a-zA-Z0-9\s.,:;'"!?()\[\]{}<>@#%^&*_\-+=/\\|~`]$/.test(char)) {
+          width += 0.5;
+        } else {
+          // 其他字符（如中文等）
+          width += 0.8;
+        }
+      }
+      return width;
+    }
+
+    const maxLineWidth = Math.max(...this.buffer.split('\n').map(getLineWidth));
+    const width = maxLineWidth + 1; // 增加1的左右边距
+    const height = lineCount * lineHeight;
+    return { width, height };
   }
 
   /**
-   * 清空缓冲区
+   * 缓冲区相关方法
+   * 地图类图层暂时不需要缓冲区，数据类图层需要缓冲区
    */
   public clearBuffer(): void {
     this.buffer = '';
@@ -57,6 +74,7 @@ export abstract class BaseLayer {
 
   /**
    * 预渲染方法，由子类实现，先生成需要渲染的内容，以进行高度和宽度计算
+   * 只有数据类的图层需要预渲染，地图类的图层不需要预渲染，地图类的preRender方法不会被执行
    */
   public preRender(room: Room): void {}
 
@@ -79,7 +97,7 @@ export abstract class BaseLayer {
     const lines = text.split('\n');
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      visual.text(line, x, y + i * 1.2, style);
+      visual.text(line, x, y + i * 1, style);
     }
   }
 }

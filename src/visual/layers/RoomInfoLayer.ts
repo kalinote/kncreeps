@@ -2,6 +2,7 @@ import { LayerType } from '../../types';
 import { RoomService } from '../../services/RoomService';
 import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
+import { ServiceContainer } from '../../core/ServiceContainer';
 
 /**
  * 房间信息图层
@@ -12,7 +13,7 @@ export class RoomInfoLayer extends BaseLayer {
   public layerType: LayerType = LayerType.DATA;
   private roomService: RoomService;
 
-  constructor(eventBus: any, serviceContainer: any) {
+  constructor(eventBus: any, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
     this.roomService = serviceContainer.get('roomService');
   }
@@ -35,7 +36,6 @@ export class RoomInfoLayer extends BaseLayer {
    * 渲染房间信息
    */
   public render(room: Room, offset?: { x: number; y: number }): void {
-    console.log(`[RoomInfoLayer] render room: ${room.name} offset: x:${offset!.x} y:${offset!.y}`);
     if (!offset) return;
 
     const { x, y } = offset;

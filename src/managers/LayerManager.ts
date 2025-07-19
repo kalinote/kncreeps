@@ -47,9 +47,17 @@ export class LayerManager extends BaseManager {
         try {
           if (layer.layerType === LayerType.DATA) {
             const offset = layoutMap.get(layer.getName());
+
+            // 4.1 数据类图层绘制窗口
+            const title = `${layer.getName()}`;
+            const window = new RoomVisual(roomName);
+            window.rect(offset!.x, offset!.y - 0.8 /* 去掉标题高度 */, offset!.width, offset!.height, { fill: '#000000', opacity: 0.5, stroke: '#FFFFFF', strokeWidth: 0.1 });
+            window.text(title, offset!.x + 0.25 /* 左边距 */, offset!.y, { color: '#FFFFFF', font: 0.8 , align: "left"});
+            window.line(offset!.x, offset!.y + 0.35/* 这个值暂时是随便定的 */, offset!.x + offset!.width, offset!.y + 0.35, { color: '#FFFFFF', width: 0.05 });
+
             if (offset) {
               // console.log(`[LayerManager] 渲染图层: ${layer.getName()} 在房间 ${roomName} 的坐标: ${offset.x}, ${offset.y}`);
-              layer.render(room, offset);
+              layer.render(room, {x: offset!.x + 0.5, y: offset!.y + 1.2 /* 标题高度 */});
             }
           } else {
             layer.render(room);

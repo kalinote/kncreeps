@@ -61,8 +61,8 @@ export class VisualLayoutService extends BaseService {
   /**
    * 计算所有数据类图层的布局
    */
-  public calculateLayout(dataLayers: BaseLayer[]): Map<string, { x: number; y: number }> {
-    const layoutMap = new Map<string, { x: number; y: number }>();
+  public calculateLayout(dataLayers: BaseLayer[]): Map<string, { x: number; y: number; width: number; height: number }> {
+    const layoutMap = new Map<string, { x: number; y: number; width: number; height: number }>();
     const anchorGroups: { [anchorKey: string]: BaseLayer[] } = {};
 
     for (const roomName in Game.rooms) {
@@ -102,16 +102,15 @@ export class VisualLayoutService extends BaseService {
           const startX = anchor.x === 1 ? 49.5 + padding.x : anchor.x + padding.x;
           const startY = anchor.y === 1 ? 49.5 + padding.y : anchor.y + padding.y;
 
-          layoutMap.set(layer.getName(), { x: startX, y: startY + cumulativeOffsetY });
-          // console.log(`[VisualLayoutService] layer: ${layer.getName()} startX: ${startX} startY: ${startY + cumulativeOffsetY}`);
-          // console.log(`[VisualLayoutService] cumulativeOffsetY: ${cumulativeOffsetY}`);
-
           // 累加高度，为下一个图层做准备
           // TODO 优化计算方法
           layer.preRender(Game.rooms[roomName]);
           const dimensions = layer.calculateDimensions();
+
+          layoutMap.set(layer.getName(), { x: startX, y: startY + cumulativeOffsetY, width: dimensions.width, height: dimensions.height + 1.2 /* 标题高度 */ });
+
           // console.log(`[VisualLayoutService] layer: ${layer.getName()} dimensions: ${dimensions.height}`);
-          cumulativeOffsetY += dimensions.height + 0.8; // 暂时固定间距为0.8
+          cumulativeOffsetY += dimensions.height + 1.2; // 标题高度
         }
       }
     }
