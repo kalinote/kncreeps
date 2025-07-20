@@ -139,7 +139,7 @@ export class TaskGeneratorService extends BaseService {
       if (!hasTask) {
         this.taskStateService.createTask({
           type: TaskType.BUILD,
-          priority: TaskPriority.NORMAL,
+          priority: TaskPriority.HIGH,
           roomName: room.name,
           maxRetries: 3,
           params: {

@@ -10,6 +10,7 @@ import { ServiceContainer } from '../../core/ServiceContainer';
  */
 export class RoomInfoLayer extends BaseLayer {
   protected name = 'RoomInfoLayer';
+  protected title: string = "房间信息";
   public layerType: LayerType = LayerType.DATA;
   private roomService: RoomService;
 

@@ -49,7 +49,7 @@ export class LayerManager extends BaseManager {
             const offset = layoutMap.get(layer.getName());
 
             // 4.1 数据类图层绘制窗口
-            const title = `${layer.getName()}`;
+            const title = `${layer.getTitle()}`;
             const window = new RoomVisual(roomName);
             window.rect(offset!.x, offset!.y - 0.8 /* 去掉标题高度 */, offset!.width, offset!.height, { fill: '#000000', opacity: 0.5, stroke: '#FFFFFF', strokeWidth: 0.1 });
             window.text(title, offset!.x + 0.25 /* 左边距 */, offset!.y, { color: '#FFFFFF', font: 0.8 , align: "left"});

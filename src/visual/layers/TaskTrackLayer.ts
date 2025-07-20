@@ -10,6 +10,7 @@ import { TaskStateService } from '../../services/TaskStateService';
  */
 export class TaskTrackLayer extends BaseLayer {
   protected name: string = "TaskTrackLayer";
+  protected title: string = "任务追踪";
   public layerType: LayerType = LayerType.MAP;
   private taskStateService: TaskStateService;
 

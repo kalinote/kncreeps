@@ -31,12 +31,12 @@ export class TaskRoleMapping {
 
   // 任务类型的基础优先级
   public static readonly TASK_BASE_PRIORITIES = {
-    [TaskType.HARVEST]: GameConfig.PRIORITIES.CRITICAL,    // 采集是最基础的
-    [TaskType.TRANSPORT]: GameConfig.PRIORITIES.HIGH,       // 运输很重要
-    [TaskType.BUILD]: GameConfig.PRIORITIES.MEDIUM,         // 建造中等优先级
-    [TaskType.REPAIR]: GameConfig.PRIORITIES.MEDIUM,        // 修复中等优先级
-    [TaskType.UPGRADE]: GameConfig.PRIORITIES.MEDIUM,       // 升级中等优先级
-    [TaskType.ATTACK]: GameConfig.PRIORITIES.HIGH           // 攻击高优先级
+    [TaskType.HARVEST]: GameConfig.PRIORITIES.CRITICAL,
+    [TaskType.TRANSPORT]: GameConfig.PRIORITIES.HIGH,
+    [TaskType.BUILD]: GameConfig.PRIORITIES.HIGH,
+    [TaskType.REPAIR]: GameConfig.PRIORITIES.MEDIUM,
+    [TaskType.UPGRADE]: GameConfig.PRIORITIES.MEDIUM,
+    [TaskType.ATTACK]: GameConfig.PRIORITIES.HIGH
   } as const;
 
   // 任务系统清理周期配置

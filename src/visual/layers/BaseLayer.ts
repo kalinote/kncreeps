@@ -7,6 +7,7 @@ import { ChartBuffer, LayerType } from '../../types'; // 从全局类型文件�
  */
 export abstract class BaseLayer {
   protected abstract name: string;
+  protected abstract title: string;
   public abstract layerType: LayerType;
   public priority: number = 99;
   protected eventBus: EventBus;
@@ -115,13 +116,22 @@ export abstract class BaseLayer {
    * 预渲染方法，由子类实现，先生成需要渲染的内容，以进行高度和宽度计算
    * 只有数据类的图层需要预渲染，地图类的图层不需要预渲染，地图类的preRender方法不会被执行
    */
-  public abstract preRender(room: Room): void;
+  public preRender(room: Room): void {
+    // 默认实现，子类可以重写
+  }
 
   /**
    * 获取此图层的名称
    */
   public getName(): string {
     return this.name;
+  }
+
+  /**
+   * 获取此图层的标题
+   */
+  public getTitle(): string {
+    return this.title;
   }
 
   /**

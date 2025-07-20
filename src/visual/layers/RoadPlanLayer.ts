@@ -10,6 +10,7 @@ import { ConstructionStatus, LayerType } from '../../types';
  */
 export class RoadPlanLayer extends BaseLayer {
   protected name: string = "RoadPlanLayer";
+  protected title: string = "道路规划";
   public layerType: LayerType = LayerType.MAP;
   private constructPlannerService: ConstructPlannerService;
 

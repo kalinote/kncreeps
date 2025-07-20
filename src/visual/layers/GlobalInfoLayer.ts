@@ -8,6 +8,7 @@ import { VisualConfig } from '../../config/VisualConfig';
  */
 export class GlobalInfoLayer extends BaseLayer {
   protected name = 'GlobalInfoLayer';
+  protected title: string = "全局信息";
   public layerType: LayerType = LayerType.DATA;
 
   constructor(eventBus: any, serviceContainer: any) {
