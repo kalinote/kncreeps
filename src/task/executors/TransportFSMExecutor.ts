@@ -8,15 +8,20 @@ import { TaskManager } from "managers/TaskManager";
  * 运输任务 FSM 执行器
  */
 export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
-  private moveService: CreepMoveService;
-
   constructor(taskMemory: TaskFSMMemory<TransportState>, creep: Creep, serviceContainer: ServiceContainer) {
     super(taskMemory, creep, serviceContainer);
-    this.moveService = this.serviceContainer.get('creepMoveService');
+  }
+
+  protected getFinishedState(): TransportState {
+    return TransportState.FINISHED;
   }
 
   protected getInitialState(): TransportState {
     return TransportState.INIT;
+  }
+
+  protected getExpectedTaskType(): TaskType {
+    return TaskType.TRANSPORT;
   }
 
   protected handlers() {
@@ -39,15 +44,11 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
     };
   }
 
-  protected getFinishedState(): TransportState {
-    return TransportState.FINISHED;
-  }
-
   /**
    * 初始化状态处理器
    */
   private handleInit(creep: Creep): TransportState {
-    const task = this.getTask(creep);
+    const task = this.getTask<TransportTask>(creep);
     if (!task) {
       return TransportState.FINISHED;
     }
@@ -89,7 +90,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
    * 拾取状态处理器
    */
   private handlePickup(creep: Creep): TransportState {
-    const task = this.getTask(creep);
+    const task = this.getTask<TransportTask>(creep);
     if (!task) {
       return TransportState.FINISHED;
     }
@@ -194,7 +195,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
    * 传输状态处理器
    */
   private handleDeliver(creep: Creep): TransportState {
-    const task = this.getTask(creep);
+    const task = this.getTask<TransportTask>(creep);
     // console.log(`[TransportFSMExecutor] handleDeliver creep: ${creep.name} task: ${JSON.stringify(task)}`);
     if (!task) {
       return TransportState.FINISHED;
@@ -266,7 +267,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
    * 丢弃状态处理器
    */
   private handleDropping(creep: Creep): TransportState {
-    const task = this.getTask(creep);
+    const task = this.getTask<TransportTask>(creep);
     if (!task) {
       return TransportState.FINISHED;
     }
@@ -288,26 +289,6 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
     // 清理任何剩余的中断保护状态
     this.setInterruptible(true);
     return TransportState.FINISHED;
-  }
-
-  /**
-   * 获取任务对象
-   */
-  private getTask(creep: Creep): TransportTask | null {
-    const taskManager: TaskManager = this.serviceContainer.get('taskManager');
-    const task = taskManager.getCreepTask(creep.name);
-
-    if (task && task.type === TaskType.TRANSPORT) {
-      return task as TransportTask;
-    }
-    return null;
-  }
-
-  /**
-   * 检查creep是否即将死亡
-   */
-  private isCreepDying(creep: Creep, threshold: number = 50): boolean {
-    return creep.ticksToLive !== undefined && creep.ticksToLive < threshold;
   }
 
   /**

@@ -1,11 +1,14 @@
+import { TaskManager } from "../../managers/TaskManager";
 import { ServiceContainer } from "../../core/ServiceContainer";
-import { TaskFSMMemory, StateHandlers, CreepFSMState } from "../../types";
+import { TaskFSMMemory, StateHandlers, CreepFSMState, Task, TaskType } from "../../types";
+import { CreepMoveService } from "../../services/CreepMoveService";
 
 /**
  * 任务状态机基类
  * 负责管理任务的状态转换和内存持久化
  */
 export abstract class TaskStateMachine<TState extends string> {
+  protected moveService: CreepMoveService;
   protected taskMemory: TaskFSMMemory<TState>;
   protected creepState: CreepFSMState<TState>;
   protected serviceContainer: ServiceContainer;
@@ -15,6 +18,7 @@ export abstract class TaskStateMachine<TState extends string> {
     this.taskMemory = taskMemory;
     this.creep = creep;
     this.serviceContainer = serviceContainer;
+    this.moveService = this.serviceContainer.get('creepMoveService');
 
     // 获取或初始化该creep的执行状态
     if (!taskMemory.creepStates[creep.name]) {
@@ -176,17 +180,42 @@ export abstract class TaskStateMachine<TState extends string> {
   }
 
   /**
-   * 子类必须实现：返回状态处理器映射
+   * 获取任务对象
+   */
+  protected getTask<T extends Task>(creep: Creep): T | null {
+    const taskManager: TaskManager = this.serviceContainer.get('taskManager');
+    const task = taskManager.getCreepTask(creep.name);
+
+    if (task && task.type === this.getExpectedTaskType()) {
+      return task as T;
+    }
+    return null;
+  }
+
+  /**
+   * 检查creep是否即将死亡
+   */
+  protected isCreepDying(creep: Creep, threshold: number = 50): boolean {
+    return creep.ticksToLive !== undefined && creep.ticksToLive < threshold;
+  }
+
+  /**
+   * 返回期望的任务类型
+   */
+  protected abstract getExpectedTaskType(): TaskType;
+
+  /**
+   * 返回状态处理器映射
    */
   protected abstract handlers(): StateHandlers<TState>;
 
   /**
-   * 子类必须实现：返回完成状态
+   * 返回完成状态
    */
   protected abstract getFinishedState(): TState;
 
   /**
-   * 子类必须实现：返回初始状态
+   * 返回初始状态
    */
   protected abstract getInitialState(): TState;
 }

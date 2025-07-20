@@ -2,6 +2,7 @@ import { ServiceContainer } from "../core/ServiceContainer";
 import { TaskType, TaskKind, TaskFSMMemory } from "../types";
 import { HarvestFSMExecutor } from "./executors/HarvestFSMExecutor";
 import { TransportFSMExecutor } from "./executors/TransportFSMExecutor";
+import { UpgradeFSMExecutor } from "./executors/UpgradeFSMExecutor";
 import { TaskStateMachine } from "./fsm/StateMachine";
 
 /**
@@ -24,10 +25,10 @@ export class FSMExecutorRegistry {
   private registerExecutors(): void {
     this.executors.set(TaskType.HARVEST, HarvestFSMExecutor);
     this.executors.set(TaskType.TRANSPORT, TransportFSMExecutor);
+    this.executors.set(TaskType.UPGRADE, UpgradeFSMExecutor);
 
     // 注意：其他执行器暂时不注册，等后续重构时再添加
     // this.executors.set(TaskType.BUILD, BuildFSMExecutor);
-    // this.executors.set(TaskType.UPGRADE, UpgradeFSMExecutor);
     // this.executors.set(TaskType.ATTACK, AttackFSMExecutor);
   }
 

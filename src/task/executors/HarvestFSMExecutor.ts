@@ -9,15 +9,20 @@ import { TaskManager } from "managers/TaskManager";
  * 采集任务 FSM 执行器
  */
 export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
-  private moveService: CreepMoveService;
-
   constructor(taskMemory: TaskFSMMemory<HarvestState>, creep: Creep, serviceContainer: ServiceContainer) {
     super(taskMemory, creep, serviceContainer);
-    this.moveService = this.serviceContainer.get('creepMoveService');
+  }
+
+  protected getFinishedState(): HarvestState {
+    return HarvestState.FINISHED;
   }
 
   protected getInitialState(): HarvestState {
     return HarvestState.INIT;
+  }
+
+  protected getExpectedTaskType(): TaskType {
+    return TaskType.HARVEST;
   }
 
   protected handlers() {
@@ -40,15 +45,11 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
     };
   }
 
-  protected getFinishedState(): HarvestState {
-    return HarvestState.FINISHED;
-  }
-
   /**
    * 初始化状态处理器
    */
   private handleInit(creep: Creep): HarvestState {
-    const task = this.getTask(creep);
+    const task = this.getTask<HarvestTask>(creep);
     if (!task) {
       return HarvestState.FINISHED;
     }
@@ -73,7 +74,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
     });
 
     // 如果creep已满，进入丢弃状态
-    if (!this.hasCapacity(creep, RESOURCE_ENERGY)) {
+    if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
       return HarvestState.DUMPING;
     }
 
@@ -125,7 +126,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
    * 采集状态处理器
    */
   private handleHarvesting(creep: Creep): HarvestState {
-    const task = this.getTask(creep);
+    const task = this.getTask<HarvestTask>(creep);
     if (!task) {
       return HarvestState.FINISHED;
     }
@@ -141,7 +142,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
     }
 
     // 如果creep已满，进入丢弃状态
-    if (!this.hasCapacity(creep, RESOURCE_ENERGY)) {
+    if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
       return HarvestState.DUMPING;
     }
 
@@ -173,7 +174,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
    * 丢弃状态处理器
    */
   private handleDumping(creep: Creep): HarvestState {
-    const task = this.getTask(creep);
+    const task = this.getTask<HarvestTask>(creep);
     if (!task) {
       return HarvestState.FINISHED;
     }
@@ -218,34 +219,6 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
     // 清理分配的位置
     this.clearAssignedPosition(creep);
     return HarvestState.FINISHED;
-  }
-
-  /**
-   * 获取任务对象
-   */
-  private getTask(creep: Creep): HarvestTask | null {
-    // 从服务容器获取任务管理器
-    const taskManager: TaskManager = this.serviceContainer.get('taskManager');
-    const task = taskManager.getCreepTask(creep.name);
-
-    if (task && task.type === TaskType.HARVEST) {
-      return task as HarvestTask;
-    }
-    return null;
-  }
-
-  /**
-   * 检查creep是否即将死亡
-   */
-  private isCreepDying(creep: Creep, threshold: number = 50): boolean {
-    return creep.ticksToLive !== undefined && creep.ticksToLive < threshold;
-  }
-
-  /**
-   * 检查creep是否有空间
-   */
-  private hasCapacity(creep: Creep, resourceType: ResourceConstant): boolean {
-    return creep.store.getFreeCapacity(resourceType) > 0;
   }
 
   /**
