@@ -91,13 +91,13 @@ export interface TransportTaskParams {
 // 建造任务参数
 export interface BuildTaskParams {
   targetId: string;   // 目标建筑ID
-  sourceConstructionIds: string[]; // 从该列表中的建筑拾取资源用于建造，为空则从任意符合条件的建筑中获取
+  sourceIds: string[]; // 从该列表中的建筑拾取资源用于建造，为空则从任意符合条件的建筑中获取
 }
 
 // 升级任务参数
 export interface UpgradeTaskParams {
   controllerId: string;   // 控制器ID
-  sourceConstructionIds: string[]; // 从该列表中的建筑拾取资源用于升级，为空则从任意符合条件的建筑中获取
+  sourceIds: string[]; // 从该列表中的建筑拾取资源用于升级，为空则从任意符合条件的建筑中获取
 }
 
 // 攻击任务参数

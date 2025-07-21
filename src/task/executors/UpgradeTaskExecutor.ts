@@ -49,7 +49,7 @@ export class UpgradeTaskExecutor extends BaseTaskExecutor {
    * TODO 该方法需要重构，将获取能量源的工作交给后勤系统的运输系统来解决
    */
   private getEnergySources(task: UpgradeTask): Structure[] {
-    const sourceIds = task.params.sourceConstructionIds || [];
+    const sourceIds = task.params.sourceIds || [];
     const sourceStructures: Structure[] = [];
 
     // 如果指定了源建筑列表，优先从列表中获取

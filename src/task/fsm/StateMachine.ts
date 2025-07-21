@@ -2,6 +2,7 @@ import { TaskManager } from "../../managers/TaskManager";
 import { ServiceContainer } from "../../core/ServiceContainer";
 import { TaskFSMMemory, StateHandlers, CreepFSMState, Task, TaskType } from "../../types";
 import { CreepMoveService } from "../../services/CreepMoveService";
+import { EnergyService } from "../../services/EnergyService";
 
 /**
  * 任务状态机基类
@@ -9,6 +10,7 @@ import { CreepMoveService } from "../../services/CreepMoveService";
  */
 export abstract class TaskStateMachine<TState extends string> {
   protected moveService: CreepMoveService;
+  protected energyService: EnergyService;
   protected taskMemory: TaskFSMMemory<TState>;
   protected creepState: CreepFSMState<TState>;
   protected serviceContainer: ServiceContainer;
@@ -19,6 +21,7 @@ export abstract class TaskStateMachine<TState extends string> {
     this.creep = creep;
     this.serviceContainer = serviceContainer;
     this.moveService = this.serviceContainer.get('creepMoveService');
+    this.energyService = this.serviceContainer.get('energyService');
 
     // 获取或初始化该creep的执行状态
     if (!taskMemory.creepStates[creep.name]) {

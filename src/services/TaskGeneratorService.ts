@@ -121,7 +121,7 @@ export class TaskGeneratorService extends BaseService {
         maxRetries: 3,
         params: {
           controllerId: room.controller.id,
-          sourceConstructionIds: []
+          sourceIds: []
         }
       });
     }
@@ -144,7 +144,7 @@ export class TaskGeneratorService extends BaseService {
           maxRetries: 3,
           params: {
             targetId: site.id,
-            sourceConstructionIds: []
+            sourceIds: []
           }
         });
       }
