@@ -34,6 +34,7 @@ export class SystemConfig {
     SYSTEM_MANAGER: { UPDATE_INTERVAL: 0 },
     VISUAL_MANAGER: { UPDATE_INTERVAL: 0 },
     LAYER_MANAGER: { UPDATE_INTERVAL: 0 },
+    COMMAND_MANAGER: { UPDATE_INTERVAL: 0 },
   } as const;
 
   // 超时和过期时间（ticks）

@@ -28,6 +28,7 @@ import { LogisticsManager } from "../managers/LogisticsManager";
 import { TransportService } from "../services/TransportService";
 import { CreepMoveService } from "../services/CreepMoveService";
 import { TaskGroupService } from "../services/TaskGroupService";
+import { CommandManager } from "../managers/CommandManager";
 
 const serviceConfig = {
   // 核心服务，需要最先初始化
@@ -48,7 +49,8 @@ const serviceConfig = {
     'taskManager', // 决策
     'taskExecutionManager', // 执行
     'visualManager',
-    'layerManager'
+    'layerManager',
+    'commandManager'
   ],
   // 业务服务
   services: [
@@ -146,6 +148,9 @@ export class ServiceContainer {
     this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus'), this));
     this.registerSingleton('layerManager', () => new LayerManager(this.get('eventBus'), this));
     this.registerSingleton('visualLayoutService', () => new VisualLayoutService(this.get('eventBus'), this));
+
+    // 注册命令管理器
+    this.registerSingleton('commandManager', () => new CommandManager(this.get('eventBus'), this));
 
     // 注册统计服务
     this.registerSingleton('statsService', () => new StatsService(this.get('eventBus'), this));
