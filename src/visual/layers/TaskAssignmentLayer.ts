@@ -1,4 +1,4 @@
-import { LayerType } from "../../types";
+import { LayerType, TaskAssignmentType } from "../../types";
 import { BaseLayer } from "./BaseLayer";
 import { EventBus } from "../../core/EventBus";
 import { ServiceContainer } from "../../core/ServiceContainer";
@@ -31,7 +31,7 @@ export class TaskAssignmentLayer extends BaseLayer {
       this.buffer.push({
         type: 'text',
         data: {
-          text: `[${task.type.substring(0, 2).toUpperCase()}]${task.id.split('_')[2].substring(0, 4)}(P:${task.priority}): ${task.status}`,
+          text: `[${task.type.substring(0, 2).toUpperCase()}]${task.id.split('_')[2].substring(0, 4)}(P:${task.priority}): ${task.status}(${task.assignmentType}${task.assignmentType === TaskAssignmentType.SHARED ? (',' + task.assignedCreeps.length + "/"  + task.maxAssignees) : ''})`,
         },
       });
     }
