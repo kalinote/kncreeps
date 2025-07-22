@@ -352,4 +352,11 @@ export class TaskSchedulerService extends BaseService {
       return canAssignMore && isAvailable;
     });
   }
+
+  /**
+   * TODO 计算动态优先级 - 根据任务状态和时间计算
+   */
+  private calculateDynamicPriority(task: Task): number {
+    return task.priority;
+  }
 }
