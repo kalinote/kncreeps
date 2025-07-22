@@ -40,13 +40,8 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
   private handleInit(creep: Creep): BuildState {
     const task = this.getTask<BuildTask>(creep);
     if (!task) {
-      return BuildState.FINISHED;
+      return this.switchState(BuildState.FINISHED, '任务未找到');
     }
-
-    this.setContext({
-      targetId: task.params.targetId,
-      sourceIds: task.params.sourceIds,
-    });
 
     // 检查身上是否已有能量
     const hasEnergy = this.hasResource(creep, RESOURCE_ENERGY);
@@ -57,20 +52,20 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
     }
 
     if (hasEnergy) {
-      return BuildState.BUILDING;
+      return this.switchState(BuildState.BUILDING, '身上已有能量，直接建造');
     }
 
-    return BuildState.GET_ENERGY;
+    return this.switchState(BuildState.GET_ENERGY, '身上无能量');
   }
 
   private handleGetEnergy(creep: Creep): BuildState {
     const task = this.getTask<BuildTask>(creep);
     if (!task) {
-      return BuildState.FINISHED;
+      return this.switchState(BuildState.FINISHED, '任务未找到');
     }
 
     if (this.hasResource(creep, RESOURCE_ENERGY)) {
-      return BuildState.BUILDING;
+      return this.switchState(BuildState.BUILDING, '身上已有能量，直接建造');
     }
 
     // 先尝试从任务指定建筑获取能量
@@ -81,9 +76,9 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
         const result = this.pickupResource(creep, structure, RESOURCE_ENERGY);
         if (result.success) {
           if (result.completed) {
-            return BuildState.BUILDING;
+            return this.switchState(BuildState.BUILDING, '获取能量成功');
           }
-          return BuildState.GET_ENERGY;
+          return this.switchState(BuildState.GET_ENERGY, '获取能量失败');
         }
       }
     }
@@ -95,49 +90,49 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
       const result = this.pickupResource(creep, target, RESOURCE_ENERGY);
       if (result.success) {
         if (result.completed) {
-          return BuildState.BUILDING;
+          return this.switchState(BuildState.BUILDING, '获取能量成功');
         }
-        return BuildState.GET_ENERGY;
+        return this.switchState(BuildState.GET_ENERGY, '获取能量失败');
       }
     }
 
-    return BuildState.FINISHED;
+    return this.switchState(BuildState.FINISHED, '未找到能量源');
   }
 
   private handleBuilding(creep: Creep): BuildState {
     const task = this.getTask<BuildTask>(creep);
     if (!task) {
-      return BuildState.FINISHED;
+      return this.switchState(BuildState.FINISHED, '任务未找到');
     }
 
     const target = Game.getObjectById<ConstructionSite>(task.params.targetId as Id<ConstructionSite>);
     if (!target) {
-      return BuildState.FINISHED;
+      return this.switchState(BuildState.FINISHED, '未找到目标建筑');
     }
 
     if (!this.hasResource(creep, RESOURCE_ENERGY)) {
-      return BuildState.GET_ENERGY;
+      return this.switchState(BuildState.GET_ENERGY, '身上无能量');
     }
 
     const buildResult = creep.build(target);
 
     switch (buildResult) {
       case OK:
-        return BuildState.BUILDING;
+        return this.switchState(BuildState.BUILDING, '建造成功');
       case ERR_NOT_IN_RANGE:
         this.moveService.moveTo(creep, target);
-        return BuildState.BUILDING;
+        return this.switchState(BuildState.BUILDING, '移动到目标建筑');
       case ERR_NOT_ENOUGH_ENERGY:
-        return BuildState.GET_ENERGY;
+        return this.switchState(BuildState.GET_ENERGY, '能量不足');
       case ERR_BUSY:
-        return BuildState.BUILDING;
+        return this.switchState(BuildState.BUILDING, '建造繁忙');
       default:
-        return BuildState.FINISHED;
+        return this.switchState(BuildState.FINISHED, '建造失败');
     }
   }
 
   private handleFinished(creep: Creep): BuildState {
-    return BuildState.FINISHED;
+    return this.switchState(BuildState.FINISHED, this.getRecord()?.reason || '完成，没有记录原因');
   }
 
   private hasResource(creep: Creep, resourceType: ResourceConstant): boolean {
@@ -150,7 +145,7 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
         creep.drop(resourceType as ResourceConstant);
       }
     }
-    return BuildState.GET_ENERGY;
+    return this.switchState(BuildState.GET_ENERGY, '丢弃其他资源');
   }
 
   /**

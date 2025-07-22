@@ -50,23 +50,13 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
   private handleInit(creep: Creep): TransportState {
     const task = this.getTask<TransportTask>(creep);
     if (!task) {
-      return TransportState.FINISHED;
+      return this.switchState(TransportState.FINISHED, '任务未找到');
     }
 
     // 检查creep是否即将死亡
     if (this.isCreepDying(creep)) {
-      return TransportState.FINISHED;
+      return this.switchState(TransportState.FINISHED, 'creep 即将死亡');
     }
-
-    // 初始化该creep的私有上下文
-    this.setContext({
-      resourceType: task.params.resourceType,
-      sourceId: task.params.sourceId,
-      sourcePos: task.params.sourcePos,
-      targetId: task.params.targetId,
-      targetPos: task.params.targetPos,
-      amount: task.params.amount
-    });
 
     // 检查creep是否有目标资源
     const hasResource = this.hasResource(creep, task.params.resourceType);
@@ -79,10 +69,10 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
 
     if (!hasResource) {
       // 没有目标资源，去拾取
-      return TransportState.PICKUP;
+      return this.switchState(TransportState.PICKUP, '没有目标资源，去拾取');
     } else {
       // 有目标资源，去传输
-      return TransportState.DELIVER;
+      return this.switchState(TransportState.DELIVER, '有目标资源，去传输');
     }
   }
 
@@ -92,7 +82,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
   private handlePickup(creep: Creep): TransportState {
     const task = this.getTask<TransportTask>(creep);
     if (!task) {
-      return TransportState.FINISHED;
+      return this.switchState(TransportState.FINISHED, '任务未找到');
     }
 
     const params = task.params;
@@ -101,16 +91,16 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
     if (params.sourceId) {
       const source = Game.getObjectById<Structure>(params.sourceId as Id<Structure>);
       if (!source) {
-        return TransportState.FINISHED;
+        return this.switchState(TransportState.FINISHED, '未找到源建筑');
       }
 
       const result = this.pickupResource(creep, source, params.resourceType);
       if (result.success) {
         // 成功拾取资源后，设置中断保护
         this.setInterruptible(false);
-        return TransportState.DELIVER;
+        return this.switchState(TransportState.DELIVER, '拾取成功');
       }
-      return TransportState.PICKUP;
+      return this.switchState(TransportState.PICKUP, '拾取失败');
     }
 
     // 从指定位置拾取地面资源
@@ -129,13 +119,13 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
           const result = this.pickupResource(creep, targetResources[0], params.resourceType);
           if (result.success) {
             this.setInterruptible(false);
-            return TransportState.DELIVER;
+            return this.switchState(TransportState.DELIVER, '拾取成功');
           }
-          return TransportState.PICKUP;
+          return this.switchState(TransportState.PICKUP, '拾取失败');
         } else {
           // 不在拾取范围内，移动到目标位置
           this.moveService.moveTo(creep, targetPos);
-          return TransportState.PICKUP;
+          return this.switchState(TransportState.PICKUP, '移动到目标位置');
         }
       } else {
         // 目标位置没有资源，在附近寻找相同类型的资源
@@ -160,16 +150,16 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
           const result = this.pickupResource(creep, nearbyResources[0].resource, params.resourceType);
           if (result.success) {
             this.setInterruptible(false);
-            return TransportState.DELIVER;
+            return this.switchState(TransportState.DELIVER, '拾取成功');
           }
-          return TransportState.PICKUP;
+          return this.switchState(TransportState.PICKUP, '拾取失败');
         } else {
           // 附近没有可拾取的资源，移动到目标位置附近寻找
           if (creep.pos.getRangeTo(targetPos) > 2) {
             this.moveService.moveTo(creep, targetPos);
-            return TransportState.PICKUP;
+            return this.switchState(TransportState.PICKUP, '移动到目标位置');
           } else {
-            return TransportState.FINISHED;
+            return this.switchState(TransportState.FINISHED, '完成');
           }
         }
       }
@@ -183,12 +173,12 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
       const result = this.pickupResource(creep, nearbyResources[0], params.resourceType);
       if (result.success) {
         this.setInterruptible(false);
-        return TransportState.DELIVER;
+        return this.switchState(TransportState.DELIVER, '拾取成功');
       }
-      return TransportState.PICKUP;
+      return this.switchState(TransportState.PICKUP, '拾取失败');
     }
 
-    return TransportState.FINISHED;
+    return this.switchState(TransportState.FINISHED, '未找到资源');
   }
 
   /**
@@ -198,7 +188,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
     const task = this.getTask<TransportTask>(creep);
     // console.log(`[TransportFSMExecutor] handleDeliver creep: ${creep.name} task: ${JSON.stringify(task)}`);
     if (!task) {
-      return TransportState.FINISHED;
+      return this.switchState(TransportState.FINISHED, '任务未找到');
     }
 
     const params = task.params;
@@ -208,7 +198,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
     if (carriedAmount === 0) {
       // 没有资源可传输，解除中断保护
       this.setInterruptible(true);
-      return TransportState.FINISHED;
+      return this.switchState(TransportState.FINISHED, '没有资源可传输');
     }
 
     // console.log(`[TransportFSMExecutor] task.params.targetId: ${params.targetId}`);
@@ -220,7 +210,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
       if (!target) {
         // 目标不存在，解除中断保护
         this.setInterruptible(true);
-        return TransportState.FINISHED;
+        return this.switchState(TransportState.FINISHED, '未找到目标建筑');
       }
 
       // console.log(`[TransportFSMExecutor] creep.pos.getRangeTo(target.pos): ${creep.pos.getRangeTo(target.pos)}`);
@@ -234,10 +224,10 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
         if (result.success && result.completed) {
           // 成功传输资源后，解除中断保护
           this.setInterruptible(true);
-          return TransportState.FINISHED;
+          return this.switchState(TransportState.FINISHED, '传输成功');
         }
       }
-      return TransportState.DELIVER;
+      return this.switchState(TransportState.DELIVER, '移动到目标建筑');
     }
 
     // 传输到指定位置
@@ -249,18 +239,18 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
         // 已在目标位置，直接丢弃资源并解除中断保护
         creep.drop(resourceType);
         this.setInterruptible(true);
-        return TransportState.FINISHED;
+        return this.switchState(TransportState.FINISHED, '到达目标位置');
       }
 
       // 移动到目标位置
       this.moveService.moveTo(creep, targetPos);
-      return TransportState.DELIVER;
+      return this.switchState(TransportState.DELIVER, '移动到目标位置');
     }
 
     // 默认：在当前位置丢弃并解除中断保护
     creep.drop(resourceType);
     this.setInterruptible(true);
-    return TransportState.FINISHED;
+    return this.switchState(TransportState.FINISHED, '完成');
   }
 
   /**
@@ -269,7 +259,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
   private handleDropping(creep: Creep): TransportState {
     const task = this.getTask<TransportTask>(creep);
     if (!task) {
-      return TransportState.FINISHED;
+      return this.switchState(TransportState.FINISHED, '任务未找到');
     }
 
     // 丢弃其他资源
@@ -279,7 +269,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
       }
     }
 
-    return TransportState.INIT;
+    return this.switchState(TransportState.INIT, '丢弃其他资源');
   }
 
   /**
@@ -288,7 +278,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
   private handleFinished(creep: Creep): TransportState {
     // 清理任何剩余的中断保护状态
     this.setInterruptible(true);
-    return TransportState.FINISHED;
+    return this.switchState(TransportState.FINISHED, this.getRecord()?.reason || '完成，没有记录原因');
   }
 
   /**
@@ -307,7 +297,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
         creep.drop(resourceType as ResourceConstant);
       }
     }
-    return TransportState.INIT;
+    return this.switchState(TransportState.INIT, '已丢弃其他资源');
   }
 
   /**

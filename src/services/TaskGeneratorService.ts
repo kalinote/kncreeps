@@ -54,15 +54,12 @@ export class TaskGeneratorService extends BaseService {
       });
 
       if (!hasTask) {
-        // 修复：所有source使用相同的优先级，确保公平分配
-        const priority = TaskPriority.HIGH;
-
         // 根据source周围的实际可采集位置数量设置maxAssignees
         const maxWorkers = SourceAnalyzer.getHarvestPositionCount(source);
 
         this.taskStateService.createTask({
           type: TaskType.HARVEST,
-          priority: priority,
+          basePriority: TaskPriority.HIGH,
           roomName: room.name,
           maxRetries: 3,
           maxAssignees: maxWorkers, // 根据实际可采集位置数量设置
@@ -116,7 +113,7 @@ export class TaskGeneratorService extends BaseService {
     if (existingUpgradeTasks.length === 0) {
       this.taskStateService.createTask({
         type: TaskType.UPGRADE,
-        priority: TaskPriority.NORMAL,
+        basePriority: TaskPriority.NORMAL,
         roomName: room.name,
         maxRetries: 3,
         params: {
@@ -139,7 +136,7 @@ export class TaskGeneratorService extends BaseService {
       if (!hasTask) {
         this.taskStateService.createTask({
           type: TaskType.BUILD,
-          priority: TaskPriority.HIGH,
+          basePriority: TaskPriority.NORMAL,
           roomName: room.name,
           maxRetries: 3,
           params: {
@@ -167,7 +164,7 @@ export class TaskGeneratorService extends BaseService {
       if (this.shouldCreateAttackTask(room, hostile, existingTasks)) {
         this.taskStateService.createTask({
           type: TaskType.ATTACK,
-          priority: this.calculateAttackTaskPriority(hostile),
+          basePriority: this.calculateAttackTaskPriority(hostile),
           roomName: room.name,
           maxRetries: 1,
           params: {
@@ -184,7 +181,7 @@ export class TaskGeneratorService extends BaseService {
       if (this.shouldCreateAttackTask(room, structure, existingTasks)) {
         this.taskStateService.createTask({
           type: TaskType.ATTACK,
-          priority: this.calculateAttackTaskPriority(structure),
+          basePriority: this.calculateAttackTaskPriority(structure),
           roomName: room.name,
           maxRetries: 1,
           params: {

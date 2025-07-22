@@ -44,19 +44,13 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
   private handleInit(creep: Creep): UpgradeState {
     const task = this.getTask<UpgradeTask>(creep);
     if (!task) {
-      return UpgradeState.FINISHED;
+      return this.switchState(UpgradeState.FINISHED, '任务未找到');
     }
 
     // 检查 creep 是否即将过世
     if (this.isCreepDying(creep)) {
-      return UpgradeState.FINISHED;
+      return this.switchState(UpgradeState.FINISHED, 'creep 即将死亡');
     }
-
-    // 初始化上下文
-    this.setContext({
-      controllerId: task.params.controllerId,
-      sourceIds: task.params.sourceIds    // TODO 后续改成由统一的后勤服务指定资源来源
-    });
 
     // 判断身上是否已有能量
     const hasEnergy = this.hasResource(creep, RESOURCE_ENERGY);
@@ -68,11 +62,11 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
 
     // 已有能量，直接进行升级
     if (hasEnergy) {
-      return UpgradeState.UPGRADING;
+      return this.switchState(UpgradeState.UPGRADING, '身上已有能量，直接升级');
     }
 
     // 需要获取能量
-    return UpgradeState.GET_ENERGY;
+    return this.switchState(UpgradeState.GET_ENERGY, '身上无能量');
   }
 
   /**
@@ -81,12 +75,12 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
   private handleGetEnergy(creep: Creep): UpgradeState {
     const task = this.getTask<UpgradeTask>(creep);
     if (!task) {
-      return UpgradeState.FINISHED;
+      return this.switchState(UpgradeState.FINISHED, '任务未找到');
     }
 
     // 如果已经有能量，进入升级状态
     if (this.hasResource(creep, RESOURCE_ENERGY)) {
-      return UpgradeState.UPGRADING;
+      return this.switchState(UpgradeState.UPGRADING, '身上已有能量，直接升级');
     }
 
     // 先尝试从任务指定建筑获取能量
@@ -97,9 +91,9 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
         const result = this.pickupResource(creep, structure, RESOURCE_ENERGY);
         if (result.success) {
           if (result.completed) {
-            return UpgradeState.UPGRADING;
+            return this.switchState(UpgradeState.UPGRADING, '获取能量成功');
           }
-          return UpgradeState.GET_ENERGY;
+          return this.switchState(UpgradeState.GET_ENERGY, '获取能量失败');
         }
       }
     }
@@ -111,14 +105,14 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
       const result = this.pickupResource(creep, target, RESOURCE_ENERGY);
       if (result.success) {
         if (result.completed) {
-          return UpgradeState.UPGRADING;
+          return this.switchState(UpgradeState.UPGRADING, '获取能量成功');
         }
-        return UpgradeState.GET_ENERGY;
+        return this.switchState(UpgradeState.GET_ENERGY, '获取能量失败');
       }
     }
 
     // 未找到能量源，任务结束
-    return UpgradeState.FINISHED;
+    return this.switchState(UpgradeState.FINISHED, '未找到能量源');
   }
 
   /**
@@ -127,33 +121,33 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
   private handleUpgrading(creep: Creep): UpgradeState {
     const task = this.getTask<UpgradeTask>(creep);
     if (!task) {
-      return UpgradeState.FINISHED;
+      return this.switchState(UpgradeState.FINISHED, '任务未找到');
     }
 
     const controller = Game.getObjectById<StructureController>(task.params.controllerId as Id<StructureController>);
     if (!controller) {
-      return UpgradeState.FINISHED;
+      return this.switchState(UpgradeState.FINISHED, '未找到控制器');
     }
 
     // 没能量则回去取能量
     if (!this.hasResource(creep, RESOURCE_ENERGY)) {
-      return UpgradeState.GET_ENERGY;
+      return this.switchState(UpgradeState.GET_ENERGY, '身上无能量');
     }
 
     const upgradeResult = creep.upgradeController(controller);
 
     switch (upgradeResult) {
       case OK:
-        return UpgradeState.UPGRADING;
+        return this.switchState(UpgradeState.UPGRADING, '升级成功');
       case ERR_NOT_IN_RANGE:
         this.moveService.moveTo(creep, controller);
-        return UpgradeState.UPGRADING;
+        return this.switchState(UpgradeState.UPGRADING, '移动到控制器');
       case ERR_NOT_ENOUGH_RESOURCES:
-        return UpgradeState.GET_ENERGY;
+        return this.switchState(UpgradeState.GET_ENERGY, '能量不足');
       case ERR_BUSY:
-        return UpgradeState.UPGRADING;
+        return this.switchState(UpgradeState.UPGRADING, '升级繁忙');
       default:
-        return UpgradeState.FINISHED;
+        return this.switchState(UpgradeState.FINISHED, '升级失败');
     }
   }
 
@@ -163,7 +157,7 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
   private handleFinished(creep: Creep): UpgradeState {
     // 解除任何中断保护
     this.setInterruptible(true);
-    return UpgradeState.FINISHED;
+    return this.switchState(UpgradeState.FINISHED, this.getRecord()?.reason || '完成，没有记录原因');
   }
 
   // ====================== 辅助工具方法 ======================
@@ -184,7 +178,7 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
         creep.drop(resourceType as ResourceConstant);
       }
     }
-    return UpgradeState.GET_ENERGY;
+    return this.switchState(UpgradeState.GET_ENERGY, '已丢弃其他资源');
   }
 
   /**

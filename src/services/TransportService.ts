@@ -356,7 +356,7 @@ export class TransportService extends BaseService {
     return {
       id: taskId,
       type: TaskType.TRANSPORT,
-      priority: TaskPriority.NORMAL,
+      basePriority: TaskPriority.NORMAL,
       status: TaskStatus.PENDING,
       roomName: provider.pos.roomName,
       assignmentType: TaskAssignmentType.EXCLUSIVE,

@@ -3,24 +3,28 @@ import { TaskStateService } from "./TaskStateService";
 import { Task, TaskType, TaskAssignmentType, TaskPriority, TaskStatus } from "../types";
 import { TaskExecutorRegistry } from "../task/TaskExecutorRegistry";
 import { EventBus } from "../core/EventBus";
+import { PriorityCalculator } from "../utils/PriorityCalculator";
+import { TaskManager } from "../managers/TaskManager";
 
 /**
  * 任务调度器服务 - 负责任务分配和调度
+ * 采用统一的动态优先级模型，取代了旧的"独占-共享"两段式调度。
  */
 export class TaskSchedulerService extends BaseService {
   private executorRegistry: TaskExecutorRegistry;
+  private taskStateService: TaskStateService;
+  private taskManager: TaskManager;
 
   constructor(eventBus: EventBus, serviceContainer: any) {
     super(eventBus, serviceContainer);
     this.executorRegistry = new TaskExecutorRegistry();
-  }
-
-  private get taskStateService(): TaskStateService {
-    return this.serviceContainer.get('taskStateService');
+    this.taskStateService = this.serviceContainer.get<TaskStateService>('taskStateService');
+    this.taskManager = this.serviceContainer.get<TaskManager>('taskManager');
   }
 
   /**
-   * 为空闲creep分配任务
+   * 为所有可用 creep 分配最合适的任务。
+   * 采用基于动态优先级的统一调度模型。
    */
   public update(): void {
     const availableCreeps = this.getAvailableCreeps();
@@ -28,221 +32,158 @@ export class TaskSchedulerService extends BaseService {
       return;
     }
 
-    // 首先处理独占任务（只有PENDING状态的任务）
-    const exclusiveTasks = this.taskStateService.getPendingTasks()
-      .filter(task => task.assignmentType === TaskAssignmentType.EXCLUSIVE);
-
-    this.processExclusiveTasks(exclusiveTasks, availableCreeps);
-
-    // 然后处理共享任务（包括PENDING和可以继续分配的任务）
-    const sharedTasks = this.getAllAvailableSharedTasks();
-    this.processSharedTasks(sharedTasks, availableCreeps);
-  }
-
-  /**
-   * 处理独占任务（一对一分配）
-   */
-  private processExclusiveTasks(allTasks: Task[], availableCreeps: Creep[]): void {
-    const exclusiveTasks = allTasks.filter(task =>
-      task.assignmentType === TaskAssignmentType.EXCLUSIVE &&
-      task.assignedCreeps.length === 0
-    );
-
-    if (exclusiveTasks.length === 0) return;
-
-    // 按优先级排序
-    exclusiveTasks.sort((a, b) => b.priority - a.priority);
-
-    for (const task of exclusiveTasks) {
-      if (availableCreeps.length === 0) break;
-
-      const bestCreep = this.findBestCreepForTask(task, availableCreeps);
-      if (bestCreep) {
-        if (this.taskStateService.assignTask(task.id, bestCreep.name)) {
-          // 从可用列表中移除已分配的creep
-          const index = availableCreeps.findIndex(c => c.id === bestCreep.id);
-          if (index > -1) {
-            availableCreeps.splice(index, 1);
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * 处理共享任务（基于加权需求池的动态分配）
-   */
-  private processSharedTasks(allTasks: Task[], availableCreeps: Creep[]): void {
-    const sharedTasks = allTasks.filter(task =>
-      task.assignmentType === TaskAssignmentType.SHARED &&
-      task.assignedCreeps.length < task.maxAssignees
-    );
-
-    if (sharedTasks.length === 0) return;
-
-    // 按任务类型分组
-    const tasksByType = this.groupTasksByType(sharedTasks);
-
-    for (const [taskType, tasks] of tasksByType) {
-      // 1. 识别资源池 - 找到能执行这种任务类型的creep
-      const workforcePool = this.identifyWorkforcePool(taskType, availableCreeps);
-
-      if (workforcePool.length === 0) continue;
-
-      // 2. 计算总需求权重
-      const totalDemand = this.calculateTotalDemand(tasks);
-
-      // 3. 按比例分配creep
-      const allocations = this.allocateProportionally(tasks, workforcePool, totalDemand);
-
-      // 4. 执行分配
-      this.executeAllocations(allocations, availableCreeps);
-    }
-  }
-
-  /**
-   * 按任务类型分组
-   */
-  private groupTasksByType(tasks: Task[]): Map<TaskType, Task[]> {
-    const grouped = new Map<TaskType, Task[]>();
-
-    for (const task of tasks) {
-      if (!grouped.has(task.type)) {
-        grouped.set(task.type, []);
-      }
-      grouped.get(task.type)!.push(task);
+    const assignableTasks = this.getAllAssignableTasks();
+    if (assignableTasks.length === 0) {
+      return;
     }
 
-    return grouped;
-  }
-
-  /**
-   * 识别工作力池 - 找到能执行指定任务类型的creep
-   */
-  private identifyWorkforcePool(taskType: TaskType, availableCreeps: Creep[]): Creep[] {
-    const executor = this.executorRegistry.getExecutor(taskType);
-    if (!executor) return [];
-
-    return availableCreeps.filter(creep => {
-      // 检查creep是否可以被中断（如果正在执行任务）
-      if (creep.memory.canBeInterrupted === false) {
-        return false;
-      }
-
-      // 检查是否有执行该任务的能力
-      const dummyTask = { type: taskType } as Task;
-      return executor.canExecute(creep, dummyTask);
-    });
-  }
-
-  /**
-   * 计算总需求权重
-   */
-  private calculateTotalDemand(tasks: Task[]): number {
-    return tasks.reduce((total, task) => total + this.getPriorityWeight(task.priority), 0);
-  }
-
-  /**
-   * 获取优先级权重
-   */
-  private getPriorityWeight(priority: TaskPriority): number {
-    switch (priority) {
-      case TaskPriority.EMERGENCY: return 10;
-      case TaskPriority.CRITICAL: return 8;
-      case TaskPriority.HIGH: return 6;
-      case TaskPriority.NORMAL: return 4;
-      case TaskPriority.LOW: return 2;
-      case TaskPriority.BACKGROUND: return 1;
-      default: return 4;
-    }
-  }
-
-  /**
-   * 按比例分配creep
-   */
-  private allocateProportionally(tasks: Task[], workforcePool: Creep[], totalDemand: number): Map<string, Creep[]> {
-    const allocations = new Map<string, Creep[]>();
-    let remainingCreeps = [...workforcePool];
-
-    // 按优先级排序任务，优先级相同的任务随机化顺序以确保公平分配
-    const sortedTasks = [...tasks].sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return b.priority - a.priority; // 优先级高的在前
-      }
-      // 优先级相同时，基于任务ID的哈希值来排序，确保相对稳定但公平的分配
-      return a.id.localeCompare(b.id);
-    });
-
-    for (const task of sortedTasks) {
-      if (remainingCreeps.length === 0) break;
-
-      const taskWeight = this.getPriorityWeight(task.priority);
-      const proportion = taskWeight / totalDemand;
-
-      // 计算应分配的creep数量
-      let allocatedCount = Math.floor(proportion * workforcePool.length);
-
-      // 确保至少分配1个creep（如果有可用的）
-      if (allocatedCount === 0 && remainingCreeps.length > 0) {
-        allocatedCount = 1;
-      }
-
-      // 不能超过任务的最大分配数和当前已分配数的差值
-      const maxNewAssignees = task.maxAssignees - task.assignedCreeps.length;
-      allocatedCount = Math.min(allocatedCount, maxNewAssignees, remainingCreeps.length);
-
-      if (allocatedCount > 0) {
-        // 找到最适合的creep
-        const bestCreeps = this.findBestCreepsForTask(task, remainingCreeps, allocatedCount);
-        allocations.set(task.id, bestCreeps);
-
-        // 从剩余creep中移除已分配的
-        for (const creep of bestCreeps) {
-          const index = remainingCreeps.findIndex(c => c.id === creep.id);
-          if (index > -1) {
-            remainingCreeps.splice(index, 1);
-          }
-        }
-      }
-    }
-
-    return allocations;
-  }
-
-  /**
-   * 找到最适合任务的多个creep
-   */
-  private findBestCreepsForTask(task: Task, creeps: Creep[], count: number): Creep[] {
-    const executor = this.executorRegistry.getExecutor(task.type);
-    if (!executor) return [];
-
-    // 计算所有creep的评分
-    const creepScores = creeps
-      .filter(creep => executor.canExecute(creep, task))
-      .map(creep => ({
-        creep,
-        score: this.calculateCreepScore(creep, task, executor)
+    // 1. 计算所有可分配任务的动态有效优先级
+    const tasksWithPriority = assignableTasks
+      .map(task => ({
+        task,
+        effectivePriority: PriorityCalculator.calculate(task, Game.time)
       }))
-      .sort((a, b) => b.score - a.score);
+      .filter(item => item.effectivePriority > 0); // 过滤掉无效或已饱和的任务
 
-    // 返回评分最高的creep
-    return creepScores.slice(0, count).map(item => item.creep);
-  }
+    // 2. 按有效优先级降序排序
+    tasksWithPriority.sort((a, b) => b.effectivePriority - a.effectivePriority);
 
-  /**
-   * 执行分配
-   */
-  private executeAllocations(allocations: Map<string, Creep[]>, availableCreeps: Creep[]): void {
-    for (const [taskId, assignedCreeps] of allocations) {
+    // 3. 遍历排序后的任务列表，逐一进行分配
+    for (const { task } of tasksWithPriority) {
+      if (availableCreeps.length === 0) break; // 如果没有可用的creep，则停止分配
+
+      const remainingCapacity = task.maxAssignees - task.assignedCreeps.length;
+      if (remainingCapacity <= 0) continue;
+
+      let assignedCreeps: Creep[] = [];
+
+      // 为独占任务寻找最佳的一个creep
+      if (task.assignmentType === TaskAssignmentType.EXCLUSIVE) {
+        const bestCreep = this.findBestCreepsForTask(task, availableCreeps, 1);
+        if (bestCreep.length > 0) {
+          assignedCreeps.push(bestCreep[0]);
+        }
+      }
+      // 为共享任务寻找最佳的一组creeps
+      else if (task.assignmentType === TaskAssignmentType.SHARED) {
+        const bestCreeps = this.findBestCreepsForTask(task, availableCreeps, remainingCapacity);
+        if (bestCreeps.length > 0) {
+          assignedCreeps.push(...bestCreeps);
+        }
+      }
+
+      // 执行分配，并从可用creep池中移除已分配的creep
       for (const creep of assignedCreeps) {
-        if (this.taskStateService.assignTask(taskId, creep.name)) {
-          // 从可用列表中移除已分配的creep
+        if (this.taskStateService.assignTask(task.id, creep.name)) {
           const index = availableCreeps.findIndex(c => c.id === creep.id);
           if (index > -1) {
             availableCreeps.splice(index, 1);
           }
         }
       }
+    }
+  }
+
+  /**
+   * 获取所有可分配的任务
+   * 包括：
+   * 1. 处于 PENDING 状态的独占任务
+   * 2. 处于 PENDING, ASSIGNED, IN_PROGRESS 状态且未达到分配上限的共享任务
+   */
+  private getAllAssignableTasks(): Task[] {
+    const allTasks = this.taskStateService.getActiveTasks();
+
+    return allTasks.filter(task => {
+      const canAssignMore = task.assignedCreeps.length < task.maxAssignees;
+      if (!canAssignMore) {
+        return false;
+      }
+
+      // 对于独占任务，只有 PENDING 状态的才可分配
+      if (task.assignmentType === TaskAssignmentType.EXCLUSIVE) {
+        return task.status === TaskStatus.PENDING;
+      }
+
+      // 对于共享任务，多种状态下都可以追加分配
+      if (task.assignmentType === TaskAssignmentType.SHARED) {
+        return (
+          task.status === TaskStatus.PENDING ||
+          task.status === TaskStatus.ASSIGNED ||
+          task.status === TaskStatus.IN_PROGRESS
+        );
+      }
+
+      return false;
+    });
+  }
+
+  /**
+   * 找到最适合任务的多个creep
+   */
+  private findBestCreepsForTask(task: Task, creeps: Creep[], count: number): Creep[] {
+    // 检查是否使用 FSM 执行器
+    // FIXME 这是一个临时解决方案，用于任务执行器重构的过度方案，完成任务执行器重构后删除
+    if (this.taskManager.isFSMTask(task.type) && task.fsm) {
+      // 对于FSM任务，我们不需要创建执行器实例，只需要检查基本能力
+      // 计算所有creep的评分
+      const creepScores = creeps
+        .filter(creep => this.canExecuteFSMTask(creep, task))
+        .map(creep => ({
+          creep,
+          score: this.calculateCreepScore(creep, task, null) // FSM执行器不需要用于评分
+        }))
+        .sort((a, b) => b.score - a.score);
+
+      // 返回评分最高的creep
+      return creepScores.slice(0, count).map(item => item.creep);
+    } else {
+      // 使用传统执行器
+      const executor = this.executorRegistry.getExecutor(task.type);
+      if (!executor) return [];
+
+      // 计算所有creep的评分
+      const creepScores = creeps
+        .filter(creep => executor.canExecute(creep, task))
+        .map(creep => ({
+          creep,
+          score: this.calculateCreepScore(creep, task, executor)
+        }))
+        .sort((a, b) => b.score - a.score);
+
+      // 返回评分最高的creep
+      return creepScores.slice(0, count).map(item => item.creep);
+    }
+  }
+
+    /**
+   * 检查creep是否能执行FSM任务
+   * // FIXME 这是一个临时解决方案，用于任务执行器重构的过度方案，完成任务执行器重构后删除
+   */
+  private canExecuteFSMTask(creep: Creep, task: Task): boolean {
+    // 对于FSM执行器，我们主要检查creep的基本能力
+    // 具体的执行逻辑由FSM执行器在运行时处理
+
+    // 检查creep是否还活着
+    if (creep.spawning) return false;
+
+    // 检查creep是否有基本的移动能力
+    if (creep.getActiveBodyparts(MOVE) === 0) return false;
+
+    // 根据任务类型进行基本能力检查
+    switch (task.type) {
+      case TaskType.HARVEST:
+        return creep.getActiveBodyparts(WORK) > 0;
+      case TaskType.TRANSPORT:
+        return creep.getActiveBodyparts(CARRY) > 0;
+      case TaskType.UPGRADE:
+        return creep.getActiveBodyparts(WORK) > 0;
+      case TaskType.BUILD:
+        return creep.getActiveBodyparts(WORK) > 0;
+      case TaskType.ATTACK:
+        return creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0;
+      default:
+        // 对于其他任务类型（如REPAIR），默认需要WORK部件
+        return creep.getActiveBodyparts(WORK) > 0;
     }
   }
 
@@ -254,6 +195,7 @@ export class TaskSchedulerService extends BaseService {
     for (const name in Game.creeps) {
       const creep = Game.creeps[name];
       if (creep.spawning) continue;
+      // TODO 计入共享任务的状态为FINISHED的creep，该creep任务已完成
       const currentTask = this.taskStateService.getCreepTask(name);
       if (!currentTask) {
         available.push(creep);
@@ -263,35 +205,14 @@ export class TaskSchedulerService extends BaseService {
   }
 
   /**
-   * 为任务找到最佳creep
-   */
-  private findBestCreepForTask(task: Task, creeps: Creep[]): Creep | null {
-    const executor = this.executorRegistry.getExecutor(task.type);
-    if (!executor) return null;
-
-    let bestCreep: Creep | null = null;
-    let bestScore = -1;
-
-    for (const creep of creeps) {
-      if (executor.canExecute(creep, task)) {
-        const score = this.calculateCreepScore(creep, task, executor);
-        if (score > bestScore) {
-          bestScore = score;
-          bestCreep = creep;
-        }
-      }
-    }
-    return bestCreep;
-  }
-
-  /**
    * 计算creep执行任务的评分
    */
   private calculateCreepScore(creep: Creep, task: Task, executor: any): number {
     let score = 0;
 
     // Capability score
-    const capabilityScore = executor.calculateCapabilityScore ? executor.calculateCapabilityScore(creep) : 0.5;
+    // FIXME 这是一个临时解决方案，用于任务执行器重构的过度方案，完成任务执行器重构后删除
+    const capabilityScore = executor?.calculateCapabilityScore ? executor.calculateCapabilityScore(creep) : 0.5;
     score += capabilityScore * 0.5;
 
     let distance = 0;
@@ -329,34 +250,5 @@ export class TaskSchedulerService extends BaseService {
       return new RoomPosition(pos.x, pos.y, pos.roomName);
     }
     return null;
-  }
-
-  /**
-   * 获取所有可分配的共享任务
-   */
-  private getAllAvailableSharedTasks(): Task[] {
-    const allTasks = this.taskStateService.getActiveTasks();
-
-    return allTasks.filter(task => {
-      // 只考虑共享任务
-      if (task.assignmentType !== TaskAssignmentType.SHARED) {
-        return false;
-      }
-
-      // 任务必须是待分配或正在进行中，且未达到最大分配数
-      const canAssignMore = task.assignedCreeps.length < task.maxAssignees;
-      const isAvailable = task.status === TaskStatus.PENDING ||
-        task.status === TaskStatus.ASSIGNED ||
-        task.status === TaskStatus.IN_PROGRESS;
-
-      return canAssignMore && isAvailable;
-    });
-  }
-
-  /**
-   * TODO 计算动态优先级 - 根据任务状态和时间计算
-   */
-  private calculateDynamicPriority(task: Task): number {
-    return task.priority;
   }
 }

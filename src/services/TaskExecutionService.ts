@@ -3,6 +3,7 @@ import { EventBus } from "../core/EventBus";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { TaskManager } from "../managers/TaskManager";
 import { Task, TaskStatus } from "../types";
+import { TaskStateService } from "./TaskStateService";
 import { GameConfig } from "../config/GameConfig";
 
 /**
@@ -11,6 +12,11 @@ import { GameConfig } from "../config/GameConfig";
 export class TaskExecutionService extends BaseService {
   private get taskManager(): TaskManager {
     return this.serviceContainer.get('taskManager');
+  }
+
+  // 方便访问任务状态服务
+  private get taskStateService(): TaskStateService {
+    return this.serviceContainer.get('taskStateService');
   }
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
@@ -71,6 +77,9 @@ export class TaskExecutionService extends BaseService {
 
       // 检查该creep的任务是否完成
       if (fsmExecutor.isFinished()) {
+        // 该 creep 已完成自身任务，立即解除绑定，防止占用共享任务名额
+        this.taskStateService.unassignCreep(creep.name);
+
         // 检查任务是否整体完成（所有creep都完成）
         if (fsmExecutor.isTaskFinished()) {
           this.taskManager.updateTaskStatus(task.id, TaskStatus.COMPLETED);

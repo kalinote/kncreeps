@@ -1,9 +1,6 @@
 import { TaskType } from "../types";
 import { BaseTaskExecutor } from "./executors/BaseTaskExecutor";
 import { AttackTaskExecutor } from "./executors/AttackTaskExecutor";
-import { BuildTaskExecutor } from "./executors/BuildTaskExecutor";
-import { HarvestTaskExecutor } from "./executors/HarvestTaskExecutor";
-import { TransportTaskExecutor } from "./executors/TransportTaskExecutor";
 import { UpgradeTaskExecutor } from "./executors/UpgradeTaskExecutor";
 
 /**
@@ -20,15 +17,6 @@ export class TaskExecutorRegistry {
    * 注册所有任务执行器
    */
   private registerExecutors(): void {
-    // 注册采集任务执行器
-    this.executors.set(TaskType.HARVEST, new HarvestTaskExecutor());
-
-    // 注册运输任务执行器
-    this.executors.set(TaskType.TRANSPORT, new TransportTaskExecutor());
-
-    // 注册建造任务执行器
-    this.executors.set(TaskType.BUILD, new BuildTaskExecutor());
-
     // 注册升级任务执行器
     this.executors.set(TaskType.UPGRADE, new UpgradeTaskExecutor());
 

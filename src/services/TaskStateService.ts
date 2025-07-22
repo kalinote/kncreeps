@@ -211,6 +211,7 @@ export class TaskStateService extends BaseService {
     }
 
     const taskId = Memory.tasks.creepTasks[creepName];
+    // TODO 不应该计入共享任务的状态为FINISHED的creep，该creep任务已完成
     return Memory.tasks.taskQueue.find(t => t.id === taskId) || null;
   }
 
@@ -388,7 +389,6 @@ export class TaskStateService extends BaseService {
     return {
       kind,
       taskState: initialState,
-      context: {},
       groupId: undefined,
       creepStates: {}
     };

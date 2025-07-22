@@ -54,7 +54,8 @@ export enum TaskKind {
 export interface BaseTask {
   id: string;
   type: TaskType;
-  priority: TaskPriority;
+  basePriority: TaskPriority;   // 基础优先级
+  effectivePriority?: number;   // 动态有效优先级，由PriorityCalculator计算
   status: TaskStatus;
   roomName: string;
   assignmentType: TaskAssignmentType;
@@ -178,7 +179,6 @@ export interface TaskSystemMemory {
 export interface TaskFSMMemory<TState extends string = string> {
   kind: TaskKind;                    // 任务大类
   taskState: TState;                 // 任务状态
-  context?: Record<string, any>;     // 任务级业务上下文
   groupId?: string;                  // 协同组ID
   creepStates: { [creepName: string]: CreepFSMState<TState> }; // creep -> state 映射
 }
@@ -186,7 +186,7 @@ export interface TaskFSMMemory<TState extends string = string> {
 export interface CreepFSMState<TState extends string = string> {
   interruptible: boolean;            // 可中断标记
   currentState: TState;              // 该creep的当前执行状态
-  context?: Record<string, any>;     // creep上下文
+  record?: Record<string, any>;       // 记录该creep的状态转换记录
 }
 
 export type StateHandler<TState extends string> = (creep: Creep) => TState | void;

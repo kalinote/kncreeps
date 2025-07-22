@@ -9,6 +9,7 @@ import { TaskSchedulerService } from "../services/TaskSchedulerService";
 import { TaskStateService } from "../services/TaskStateService";
 import { FSMExecutorRegistry } from "../task/FSMExecutorRegistry";
 import { TaskStateMachine } from "../task/fsm/StateMachine";
+import { ServiceContainer } from "../core/ServiceContainer";
 
 /**
  * 任务管理器 - 管理所有任务的生命周期
@@ -17,7 +18,7 @@ export class TaskManager extends BaseManager {
   private executorRegistry: TaskExecutorRegistry;
   private fsmExecutorRegistry: FSMExecutorRegistry;
 
-  constructor(eventBus: EventBus, serviceContainer: any) {
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
     this.updateInterval = GameConfig.MANAGER_CONFIGS.TASK_MANAGER.UPDATE_INTERVAL;
     this.executorRegistry = new TaskExecutorRegistry();

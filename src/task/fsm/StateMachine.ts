@@ -28,7 +28,7 @@ export abstract class TaskStateMachine<TState extends string> {
       taskMemory.creepStates[creep.name] = {
         currentState: this.getInitialState(),
         interruptible: true,
-        context: {}
+        record: {}
       };
     }
     this.creepState = taskMemory.creepStates[creep.name];
@@ -120,34 +120,6 @@ export abstract class TaskStateMachine<TState extends string> {
   }
 
   /**
-   * 获取该creep的上下文
-   */
-  public getContext(): Record<string, any> | undefined {
-    return this.creepState.context;
-  }
-
-  /**
-   * 设置该creep的上下文
-   */
-  public setContext(context: Record<string, any>): void {
-    this.creepState.context = context;
-  }
-
-  /**
-   * 获取任务级别的共享上下文
-   */
-  public getGlobalContext(): Record<string, any> | undefined {
-    return this.taskMemory.context;
-  }
-
-  /**
-   * 设置任务级别的共享上下文
-   */
-  public setGlobalContext(context: Record<string, any>): void {
-    this.taskMemory.context = context;
-  }
-
-  /**
    * 获取任务状态
    */
   public getTaskState(): TState {
@@ -200,6 +172,31 @@ export abstract class TaskStateMachine<TState extends string> {
    */
   protected isCreepDying(creep: Creep, threshold: number = 50): boolean {
     return creep.ticksToLive !== undefined && creep.ticksToLive < threshold;
+  }
+
+  /**
+   * 获取creep的状态转换记录
+   */
+  protected getRecord(): Record<string, any> | undefined {
+    return this.creepState.record;
+  }
+
+  /**
+   * 设置creep的状态转换记录
+   */
+  protected setRecord(record: Record<string, any>): void {
+    if (!record.lastState) {
+      record.lastState = this.creepState.currentState;
+    }
+    this.creepState.record = record;
+  }
+
+  protected switchState(nextState: TState, reason: string): TState {
+    this.setRecord({
+      lastState: this.creepState.currentState,
+      reason: reason
+    });
+    return nextState;
   }
 
   /**

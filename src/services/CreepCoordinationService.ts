@@ -5,6 +5,7 @@ import { GameConfig } from "../config/GameConfig";
 
 /**
  * Creep协调服务 - 协调生产和生命周期服务
+ * TODO 这个服务可以去掉，直接在对应服务中实现update
  */
 export class CreepCoordinationService extends BaseService {
   private get productionService(): CreepProductionService {

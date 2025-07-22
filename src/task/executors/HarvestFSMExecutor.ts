@@ -51,64 +51,50 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
   private handleInit(creep: Creep): HarvestState {
     const task = this.getTask<HarvestTask>(creep);
     if (!task) {
-      return HarvestState.FINISHED;
+      return this.switchState(HarvestState.FINISHED, '任务未找到');
     }
 
     // 获取目标源
     const source = Game.getObjectById<Source>(task.params.sourceId as Id<Source>);
     if (!source || source.energy === 0) {
-      return HarvestState.FINISHED;
+      return this.switchState(HarvestState.FINISHED, '未找到资源点或资源点枯竭');
     }
 
     // 检查creep是否即将死亡
     if (this.isCreepDying(creep)) {
-      return HarvestState.FINISHED;
+      return this.switchState(HarvestState.FINISHED, 'creep 即将死亡');
     }
-
-    // 初始化该creep的私有上下文
-    this.setContext({
-      sourceId: task.params.sourceId,
-      targetId: task.params.targetId,
-      targetPos: task.params.targetPos,
-      harvestPosition: task.params.harvestPosition
-    });
 
     // 如果creep已满，进入丢弃状态
     if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
-      return HarvestState.DUMPING;
+      return this.switchState(HarvestState.DUMPING, 'creep 能量容量已满');
     }
 
     // 获取或分配采集位置
     const harvestPosition = this.getOrAssignHarvestPosition(creep, task, source);
-    console.log(`[HarvestFSMExecutor] ${creep.name} harvestPosition: ${JSON.stringify(harvestPosition)}`);
+    // console.log(`[HarvestFSMExecutor] ${creep.name} harvestPosition: ${JSON.stringify(harvestPosition)}`);
     if (!harvestPosition) {
-      return HarvestState.FINISHED;
+      return this.switchState(HarvestState.FINISHED, '未找到采集位置');
     }
 
-    // 设置目标位置到该creep的私有上下文
-    this.setContext({ ...this.getContext(), targetPosition: harvestPosition });
-
-    return HarvestState.MOVING;
+    return this.switchState(HarvestState.MOVING, '初始化完成');
   }
 
   /**
    * 移动状态处理器
    */
   private handleMoving(creep: Creep): HarvestState {
-    const context = this.getContext();
-    if (!context || !context.targetPosition) {
-      return HarvestState.INIT;
+    // 直接从creep.memory获取分配的位置
+    if (!creep.memory.assignedHarvestPos) {
+      return this.switchState(HarvestState.INIT, '未找到采集位置');
     }
 
-    const targetPos = new RoomPosition(
-      context.targetPosition.x,
-      context.targetPosition.y,
-      context.targetPosition.roomName
-    );
+    const assignedPos = creep.memory.assignedHarvestPos;
+    const targetPos = new RoomPosition(assignedPos.x, assignedPos.y, assignedPos.roomName);
 
     // 检查是否已到达目标位置
     if (creep.pos.isEqualTo(targetPos)) {
-      return HarvestState.HARVESTING;
+      return this.switchState(HarvestState.HARVESTING, '到达采集位置');
     }
 
     // 移动到目标位置
@@ -116,10 +102,10 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
     if (moveResult === ERR_NO_PATH) {
       // 路径不可达，清除分配位置并重新初始化
       this.clearAssignedPosition(creep);
-      return HarvestState.INIT;
+      return this.switchState(HarvestState.INIT, '路径不可达');
     }
 
-    return HarvestState.MOVING;
+    return this.switchState(HarvestState.MOVING, '移动到采集位置');
   }
 
   /**
@@ -128,22 +114,22 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
   private handleHarvesting(creep: Creep): HarvestState {
     const task = this.getTask<HarvestTask>(creep);
     if (!task) {
-      return HarvestState.FINISHED;
+      return this.switchState(HarvestState.FINISHED, '任务未找到');
     }
 
     const source = Game.getObjectById<Source>(task.params.sourceId as Id<Source>);
     if (!source || source.energy === 0) {
-      return HarvestState.FINISHED;
+      return this.switchState(HarvestState.FINISHED, '未找到资源点或资源点枯竭');
     }
 
     // 检查creep是否即将死亡
     if (this.isCreepDying(creep)) {
-      return HarvestState.FINISHED;
+      return this.switchState(HarvestState.FINISHED, 'creep 即将死亡');
     }
 
     // 如果creep已满，进入丢弃状态
     if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
-      return HarvestState.DUMPING;
+      return this.switchState(HarvestState.DUMPING, 'creep 能量容量已满');
     }
 
     // 执行采集
@@ -151,22 +137,22 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
 
     switch (harvestResult) {
       case OK:
-        return HarvestState.HARVESTING;
+        return this.switchState(HarvestState.HARVESTING, '采集成功');
 
       case ERR_NOT_IN_RANGE:
         // 重新计算位置，可能被其他creep占用了
         this.clearAssignedPosition(creep);
-        return HarvestState.INIT;
+        return this.switchState(HarvestState.INIT, '重新计算位置');
 
       case ERR_NOT_ENOUGH_RESOURCES:
         // 源暂时枯竭，等待恢复
-        return HarvestState.HARVESTING;
+        return this.switchState(HarvestState.HARVESTING, '源暂时枯竭');
 
       case ERR_BUSY:
-        return HarvestState.HARVESTING;
+        return this.switchState(HarvestState.HARVESTING, '采集繁忙');
 
       default:
-        return HarvestState.FINISHED;
+        return this.switchState(HarvestState.FINISHED, '采集失败');
     }
   }
 
@@ -176,7 +162,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
   private handleDumping(creep: Creep): HarvestState {
     const task = this.getTask<HarvestTask>(creep);
     if (!task) {
-      return HarvestState.FINISHED;
+      return this.switchState(HarvestState.FINISHED, '任务未找到');
     }
 
     // 如果指定了存储目标，优先使用指定目标
@@ -185,9 +171,9 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
       if (target && 'store' in target) {
         const result = this.transferResource(creep, target, RESOURCE_ENERGY);
         if (result.success && !result.completed) {
-          return HarvestState.HARVESTING;
+          return this.switchState(HarvestState.HARVESTING, '传输成功');
         }
-        return HarvestState.DUMPING;
+        return this.switchState(HarvestState.DUMPING, '传输失败');
       }
     }
 
@@ -201,10 +187,10 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
 
       if (creep.pos.isEqualTo(targetPos)) {
         creep.drop(RESOURCE_ENERGY);
-        return HarvestState.HARVESTING;
+        return this.switchState(HarvestState.HARVESTING, '丢弃成功');
       } else {
         this.moveService.moveTo(creep, targetPos);
-        return HarvestState.DUMPING;
+        return this.switchState(HarvestState.DUMPING, '移动到丢弃位置');
       }
     }
 
@@ -218,7 +204,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
   private handleFinished(creep: Creep): HarvestState {
     // 清理分配的位置
     this.clearAssignedPosition(creep);
-    return HarvestState.FINISHED;
+    return this.switchState(HarvestState.FINISHED, this.getRecord()?.reason || '完成，没有记录原因');
   }
 
   /**
@@ -359,13 +345,13 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
       const result = this.transferResource(creep, targetStructure, RESOURCE_ENERGY);
 
       if (result.success && result.completed) {
-        return HarvestState.HARVESTING;
+        return this.switchState(HarvestState.HARVESTING, '传输成功');
       }
-      return HarvestState.DUMPING;
+      return this.switchState(HarvestState.DUMPING, '传输失败');
     } else {
       // 没有找到存储设施，直接丢弃
       creep.drop(RESOURCE_ENERGY);
-      return HarvestState.HARVESTING;
+      return this.switchState(HarvestState.HARVESTING, '丢弃成功');
     }
   }
 

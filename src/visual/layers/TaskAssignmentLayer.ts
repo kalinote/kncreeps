@@ -4,6 +4,7 @@ import { EventBus } from "../../core/EventBus";
 import { ServiceContainer } from "../../core/ServiceContainer";
 import { VisualConfig } from "../../config/VisualConfig";
 import { TaskStateService } from "../../services/TaskStateService";
+import { PriorityCalculator } from "../../utils/PriorityCalculator";
 
 export class TaskAssignmentLayer extends BaseLayer {
   protected name: string = "TaskAssignmentLayer";
@@ -31,7 +32,8 @@ export class TaskAssignmentLayer extends BaseLayer {
       this.buffer.push({
         type: 'text',
         data: {
-          text: `[${task.type.substring(0, 2).toUpperCase()}]${task.id.split('_')[2].substring(0, 4)}(P:${task.priority}): ${task.status}(${task.assignmentType}${task.assignmentType === TaskAssignmentType.SHARED ? (',' + task.assignedCreeps.length + "/"  + task.maxAssignees) : ''})`,
+          // TODO 这里每次都会再计算一次动态优先级，后续可以考虑一次计算后缓存起来
+          text: `[${task.type.substring(0, 2).toUpperCase()}]${task.id.split('_')[2].substring(0, 4)}(BP:${task.basePriority},EP:${PriorityCalculator.calculate(task, Game.time).toFixed(2)}): ${task.status}(${task.assignmentType}${task.assignmentType === TaskAssignmentType.SHARED ? (',' + task.assignedCreeps.length + "/"  + task.maxAssignees) : ''})`,
         },
       });
     }
