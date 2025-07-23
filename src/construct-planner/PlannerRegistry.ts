@@ -1,5 +1,6 @@
 import { BasePlanner } from "./planners/BasePlanner";
 import { ContainerPlanner } from "./planners/ContainerPlanner";
+import { ExtensionPlanner } from "./planners/ExtensionPlanner";
 import { RoadPlanner } from "./planners/RoadPlanner";
 
 /**
@@ -19,6 +20,7 @@ export class PlannerRegistry {
   private registerPlanners(): void {
     this.register(new RoadPlanner());
     this.register(new ContainerPlanner());
+    this.register(new ExtensionPlanner());
   }
 
   /**

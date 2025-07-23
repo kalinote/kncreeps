@@ -13,9 +13,9 @@ export const ConstructionConfig = {
    * ConstructionManager 将会按照这个数组中定义的规划器名称来分步执行规划。
    */
   PLANNING_ORDER: [
+    'extension',
     'container',
     'road',
-    // 'extension',
     // 'tower',
     // ...
   ],
@@ -27,7 +27,7 @@ export const ConstructionConfig = {
   BUILD_PRIORITY_ORDER: [
     // 'spawn',
     // 'tower',
-    // 'extension',
+    'extension',
     'container',
     'road'
   ],

@@ -40,6 +40,7 @@ export class TaskGeneratorService extends BaseService {
   }
 
   private generateHarvestTasks(room: Room): void {
+    // TODO 增加矿物和超能的采集任务
     const sources = room.find(FIND_SOURCES);
     const existingHarvestTasks = this.taskStateService.getActiveTasks()
       .filter(task => task.type === TaskType.HARVEST && task.roomName === room.name);

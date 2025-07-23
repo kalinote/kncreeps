@@ -14,6 +14,7 @@ import { TransportService } from "services/TransportService";
  * 负责驱动建筑规划和创建建筑工地。
  */
 export class ConstructionManager extends BaseManager {
+  // TODO 明确ConstructionManager和ConstructPlannerService的职责，并且PlannerRegistry只应该创建一次
   private plannerRegistry: PlannerRegistry;
   private strategyRegistry: EventStrategyRegistry;
   private constructPlannerService: ConstructPlannerService;

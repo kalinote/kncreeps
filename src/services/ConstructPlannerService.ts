@@ -10,6 +10,7 @@ import { EventConfig } from '../config/EventConfig';
  * 建筑规划服务 - 负责管理所有规划器的状态和事件触发
  */
 export class ConstructPlannerService extends BaseService {
+  // TODO 明确ConstructionManager和ConstructPlannerService的职责，并且PlannerRegistry只应该创建一次
   private plannerRegistry: PlannerRegistry;
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {

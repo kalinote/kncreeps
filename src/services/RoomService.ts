@@ -132,6 +132,16 @@ export class RoomService extends BaseService {
       });
     }
 
+    const previousLevel = memory.controllerLevel || 0;
+    const currentLevel = room.controller?.level || 0;
+    if (previousLevel !== currentLevel) {
+      this.emit(GameConfig.EVENTS.ROOM_CONTROLLER_LEVEL_CHANGED, {
+        roomName,
+        previousLevel,
+        currentLevel
+      });
+    }
+
     this.updateRoomMemory(roomName, room);
   }
 
@@ -279,6 +289,7 @@ export class RoomService extends BaseService {
       Memory.rooms[roomName] = {
         energyAvailable: room?.energyAvailable || 0,
         energyCapacity: room?.energyCapacityAvailable || 0,
+        controllerLevel: room?.controller?.level || 0,
         needsAttention: false,
         creepCounts: {},
         threatLevel: "none",

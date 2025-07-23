@@ -9,12 +9,14 @@ export class EventConfig {
     CREEP_DIED: 'creep.died',                           // 单位死亡
     CREEP_TASK_ASSIGNED: 'creep.task.assigned',         // 单位任务分配
     CREEP_TASK_COMPLETED: 'creep.task.completed',       // 单位任务完成
+
     // Room相关事件
     ROOM_ENERGY_CHANGED: 'room.energy.changed',        // 房间能量变化
     ROOM_UNDER_ATTACK: 'room.under.attack',             // 房间受到攻击
     ROOM_THREAT_CLEARED: 'room.threat.cleared',         // 房间威胁清除
     ROOM_THREAT_PERSISTS: 'room.threat.persists',       // 房间威胁持续存在
     ROOM_NEEDS_ATTENTION: 'room.needs.attention',       // 房间需要关注
+    ROOM_CONTROLLER_LEVEL_CHANGED: 'room.controller.level.changed', // 房间控制器等级变化
 
     // 建筑相关事件
     CONSTRUCTION_COMPLETED: 'construction.completed',   // 建筑完成

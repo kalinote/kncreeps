@@ -64,6 +64,7 @@ declare global {
   interface RoomMemory {
     energyAvailable: number;
     energyCapacity: number;
+    controllerLevel: number;
     activeConstructionStrategy?: string | null;
     planningAttemptedAt?: number;
     needsAttention: boolean;
