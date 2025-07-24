@@ -338,7 +338,6 @@ export class CreepProductionService extends BaseService {
         break;
 
       case GameConfig.ROLES.SHOOTER:
-        // Shooter专门处理战斗任务，通常1对1
         needed = Math.max(busyCount, tasks.length);
         break;
 

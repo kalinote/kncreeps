@@ -59,6 +59,27 @@ export const VisualConfig = {
       color: '#888888',
       width: 0.05,
       opacity: 0.3
+    },
+    // 已规划的容器
+    CONTAINER_PLAN_STYLE: {
+      fill: 'transparent',
+      stroke: '#FFD700',
+      strokeWidth: 0.15,
+      opacity: 0.8
+    },
+    // 建造中的容器
+    CONTAINER_UNDER_CONSTRUCTION_STYLE: {
+      fill: 'transparent',
+      stroke: '#00FF00',
+      strokeWidth: 0.15,
+      opacity: 0.9
+    },
+    // 已完成的容器
+    CONTAINER_COMPLETED_STYLE: {
+      fill: 'transparent',
+      stroke: '#888888',
+      strokeWidth: 0.1,
+      opacity: 0.4
     }
   },
 
@@ -127,7 +148,7 @@ export const VisualConfig = {
       enabled: true,
       priority: 50
     },
-    ['RoadPlanLayer']: {
+    ['ConstructionPlannerLayer']: {
       enabled: true,
       priority: 55
     }

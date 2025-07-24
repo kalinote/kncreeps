@@ -3,7 +3,8 @@ import { EventBus } from '../core/EventBus';
 import { ServiceContainer } from '../core/ServiceContainer';
 import { PlannerRegistry } from '../construct-planner/PlannerRegistry';
 import { RoadPlanner } from '../construct-planner/planners/RoadPlanner';
-import { ConstructionStatus, RoadPlanInfo, RoadConstructionStatus } from '../types';
+import { ContainerPlanner } from '../construct-planner/planners/ContainerPlanner';
+import { ConstructionStatus, RoadPlanInfo, RoadConstructionStatus, BuildingPlan } from '../types';
 import { EventConfig } from '../config/EventConfig';
 
 /**
@@ -58,6 +59,49 @@ export class ConstructPlannerService extends BaseService {
 
       this.updateRoadConstructionStatus(room);
     }
+  }
+
+  /**
+   * 获取container规划信息
+   */
+  public getContainerPlanInfo(room: Room): BuildingPlan[] {
+    const containerPlanner = this.plannerRegistry.getPlanner('container') as ContainerPlanner;
+    if (!containerPlanner) return [];
+
+    return containerPlanner.plan(room);
+  }
+
+  /**
+   * 获取container建造状态
+   */
+  public getContainerConstructionStatus(room: Room): { planned: number; underConstruction: number; completed: number } {
+    const plans = this.getContainerPlanInfo(room);
+    let planned = 0;
+    let underConstruction = 0;
+    let completed = 0;
+
+    for (const plan of plans) {
+      const pos = new RoomPosition(plan.pos.x, plan.pos.y, plan.pos.roomName);
+
+      // 检查是否已存在该建筑
+      const existingStructure = pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER);
+      if (existingStructure) {
+        completed++;
+        continue;
+      }
+
+      // 检查是否有建造工地
+      const constructionSite = pos.lookFor(LOOK_CONSTRUCTION_SITES).find(s => s.structureType === STRUCTURE_CONTAINER);
+      if (constructionSite) {
+        underConstruction++;
+        continue;
+      }
+
+      // 否则为已规划状态
+      planned++;
+    }
+
+    return { planned, underConstruction, completed };
   }
 
   /**

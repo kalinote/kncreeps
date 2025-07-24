@@ -1,0 +1,165 @@
+import { BaseLayer } from './BaseLayer';
+import { VisualConfig } from '../../config/VisualConfig';
+import { ServiceContainer } from '../../core/ServiceContainer';
+import { EventBus } from '../../core/EventBus';
+import { ConstructPlannerService } from '../../services/ConstructPlannerService';
+import { ConstructionStatus, LayerType } from '../../types';
+
+/**
+ * 道路规划图层
+ */
+export class ConstructionPlannerLayer extends BaseLayer {
+  protected name: string = "ConstructionPlannerLayer";
+  protected title: string = "建筑规划";
+  public layerType: LayerType = LayerType.MAP;
+  private constructPlannerService: ConstructPlannerService;
+
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+    super(eventBus, serviceContainer);
+    this.constructPlannerService = this.serviceContainer.get<ConstructPlannerService>('constructPlannerService');
+    this.priority = VisualConfig.LAYER_DEFAULTS.ConstructionPlannerLayer.priority;
+  }
+
+  /**
+   * 渲染建筑规划
+   */
+  public render(room: Room): void {
+    if (!this.constructPlannerService) {
+      console.log('[ConstructionPlannerLayer] 未找到 ConstructPlannerService');
+      return;
+    }
+
+    // 获取所有我的房间
+    const myRooms = Object.values(Game.rooms).filter(room => room.controller?.my);
+
+    for (const room of myRooms) {
+      this.renderRoomRoadPlan(room);
+      this.renderRoomContainerPlan(room);
+    }
+  }
+
+  /**
+   * 渲染单个房间的道路规划
+   */
+  private renderRoomRoadPlan(room: Room): void {
+    const planInfo = this.constructPlannerService.getRoadPlanInfo(room);
+    if (!planInfo || planInfo.segments.length === 0) {
+      return;
+    }
+
+    const visual = new RoomVisual(room.name);
+
+    // 遍历每个道路段并渲染
+    for (const segment of planInfo.segments) {
+      if (!segment.positions || segment.positions.length === 0) continue;
+
+      // 根据状态选择样式
+      let style;
+      switch (segment.status) {
+        case ConstructionStatus.PLANNED:
+          style = VisualConfig.STYLES.ROAD_PLAN_STYLE;
+          break;
+        case ConstructionStatus.UNDER_CONSTRUCTION:
+          style = VisualConfig.STYLES.ROAD_UNDER_CONSTRUCTION_STYLE;
+          break;
+        case ConstructionStatus.COMPLETED:
+          // 可选：是否显示已完成的道路
+          // style = VisualConfig.STYLES.ROAD_COMPLETED_STYLE;
+          continue; // 暂时不显示已完成的道路
+        default:
+          style = VisualConfig.STYLES.ROAD_PLAN_STYLE;
+      }
+
+      // 绘制道路路径
+      for (let i = 0; i < segment.positions.length - 1; i++) {
+        const current = segment.positions[i];
+        const next = segment.positions[i + 1];
+        visual.line(current.x, current.y, next.x, next.y, style);
+      }
+
+      // 在起点和终点添加标记
+      if (segment.positions.length > 0) {
+        const start = segment.positions[0];
+        const end = segment.positions[segment.positions.length - 1];
+
+        // 起点标记（Spawn）
+        visual.circle(start.x, start.y, { ...style, fill: 'transparent', radius: 0.3 });
+
+        // 终点标记（Source/Controller）
+        visual.circle(end.x, end.y, { ...style, fill: 'transparent', radius: 0.3 });
+      }
+    }
+  }
+
+  /**
+   * 渲染单个房间的container规划
+   */
+  private renderRoomContainerPlan(room: Room): void {
+    const planInfo = this.constructPlannerService.getContainerPlanInfo(room);
+    if (!planInfo || planInfo.length === 0) {
+      return;
+    }
+
+    const visual = new RoomVisual(room.name);
+
+    // 遍历每个container规划并渲染
+    for (const plan of planInfo) {
+      const pos = new RoomPosition(plan.pos.x, plan.pos.y, plan.pos.roomName);
+
+      // 根据状态选择样式
+      let style;
+      let showLabel = true;
+
+      // 检查是否已存在该建筑，如果已存在则跳过显示
+      const existingStructure = pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER);
+      if (existingStructure) {
+        continue; // 跳过已完成的容器
+      }
+
+      // 检查是否有建造工地
+      const constructionSite = pos.lookFor(LOOK_CONSTRUCTION_SITES).find(s => s.structureType === STRUCTURE_CONTAINER);
+      if (constructionSite) {
+        style = VisualConfig.STYLES.CONTAINER_UNDER_CONSTRUCTION_STYLE;
+      } else {
+        style = VisualConfig.STYLES.CONTAINER_PLAN_STYLE;
+      }
+
+      // 绘制容器位置（正方形）
+      const size = 0.4;
+      visual.rect(pos.x - size, pos.y - size, size * 2, size * 2, style);
+
+      // 显示标签（仅对未完成的容器）
+      if (showLabel) {
+        let label = '';
+        let labelColor = '#FFFFFF';
+
+        // 根据后勤角色和资源类型设置标签
+        switch (plan.logisticsRole) {
+          case 'provider':
+            if (plan.resourceType === RESOURCE_ENERGY) {
+              label = 'E'; // Energy Provider
+              labelColor = '#FFD700';
+            } else {
+              label = 'M'; // Mineral Provider
+              labelColor = '#9370DB';
+            }
+            break;
+          case 'consumer':
+            label = 'C'; // Consumer
+            labelColor = '#00FF00';
+            break;
+          default:
+            label = '?';
+        }
+
+        // 绘制标签
+        visual.text(label, pos.x, pos.y, {
+          color: labelColor,
+          font: 0.4,
+          align: 'center',
+          opacity: 0.9
+        });
+      }
+    }
+  }
+}

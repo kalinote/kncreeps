@@ -1,8 +1,8 @@
 import { EventBus } from '../core/EventBus';
 import { ServiceContainer } from '../core/ServiceContainer';
 import { BaseLayer } from './layers/BaseLayer';
+import { ConstructionPlannerLayer } from './layers/ConstructionPlannerLayer';
 import { GlobalInfoLayer } from './layers/GlobalInfoLayer';
-import { RoadPlanLayer } from './layers/RoadPlanLayer';
 import { RoomInfoLayer } from './layers/RoomInfoLayer';
 import { TaskAssignmentLayer } from './layers/TaskAssignmentLayer';
 import { TaskTrackLayer } from './layers/TaskTrackLayer';
@@ -25,7 +25,7 @@ export class LayerRegistry {
     this.register(new GlobalInfoLayer(eventBus, serviceContainer));
     this.register(new RoomInfoLayer(eventBus, serviceContainer));
     this.register(new TaskTrackLayer(eventBus, serviceContainer));
-    this.register(new RoadPlanLayer(eventBus, serviceContainer));
+    this.register(new ConstructionPlannerLayer(eventBus, serviceContainer));
     this.register(new TaskAssignmentLayer(eventBus, serviceContainer));
   }
 
