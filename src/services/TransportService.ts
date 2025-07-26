@@ -53,8 +53,6 @@ export class TransportService extends BaseService {
 
   /**
    * 更新房间的运输网络内存
-   * TODO 只保留掉落资源和tombstone等动态资源的扫描，其他建筑由建筑规划系统来设置，creep暂时不管
-   * TODO 新增垃圾回收，定期清理内存，这个还需要设计一下
    */
   private updateTransportNetwork(room: Room): void {
     if (!room.memory.logistics) {
@@ -66,7 +64,7 @@ export class TransportService extends BaseService {
         consumers: {},
         lastUpdated: Game.time
       };
-      return; // 如果是新创建的，则本 tick 不做任何事情
+      return;
     }
 
     const network = room.memory.logistics.transportNetwork;

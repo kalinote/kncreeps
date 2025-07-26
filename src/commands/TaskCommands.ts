@@ -1,4 +1,7 @@
+import { Task } from "../types";
+import { TaskStateService } from "../services/TaskStateService";
 import { BaseCommand, CommandArgs, CommandResult } from "./BaseCommand";
+import { PriorityCalculator } from "../utils/PriorityCalculator";
 
 /**
  * 任务状态命令 - 查看任务系统详细状态
@@ -41,7 +44,7 @@ export class TaskStatusCommand extends BaseCommand {
 
   private showDetailedTaskStatus(room: Room): void {
     try {
-      const taskStateService = this.getService<any>('taskStateService');
+      const taskStateService = this.getService<TaskStateService>('taskStateService');
 
       if (!taskStateService) {
         this.log('  ⚠️  无法访问TaskStateService');
@@ -53,8 +56,8 @@ export class TaskStatusCommand extends BaseCommand {
       this.log(`  📋 详细任务列表 (共 ${roomTasks.length} 个任务):`);
 
       // 按类型分组显示
-      const tasksByType: { [type: string]: any[] } = {};
-      roomTasks.forEach((task: any) => {
+      const tasksByType: { [type: string]: Task[] } = {};
+      roomTasks.forEach((task: Task) => {
         if (!tasksByType[task.type]) {
           tasksByType[task.type] = [];
         }
@@ -64,18 +67,18 @@ export class TaskStatusCommand extends BaseCommand {
       for (const [taskType, tasks] of Object.entries(tasksByType)) {
         this.log(`    ${taskType} (${tasks.length} 个):`);
 
-        tasks.forEach((task: any) => {
+        tasks.forEach((task: Task) => {
           const assignedCount = task.assignedCreeps ? task.assignedCreeps.length : 0;
           const maxAssignees = task.maxAssignees || 1;
 
-          this.log(`      - ${task.id} | 状态: ${task.status} | 优先级: ${task.priority}`);
+          this.log(`      - ${task.id} | 状态: ${task.status} | 基本优先级: ${task.basePriority} | 动态有效优先级: ${PriorityCalculator.calculate(task, Game.time)}`);
           this.log(`        分配: ${assignedCount}/${maxAssignees} | 类型: ${task.assignmentType || 'EXCLUSIVE'}`);
 
           if (task.assignedCreeps && task.assignedCreeps.length > 0) {
             this.log(`        已分配creep: ${task.assignedCreeps.join(', ')}`);
           }
 
-          if (task.targetId) {
+          if ('targetId' in task && task.targetId) {
             this.log(`        目标: ${task.targetId}`);
           }
         });

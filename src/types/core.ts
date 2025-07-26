@@ -92,3 +92,10 @@ export interface EventBusMemory {
   processedEvents: GameEvent[];
   lastProcessTime: number;
 }
+
+// 扩展 Room.Terrain 类型定义
+declare global {
+  interface RoomTerrain {
+    getRawBuffer(): {number: number};
+  }
+}
