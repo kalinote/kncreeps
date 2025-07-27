@@ -1,4 +1,4 @@
-type Point = { r: number, c: number };
+type Point = { y: number, x: number };
 type Grid = number[][];
 type CandidateSpace = {
   coord: Point;       // 空间中心点坐标
@@ -25,19 +25,43 @@ export class MapSpatialAnalyzer {
     const height = matrix.length;
     const width = matrix[0].length;
 
+    const visual = new RoomVisual(roomName);
+    for (let y = 0; y < 50; y++) {
+      for (let x = 0; x < 50; x++) {
+        visual.rect(x - 0.5, y - 0.5, 1, 1, { fill: matrix[y][x] ? '#ff0000' : '#00ff00' });
+      }
+    }
+
+
     // 计算距离矩阵
     const distGrid = MapSpatialAnalyzer.distanceTransform(matrix);
+
+    // 绘制距离矩阵可视化
+    let maxDist = 0;
+    for (let y = 0; y < 50; y++) {
+      for (let x = 0; x < 50; x++) {
+        maxDist = Math.max(maxDist, distGrid[y][x]);
+      }
+    }
+    for (let y = 0; y < 50; y++) {
+      for (let x = 0; x < 50; x++) {
+        const distValue = distGrid[y][x];
+        const normalizedValue = maxDist > 0 ? distValue / maxDist : 0;
+        const color = `rgb(${Math.floor(normalizedValue * 255)}, ${Math.floor(normalizedValue * 255)}, ${Math.floor(normalizedValue * 255)})`;
+        visual.rect(x - 0.5, y - 0.5, 1, 1, { fill: color, opacity: 0.25 });
+      }
+    }
 
     // 寻找局部最大值
     const peaks = MapSpatialAnalyzer.findLocalMaxima(distGrid);
     if (peaks.length === 0) {
       let maxVal = -1;
-      let maxCoord: Point = { r: 0, c: 0 };
-      for (let r = 0; r < height; r++) {
-        for (let c = 0; c < width; c++) {
-          if (distGrid[r][c] > maxVal) {
-            maxVal = distGrid[r][c];
-            maxCoord = { r, c };
+      let maxCoord: Point = { y: 0, x: 0 };
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (distGrid[y][x] > maxVal) {
+            maxVal = distGrid[y][x];
+            maxCoord = { y, x };
           }
         }
       }
@@ -47,14 +71,14 @@ export class MapSpatialAnalyzer {
 
     // 计算属性和评分
     const candidates: CandidateSpace[] = [];
-    const mapCenter = { r: height / 2, c: width / 2 };
-    const maxDistToCenter = Math.sqrt(mapCenter.r ** 2 + mapCenter.c ** 2);
+    const mapCenter = { y: height / 2, x: width / 2 };
+    const maxDistToCenter = Math.sqrt(mapCenter.y ** 2 + mapCenter.x ** 2);
 
     for (const peak of peaks) {
-      const openness = distGrid[peak.r][peak.c];
+      const openness = distGrid[peak.y][peak.x];
       const area = MapSpatialAnalyzer.getSpaceAreaByRegionGrowing(peak, distGrid);
 
-      const distToCenter = Math.sqrt((peak.r - mapCenter.r) ** 2 + (peak.c - mapCenter.c) ** 2);
+      const distToCenter = Math.sqrt((peak.y - mapCenter.y) ** 2 + (peak.x - mapCenter.x) ** 2);
       const centrality = 1.0 - (distToCenter / maxDistToCenter);
 
       candidates.push({ coord: peak, openness, area, centrality, score: 0 });
@@ -94,8 +118,18 @@ export class MapSpatialAnalyzer {
   private static getBinaryMatrix(raw: { number: number }): Grid {
     const matrix: Grid = [];
     for (let y = 0; y < 50; y++) {
-      matrix[y] = Array.prototype.slice.call(raw, y * 50, (y + 1) * 50).map(num => num === (y & TERRAIN_MASK_WALL) || num === (y & TERRAIN_MASK_LAVA) ? 0 : 1);
+      matrix[y] = Array.prototype.slice.call(raw, y * 50, (y + 1) * 50).map(num => ((num & TERRAIN_MASK_WALL) || (num & TERRAIN_MASK_LAVA)) ? 1 : 0);
     }
+
+    // 将最外层边界标记为不可达区域
+    for (let y = 0; y < 50; y++) {
+      for (let x = 0; x < 50; x++) {
+        if (y === 0 || y === 49 || x === 0 || x === 49) {
+          matrix[y][x] = 1;
+        }
+      }
+    }
+
     return matrix;
   }
 
@@ -106,9 +140,9 @@ export class MapSpatialAnalyzer {
    * @returns 两点间的平方距离
    */
   private static distSq(p1: Point, p2: Point): number {
-    const dr = p1.r - p2.r;
-    const dc = p1.c - p2.c;
-    return dr * dr + dc * dc;
+    const dy = p1.y - p2.y;
+    const dx = p1.x - p2.x;
+    return dy * dy + dx * dx;
   }
 
   /**
@@ -123,69 +157,69 @@ export class MapSpatialAnalyzer {
     if (width === 0) return [[]];
 
     const closestObstacles: Point[][] = Array.from({ length: height }, () => Array(width));
-    const INFINITY_POINT: Point = { r: Infinity, c: Infinity };
+    const INFINITY_POINT: Point = { y: Infinity, x: Infinity };
 
     // 1. 初始化：障碍物点是自身，其他点是无穷远
-    for (let r = 0; r < height; r++) {
-      for (let c = 0; c < width; c++) {
-        if (matrix[r][c] === 1) {
-          closestObstacles[r][c] = { r, c };
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (matrix[y][x] === 1) {
+          closestObstacles[y][x] = { y, x };
         } else {
-          closestObstacles[r][c] = INFINITY_POINT;
+          closestObstacles[y][x] = INFINITY_POINT;
         }
       }
     }
 
     // 2. 第一遍扫描: 左上 -> 右下
-    for (let r = 0; r < height; r++) {
-      for (let c = 0; c < width; c++) {
-        let currentPoint = { r, c };
-        let closest = closestObstacles[r][c];
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let currentPoint = { y, x };
+        let closest = closestObstacles[y][x];
 
         // 检查上方和左方的邻居
         const neighbors: Point[] = [];
-        if (r > 0) neighbors.push(closestObstacles[r - 1][c]);
-        if (c > 0) neighbors.push(closestObstacles[r][c - 1]);
-        if (r > 0 && c > 0) neighbors.push(closestObstacles[r - 1][c - 1]);
-        if (r > 0 && c < width - 1) neighbors.push(closestObstacles[r - 1][c + 1]);
+        if (y > 0) neighbors.push(closestObstacles[y - 1][x]);
+        if (x > 0) neighbors.push(closestObstacles[y][x - 1]);
+        if (y > 0 && x > 0) neighbors.push(closestObstacles[y - 1][x - 1]);
+        if (y > 0 && x < width - 1) neighbors.push(closestObstacles[y - 1][x + 1]);
 
         for (const neighborObstacle of neighbors) {
           if (MapSpatialAnalyzer.distSq(currentPoint, neighborObstacle) < MapSpatialAnalyzer.distSq(currentPoint, closest)) {
             closest = neighborObstacle;
           }
         }
-        closestObstacles[r][c] = closest;
+        closestObstacles[y][x] = closest;
       }
     }
 
     // 3. 第二遍扫描: 右下 -> 左上
-    for (let r = height - 1; r >= 0; r--) {
-      for (let c = width - 1; c >= 0; c--) {
-        let currentPoint = { r, c };
-        let closest = closestObstacles[r][c];
+    for (let y = height - 1; y >= 0; y--) {
+      for (let x = width - 1; x >= 0; x--) {
+        let currentPoint = { y, x };
+        let closest = closestObstacles[y][x];
 
         // 检查下方和右方的邻居
         const neighbors: Point[] = [];
-        if (r < height - 1) neighbors.push(closestObstacles[r + 1][c]);
-        if (c < width - 1) neighbors.push(closestObstacles[r][c + 1]);
-        if (r < height - 1 && c < width - 1) neighbors.push(closestObstacles[r + 1][c + 1]);
-        if (r < height - 1 && c > 0) neighbors.push(closestObstacles[r + 1][c - 1]);
+        if (y < height - 1) neighbors.push(closestObstacles[y + 1][x]);
+        if (x < width - 1) neighbors.push(closestObstacles[y][x + 1]);
+        if (y < height - 1 && x < width - 1) neighbors.push(closestObstacles[y + 1][x + 1]);
+        if (y < height - 1 && x > 0) neighbors.push(closestObstacles[y + 1][x - 1]);
 
         for (const neighborObstacle of neighbors) {
           if (MapSpatialAnalyzer.distSq(currentPoint, neighborObstacle) < MapSpatialAnalyzer.distSq(currentPoint, closest)) {
             closest = neighborObstacle;
           }
         }
-        closestObstacles[r][c] = closest;
+        closestObstacles[y][x] = closest;
       }
     }
 
     // 4. 生成最终的距离场
     const distanceField: Grid = Array.from({ length: height }, () => Array(width).fill(0));
-    for (let r = 0; r < height; r++) {
-      for (let c = 0; c < width; c++) {
-        const closest = closestObstacles[r][c];
-        distanceField[r][c] = Math.sqrt(MapSpatialAnalyzer.distSq({ r, c }, closest));
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const closest = closestObstacles[y][x];
+        distanceField[y][x] = Math.sqrt(MapSpatialAnalyzer.distSq({ y, x }, closest));
       }
     }
 
@@ -203,18 +237,18 @@ export class MapSpatialAnalyzer {
     if (height === 0) return [];
     const width = distanceField[0].length;
 
-    for (let r = 1; r < height - 1; r++) {
-      for (let c = 1; c < width - 1; c++) {
-        const val = distanceField[r][c];
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const val = distanceField[y][x];
         if (val === 0) continue;
         // 检查8个邻居
         if (
-          val > distanceField[r - 1][c] && val > distanceField[r + 1][c] &&
-          val > distanceField[r][c - 1] && val > distanceField[r][c + 1] &&
-          val > distanceField[r - 1][c - 1] && val > distanceField[r - 1][c + 1] &&
-          val > distanceField[r + 1][c - 1] && val > distanceField[r + 1][c + 1]
+          val > distanceField[y - 1][x] && val > distanceField[y + 1][x] &&
+          val > distanceField[y][x - 1] && val > distanceField[y][x + 1] &&
+          val > distanceField[y - 1][x - 1] && val > distanceField[y - 1][x + 1] &&
+          val > distanceField[y + 1][x - 1] && val > distanceField[y + 1][x + 1]
         ) {
-          peaks.push({ r, c });
+          peaks.push({ y, x });
         }
       }
     }
@@ -231,23 +265,23 @@ export class MapSpatialAnalyzer {
   private static getSpaceAreaByRegionGrowing(startPoint: Point, distanceField: Grid, thresholdRatio: number = 0.5): number {
     const height = distanceField.length;
     const width = distanceField[0].length;
-    const startValue = distanceField[startPoint.r][startPoint.c];
+    const startValue = distanceField[startPoint.y][startPoint.x];
     const threshold = startValue * thresholdRatio;
 
     const queue: Point[] = [startPoint];
-    const visited = new Set<string>([`${startPoint.r},${startPoint.c}`]);
+    const visited = new Set<string>([`${startPoint.y},${startPoint.x}`]);
     let area = 0;
 
     while (queue.length > 0) {
-      const { r, c } = queue.shift()!;
+      const { y, x } = queue.shift()!;
 
-      if (distanceField[r][c] >= threshold) {
+      if (distanceField[y][x] >= threshold) {
         area++;
         // 探索4个方向的邻居
-        const neighbors: Point[] = [{ r: r - 1, c }, { r: r + 1, c }, { r, c: c - 1 }, { r, c: c + 1 }];
+        const neighbors: Point[] = [{ y: y - 1, x }, { y: y + 1, x }, { y, x: x - 1 }, { y, x: x + 1 }];
         for (const n of neighbors) {
-          const key = `${n.r},${n.c}`;
-          if (n.r >= 0 && n.r < height && n.c >= 0 && n.c < width && !visited.has(key)) {
+          const key = `${n.y},${n.x}`;
+          if (n.y >= 0 && n.y < height && n.x >= 0 && n.x < width && !visited.has(key)) {
             visited.add(key);
             queue.push(n);
           }
