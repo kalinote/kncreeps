@@ -16,7 +16,7 @@ export class MapSpatialAnalyzer {
   public static analyze(
     roomName: string,
     weights = { area: 0.5, openness: 0.4, centrality: 0.1 }
-  ): { bestLocation: CandidateSpace | null; candidates: CandidateSpace[]; distGrid: Grid } {
+  ): { bestLocation: CandidateSpace | null; candidates: CandidateSpace[]; distGrid: Grid; labeledGrid: Grid } {
     const terrain = new Room.Terrain(roomName);
     const raw = terrain.getRawBuffer();
 
@@ -28,7 +28,9 @@ export class MapSpatialAnalyzer {
     const visual = new RoomVisual(roomName);
     for (let y = 0; y < 50; y++) {
       for (let x = 0; x < 50; x++) {
-        visual.rect(x - 0.5, y - 0.5, 1, 1, { fill: matrix[y][x] ? '#ff0000' : '#00ff00' });
+        if (matrix[y][x]) {
+          visual.rect(x - 0.5, y - 0.5, 1, 1, { fill: '#ff0000' });
+        }
       }
     }
 
@@ -48,7 +50,7 @@ export class MapSpatialAnalyzer {
         const distValue = distGrid[y][x];
         const normalizedValue = maxDist > 0 ? distValue / maxDist : 0;
         const color = `rgb(${Math.floor(normalizedValue * 255)}, ${Math.floor(normalizedValue * 255)}, ${Math.floor(normalizedValue * 255)})`;
-        visual.rect(x - 0.5, y - 0.5, 1, 1, { fill: color, opacity: 0.25 });
+        visual.rect(x - 0.5, y - 0.5, 1, 1, { fill: color});
       }
     }
 
@@ -66,35 +68,118 @@ export class MapSpatialAnalyzer {
         }
       }
       if (maxVal > 0) peaks.push(maxCoord);
-      else return { bestLocation: null, candidates: [], distGrid };
+      else return { bestLocation: null, candidates: [], distGrid, labeledGrid: [] };
+    }
+
+    // 分水岭算法分割空间
+    const labeledGrid = MapSpatialAnalyzer.watershedSegmentation(distGrid, peaks);
+
+    // 绘制分水岭分割结果可视化
+    let maxLabel = 0;
+    for (let y = 0; y < 50; y++) {
+      for (let x = 0; x < 50; x++) {
+        maxLabel = Math.max(maxLabel, labeledGrid[y][x]);
+      }
+    }
+    if (maxLabel > 0) {
+      // 生成高对比度的颜色数组，避开红色、绿色、黑色、白色
+      const colors = [
+        '#0000FF', // 蓝色
+        '#FF00FF', // 洋红色
+        '#00FFFF', // 青色
+        '#FFA500', // 橙色
+        '#800080', // 紫色
+        '#008080', // 深青色
+        '#FFC0CB', // 粉色
+        '#A52A2A', // 棕色
+        '#808000', // 橄榄色
+        '#4B0082', // 靛蓝色
+        '#FF1493', // 深粉色
+        '#00CED1', // 深青色
+        '#FF4500', // 橙红色
+        '#9370DB', // 中等紫色
+        '#20B2AA', // 浅海绿色
+        '#FF69B4', // 热粉色
+        '#4682B4', // 钢蓝色
+        '#DDA0DD', // 梅红色
+        '#F0E68C', // 卡其色
+        '#98FB98'  // 浅绿色
+      ];
+
+      for (let y = 0; y < 50; y++) {
+        for (let x = 0; x < 50; x++) {
+          const label = labeledGrid[y][x];
+          if (label > 0) {
+            const colorIndex = (label - 1) % colors.length;
+            visual.rect(x - 0.5, y - 0.5, 1, 1, {
+              fill: colors[colorIndex]
+            });
+          }
+        }
+      }
     }
 
     // 计算属性和评分
+    const spaceStats: { [label: number]: { area: number; peak: Point; peakValue: number } } = {};
+
+    // 初始化每个空间的基础信息
+    peaks.forEach((peak, index) => {
+        const label = index + 1;
+        spaceStats[label] = {
+            area: 0,
+            peak: peak,
+            peakValue: distGrid[peak.y][peak.x]
+        };
+    });
+
+    // 遍历标记矩阵，精确计算每个空间的面积
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const label = labeledGrid[y][x];
+            if (label > 0 && spaceStats[label]) {
+                spaceStats[label].area++;
+            }
+        }
+    }
+
+    // 构建候选列表
     const candidates: CandidateSpace[] = [];
     const mapCenter = { x: width / 2, y: height / 2 };
     const maxDistToCenter = Math.sqrt(mapCenter.y ** 2 + mapCenter.x ** 2);
 
-    for (const peak of peaks) {
-      const openness = distGrid[peak.y][peak.x];
-      const area = MapSpatialAnalyzer.getSpaceAreaByRegionGrowing(peak, distGrid);
+    for (const label in spaceStats) {
+        const stats = spaceStats[label];
+        if (stats.area === 0) continue; // 忽略没有面积的区域
 
-      const distToCenter = Math.sqrt((peak.y - mapCenter.y) ** 2 + (peak.x - mapCenter.x) ** 2);
-      const centrality = 1.0 - (distToCenter / maxDistToCenter);
+        const { peak, peakValue, area } = stats;
 
-      candidates.push({ coord: peak, openness, area, centrality, score: 0 });
+        const distToCenter = Math.sqrt((peak.y - mapCenter.y) ** 2 + (peak.x - mapCenter.x) ** 2);
+        const centrality = 1.0 - (distToCenter / maxDistToCenter);
+
+        candidates.push({
+            coord: peak,
+            openness: peakValue,
+            area: area,
+            centrality: centrality,
+            score: 0
+        });
     }
 
     // 归一化并计算最终得分
+    if (candidates.length === 0) {
+        return { bestLocation: null, candidates: [], distGrid, labeledGrid };
+    }
+
     const maxArea = Math.max(1, ...candidates.map(c => c.area));
     const maxOpenness = Math.max(1, ...candidates.map(c => c.openness));
 
     for (const cand of candidates) {
-      const normArea = cand.area / maxArea;
-      const normOpenness = cand.openness / maxOpenness;
+        const normArea = cand.area / maxArea;
+        const normOpenness = cand.openness / maxOpenness;
 
-      cand.score = weights.area * normArea +
-        weights.openness * normOpenness +
-        weights.centrality * cand.centrality;
+        cand.score = weights.area * normArea +
+            weights.openness * normOpenness +
+            weights.centrality * cand.centrality;
     }
 
     // 排序找到最佳
@@ -103,7 +188,8 @@ export class MapSpatialAnalyzer {
     return {
       bestLocation: candidates[0] || null,
       candidates,
-      distGrid
+      distGrid,
+      labeledGrid
     };
   }
 
@@ -256,38 +342,52 @@ export class MapSpatialAnalyzer {
   }
 
   /**
-   * 基于区域生长的空间面积计算
-   * @param startPoint 起始点
-   * @param distanceField 距离矩阵
-   * @param thresholdRatio 阈值比例，相对于起始点距离值，默认0.5
-   * @returns 空间面积
+   * 分水岭算法分割空间
+   * @param distanceField 距离变换场
+   * @param peaks 局部最大值点，作为每个盆地的标记
+   * @returns 一个标记矩阵，每个单元格的值代表其所属的空间ID (从1开始)
    */
-  private static getSpaceAreaByRegionGrowing(startPoint: Point, distanceField: Grid, thresholdRatio: number = 0.5): number {
+  private static watershedSegmentation(distanceField: Grid, peaks: Point[]): Grid {
     const height = distanceField.length;
     const width = distanceField[0].length;
-    const startValue = distanceField[startPoint.y][startPoint.x];
-    const threshold = startValue * thresholdRatio;
 
-    const queue: Point[] = [startPoint];
-    const visited = new Set<string>([`${startPoint.y},${startPoint.x}`]);
-    let area = 0;
+    const labels: Grid = Array.from({ length: height }, () => Array(width).fill(0));
+    const pq: { p: Point, dist: number, label: number }[] = [];
 
-    while (queue.length > 0) {
-      const { x, y } = queue.shift()!;
+    peaks.forEach((peak, index) => {
+      const label = index + 1;
+      labels[peak.y][peak.x] = label;
+      pq.push({ p: peak, dist: distanceField[peak.y][peak.x], label });
+    });
 
-      if (distanceField[y][x] >= threshold) {
-        area++;
-        // 探索4个方向的邻居
-        const neighbors: Point[] = [{ x, y: y - 1 }, { x, y: y + 1 }, { x: x - 1, y }, { x: x + 1, y }];
-        for (const n of neighbors) {
-          const key = `${n.y},${n.x}`;
-          if (n.y >= 0 && n.y < height && n.x >= 0 && n.x < width && !visited.has(key)) {
-            visited.add(key);
-            queue.push(n);
-          }
+    const popFromPQ = () => {
+      pq.sort((a, b) => a.dist - b.dist);
+      return pq.pop();
+    };
+
+    while (pq.length > 0) {
+      const current = popFromPQ();
+      if (!current) break;
+
+      const { p, label } = current;
+
+      const neighbors = [
+        { x: p.x - 1, y: p.y }, { x: p.x + 1, y: p.y }, { x: p.x, y: p.y - 1 }, { x: p.x, y: p.y + 1 },
+        { x: p.x - 1, y: p.y - 1 }, { x: p.x - 1, y: p.y + 1 }, { x: p.x + 1, y: p.y - 1 }, { x: p.x + 1, y: p.y + 1 }
+      ];
+
+      for (const n of neighbors) {
+        if (n.y >= 0 && n.y < height && n.x >= 0 && n.x < width &&
+          distanceField[n.y][n.x] > 0 &&
+          labels[n.y][n.x] === 0) {
+
+          labels[n.y][n.x] = label;
+          pq.push({ p: n, dist: distanceField[n.y][n.x], label });
         }
       }
     }
-    return area;
+
+    return labels;
   }
+
 }
