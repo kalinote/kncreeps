@@ -10,7 +10,7 @@ import { TaskExecutionManager } from "../managers/TaskExecutionManager";
 import { EnergyService } from "../services/EnergyService";
 import { TaskManager } from "../managers/TaskManager";
 import { VisualManager } from "../managers/VisualManager";
-import { VisualLayoutService } from '../services/VisualLayoutService';
+import { VisualLayoutService } from '../services/visual/VisualLayoutService';
 import { StatsService } from '../services/StatsService';
 import { SystemService } from '../services/SystemService';
 import { TaskStateService } from "../services/TaskStateService";
@@ -47,16 +47,12 @@ const serviceConfig = {
   // 业务服务
   services: [
     'energyService',
-    'creepProductionService',
-    'creepLifecycleService',
-    'creepMoveService',
     'roomService',
     'taskStateService',
     'taskGeneratorService',
     'taskSchedulerService',
     'taskExecutionService',
     'taskGroupService',
-    'visualLayoutService',
     'statsService',
     'constructPlannerService',
   ]
@@ -124,7 +120,6 @@ export class ServiceContainer {
     // 注册可视化管理器和服务
     this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus'), this));
     this.registerSingleton('layerManager', () => new LayerManager(this.get('eventBus'), this));
-    this.registerSingleton('visualLayoutService', () => new VisualLayoutService(this.get('eventBus'), this));
 
     // 注册命令管理器
     this.registerSingleton('commandManager', () => new CommandManager(this.get('eventBus'), this));

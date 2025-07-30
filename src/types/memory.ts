@@ -8,7 +8,7 @@ import {
   CreepManagerMemory
 } from './creep';
 import { TaskSystemMemory } from './task';
-import { VisualsMemory } from './visual';
+import { VisualManagerMemory } from './visual';
 import { ConstructionManagerMemory } from './construction';
 import { LogisticsMemory } from './logistics';
 
@@ -33,6 +33,9 @@ declare global {
     // 协调管理系统
     coordinationManager?: ConstructionManagerMemory;
 
+    // 可视化系统
+    visualManager?: VisualManagerMemory;
+
     eventBus: EventBusMemory;
     tasks?: TaskSystemMemory;
     gameEngine?: {
@@ -44,7 +47,7 @@ declare global {
     system?: SystemMemory;
     stats?: StatsMemory;
 
-    visuals?: VisualsMemory;
+
   }
 
   // 扩展CreepMemory接口

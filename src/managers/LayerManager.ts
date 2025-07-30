@@ -1,7 +1,7 @@
 import { EventConfig } from '../config/EventConfig';
 import { EventBus } from '../core/EventBus';
 import { ServiceContainer } from '../core/ServiceContainer';
-import { VisualLayoutService } from '../services/VisualLayoutService';
+import { VisualLayoutService } from '../services/visual/VisualLayoutService';
 import { LayerType } from '../types';
 import { LayerRegistry } from '../visual/LayerRegistry';
 import { BaseManager } from './BaseManager';
@@ -9,9 +9,15 @@ import { BaseManager } from './BaseManager';
 /**
  * 图层管理器
  * 负责响应渲染请求，并驱动所有图层的渲染流程。
- * TODO 这个manager的职责有待商榷，按理来说所有业务逻辑应该放在service中
+ * // TODO 这个manager的职责有待商榷，按理来说所有业务逻辑应该放在service中，如果后续将该manager改成service，应该被VisualManager管理
  */
 export class LayerManager extends BaseManager {
+  protected readonly memoryKey = undefined;
+
+  public updateManager(): void {}
+  public initialize(): void {}
+  public cleanup(): void {}
+
   private layerRegistry: LayerRegistry;
   private visualLayoutService: VisualLayoutService;
 
