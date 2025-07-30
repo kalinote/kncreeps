@@ -9,30 +9,22 @@ import { GameConfig } from "../config/GameConfig";
  * 命令管理器 - 管理所有调试命令
  */
 export class CommandManager extends BaseManager {
+  protected memoryKey?: string = undefined;
+
   private commandRegistry: CommandRegistry;
   private globalDebugObject: any;
   private globalVisualObject: any;
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+    super(eventBus, serviceContainer, []);
     this.updateInterval = GameConfig.MANAGER_CONFIGS.COMMAND_MANAGER?.UPDATE_INTERVAL || 0;
     this.commandRegistry = new CommandRegistry(serviceContainer);
     this.setupGlobalObjects();
   }
 
-  /**
-   * 更新方法 - 被 GameEngine 调用
-   */
-  public update(): void {
-    if (!this.shouldUpdate()) return;
-
-    this.safeExecute(() => {
-      // 命令管理器不需要定期更新，但可以在这里添加一些维护逻辑
-      // 比如清理过期的命令缓存等
-    }, 'CommandManager.update');
-
-    this.updateCompleted();
-  }
+  public updateManager(): void {}
+  public initialize(): void {}
+  public cleanup(): void {}
 
   /**
    * 设置全局对象

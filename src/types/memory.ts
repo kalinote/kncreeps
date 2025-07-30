@@ -6,9 +6,7 @@ import {
   EventBusMemory
 } from './core';
 import {
-  CreepState,
-  IntelligenceMemory,
-  CreepProductionMemory
+  CreepManagerMemory
 } from './creep';
 import { TaskSystemMemory } from './task';
 import { VisualsMemory } from './visual';
@@ -18,13 +16,14 @@ import { LogisticsMemory } from './logistics';
 // 扩展全局Memory接口
 declare global {
   interface Memory {
-    uuid: number;
-    log: any;
     // 系统相关的内存扩展
-    rooms: { [roomName: string]: RoomMemory };
-    creepProduction: CreepProductionMemory;
-    intelligence: IntelligenceMemory;
-    creepStates: { [creepName: string]: CreepState };
+    // 精简内存，没有用到的字段不要实际添加，如果有后续可能有用的字段，可以先注释
+    // uuid: number;
+    // log: any;
+    [key: string]: any;
+
+    // 扩展CreepManager内存
+    creepManager?: CreepManagerMemory;
 
     eventBus: EventBusMemory;
     tasks?: TaskSystemMemory;

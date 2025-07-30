@@ -1,6 +1,6 @@
 import { TaskStateMachine } from "../fsm/StateMachine";
 import { TaskFSMMemory, HarvestState, HarvestTask, TaskKind, TaskType } from "../../types";
-import { CreepMoveService } from "../../services/CreepMoveService";
+import { CreepMoveService } from "../../services/creep/CreepMoveService";
 import { SourceAnalyzer } from "../../utils/SourceAnalyzer";
 import { ServiceContainer } from "../../core/ServiceContainer";
 import { TaskManager } from "managers/TaskManager";

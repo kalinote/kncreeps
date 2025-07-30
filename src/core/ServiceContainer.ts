@@ -7,8 +7,8 @@ import { BaseManager } from "../managers/BaseManager";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "../managers/CreepManager";
 import { TaskExecutionManager } from "../managers/TaskExecutionManager";
-import { CreepProductionService } from "../services/CreepProductionService";
-import { CreepLifecycleService } from "../services/CreepLifecycleService";
+import { CreepProductionService } from "../services/creep/CreepProductionService";
+import { CreepLifecycleService } from "../services/creep/CreepLifecycleService";
 import { EnergyService } from "../services/EnergyService";
 import { TaskManager } from "../managers/TaskManager";
 import { VisualManager } from "../managers/VisualManager";
@@ -18,7 +18,6 @@ import { SystemService } from '../services/SystemService';
 import { TaskStateService } from "../services/TaskStateService";
 import { TaskGeneratorService } from "../services/TaskGeneratorService";
 import { TaskSchedulerService } from "../services/TaskSchedulerService";
-import { CreepCoordinationService } from "../services/CreepCoordinationService";
 import { RoomService } from "../services/RoomService";
 import { TaskExecutionService } from "../services/TaskExecutionService";
 import { ConstructionManager } from "../managers/ConstructionManager";
@@ -26,7 +25,7 @@ import { ConstructPlannerService } from "../services/ConstructPlannerService";
 import { LayerManager } from "../managers/LayerManager";
 import { LogisticsManager } from "../managers/LogisticsManager";
 import { TransportService } from "../services/TransportService";
-import { CreepMoveService } from "../services/CreepMoveService";
+import { CreepMoveService } from "../services/creep/CreepMoveService";
 import { TaskGroupService } from "../services/TaskGroupService";
 import { CommandManager } from "../managers/CommandManager";
 
@@ -58,7 +57,6 @@ const serviceConfig = {
     'creepProductionService',
     'creepLifecycleService',
     'creepMoveService',
-    'creepCoordinationService',
     'roomService',
     'taskStateService',
     'taskGeneratorService',
@@ -106,7 +104,6 @@ export class ServiceContainer {
     );
     // 注册移动缓存服务
     this.registerSingleton('creepMoveService', () => new CreepMoveService(this.get('eventBus'), this));
-    this.registerSingleton('creepCoordinationService', () => new CreepCoordinationService(this.get('eventBus'), this));
     this.registerSingleton('roomService', () => new RoomService(this.get('eventBus'), this));
 
     // 注册任务系统服务

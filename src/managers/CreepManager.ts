@@ -2,51 +2,59 @@
 import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
-import { ProductionNeed, CreepState } from "../types";
-import { CreepCoordinationService } from "../services/CreepCoordinationService";
-import { CreepProductionService } from "../services/CreepProductionService";
-import { CreepLifecycleService } from "../services/CreepLifecycleService";
+import { ProductionNeed, CreepLifecycleServiceMemory, CreepManagerMemory } from "../types";
+import { CreepProductionService } from "../services/creep/CreepProductionService";
+import { CreepLifecycleService } from "../services/creep/CreepLifecycleService";
+import { ServiceContainer } from "../core/ServiceContainer";
+import { CreepMoveService } from "../services/creep/CreepMoveService";
 
 
 /**
- * Creep管理器 - 协调器模式
- * 协调CreepProductionService和CreepLifecycleService的工作
+ * Creep管理器
  */
-export class CreepManager extends BaseManager {
-  constructor(eventBus: EventBus, serviceContainer: any) {
-    super(eventBus, serviceContainer);
-    this.updateInterval = GameConfig.MANAGER_CONFIGS.CREEP_MANAGER.UPDATE_INTERVAL;
-    this.coordinationService.initialize();
-  }
+export class CreepManager extends BaseManager<CreepManagerMemory> {
+  protected readonly memoryKey: string = 'creepManager';
 
-  private get coordinationService(): CreepCoordinationService {
-    return this.serviceContainer.get('creepCoordinationService');
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+    super(
+      eventBus,
+      serviceContainer,
+      [CreepProductionService, CreepLifecycleService, CreepMoveService]
+    );
+
+    this.updateInterval = GameConfig.MANAGER_CONFIGS.CREEP_MANAGER.UPDATE_INTERVAL;
   }
 
   private get productionService(): CreepProductionService {
-    return this.serviceContainer.get('creepProductionService');
+    return this.serviceContainer.get<CreepProductionService>('creepProductionService');
   }
 
   private get lifecycleService(): CreepLifecycleService {
-    return this.serviceContainer.get('creepLifecycleService');
+    return this.serviceContainer.get<CreepLifecycleService>('creepLifecycleService');
   }
 
   /**
-   * 主更新方法 - 协调各服务的工作
+   * 主更新方法
    */
-  public update(): void {
-    if (!this.shouldUpdate()) return;
+  public updateManager(): void {}
 
-    this.safeExecute(() => {
-      this.coordinationService.update();
-    }, 'CreepManager.update');
-
-    this.updateCompleted();
+  /**
+   * 初始化内存
+   */
+  public initialize(): void {
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0,
+      }
+    }
   }
 
-  // The setupEventListeners is now handled by the CreepCoordinationService.
-  // We keep the public interface methods for now for backward compatibility,
-  // but they are now delegated to the respective services.
+  public cleanup(): void {
+    throw new Error("Method not implemented.");
+  }
 
   /**
    * 获取Creep统计信息 - 委托给生命周期服务
@@ -65,14 +73,14 @@ export class CreepManager extends BaseManager {
   /**
    * 获取指定creep的状态 - 委托给生命周期服务
    */
-  public getCreepState(creepName: string): CreepState | undefined {
+  public getCreepState(creepName: string): CreepLifecycleServiceMemory | undefined {
     return this.lifecycleService.getCreepState(creepName);
   }
 
   /**
    * 获取所有creep状态 - 委托给生命周期服务
    */
-  public getAllCreepStates(): { [creepName: string]: CreepState } {
+  public getAllCreepStates(): { [creepName: string]: CreepLifecycleServiceMemory } {
     return this.lifecycleService.getAllCreepStates();
   }
 
@@ -132,8 +140,6 @@ export class CreepManager extends BaseManager {
    * 重置时的清理工作 - 协调各服务的重置
    */
   protected onReset(): void {
-    // This can be moved to the service if needed. For now, it's fine here.
-    this.lifecycleService.onReset();
-    this.productionService.onReset();
+    this.initialize();
   }
 }

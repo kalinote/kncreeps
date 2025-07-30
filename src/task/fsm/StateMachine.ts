@@ -1,7 +1,7 @@
 import { TaskManager } from "../../managers/TaskManager";
 import { ServiceContainer } from "../../core/ServiceContainer";
 import { TaskFSMMemory, StateHandlers, CreepFSMState, Task, TaskType } from "../../types";
-import { CreepMoveService } from "../../services/CreepMoveService";
+import { CreepMoveService } from "../../services/creep/CreepMoveService";
 import { EnergyService } from "../../services/EnergyService";
 
 /**

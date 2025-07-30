@@ -1,5 +1,22 @@
-// Creep状态类型
-export interface CreepState {
+import { UnifiedMemoryCycleStructureMemory } from './core';
+import { TaskType } from './task';
+
+// ========================== 内存类型开始 ==========================
+
+export interface CreepManagerMemory extends UnifiedMemoryCycleStructureMemory {
+  creepProduction?: CreepProductionServiceMemory;
+  creepStates?: { [creepName: string]: CreepLifecycleServiceMemory };
+}
+
+// Creep生产内存类型
+export interface CreepProductionServiceMemory extends UnifiedMemoryCycleStructureMemory {
+  queue: ProductionNeed[];
+  lastProduction: number;
+  energyBudget: number;
+}
+
+// Creep状态类型，针对于单个creep
+export interface CreepLifecycleServiceMemory {
   name: string;
   phase: 'young' | 'mature' | 'aging';
   ticksToLive: number;
@@ -7,8 +24,7 @@ export interface CreepState {
   needsReplacement: boolean;
 }
 
-// 导入TaskType类型
-import { TaskType } from './task';
+// ========================== 内存类型结束 ==========================
 
 // 生产需求类型
 export interface ProductionNeed {
@@ -57,19 +73,4 @@ export interface OpportunityInfo {
   description: string;
   priority: number;
   timestamp?: number;
-}
-
-// 情报内存类型
-export interface IntelligenceMemory {
-  scoutReports: { [roomName: string]: any };
-  threats: ThreatInfo[];
-  opportunities: OpportunityInfo[];
-  lastUpdate: number;
-}
-
-// Creep生产内存类型
-export interface CreepProductionMemory {
-  queue: ProductionNeed[];
-  lastProduction: number;
-  energyBudget: number;
 }

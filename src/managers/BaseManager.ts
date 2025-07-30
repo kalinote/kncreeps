@@ -1,13 +1,17 @@
+import { UnifiedMemoryCycleStructureMemory } from "../types";
 import { EventBus } from "../core/EventBus";
-import { GameConfig } from "../config/GameConfig";
 import { ServiceContainer } from "../core/ServiceContainer";
+import { BaseService } from "../services/BaseService";
 
 /**
  * 基础管理器类 - 所有管理器的基类
  */
-export abstract class BaseManager {
+export abstract class BaseManager<TMemory = any> {
   protected eventBus: EventBus;
+  protected services: BaseService[] = [];
   protected serviceContainer: ServiceContainer;
+  protected memory!: TMemory;
+  protected abstract readonly memoryKey?: string;
   protected isManagerActive: boolean = true;
   protected hasErrors: boolean = false;
   protected lastUpdateTick: number = 0;
@@ -15,9 +19,19 @@ export abstract class BaseManager {
   protected maxErrorCount: number = 3;
   protected updateInterval: number = 0;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer, services: (new (eventBus: EventBus, manager: BaseManager, memory: any) => BaseService)[]) {
     this.eventBus = eventBus;
     this.serviceContainer = serviceContainer;
+
+    this.initializeMemory();
+    this.initialize();
+    for (const ServiceClass of services) {
+      this.services.push(new ServiceClass(eventBus, this, this.memory));
+    }
+
+    for (const service of this.services) {
+      service.initialize();
+    }
     this.setupEventListeners();
   }
 
@@ -29,9 +43,39 @@ export abstract class BaseManager {
   }
 
   /**
-   * 抽象方法 - 各管理器必须实现的更新逻辑
+   * 全局更新
    */
-  public abstract update(): void;
+  public update() {
+    if (!this.shouldUpdate()) return;
+    this.updateManager();
+    for (const service of this.services) {
+      service.update();
+    }
+    this.updateCompleted();
+  }
+
+  public abstract updateManager(): void;
+
+  /**
+   * 抽象方法 - 各管理器必须实现的初始化逻辑
+   */
+  public abstract initialize(): void;
+
+  /**
+   * 抽象方法 - 各管理器必须实现的清理逻辑
+   */
+  public abstract cleanup(): void;
+
+  private initializeMemory(): void {
+    if (this.memoryKey === undefined) {
+      // 如果memoryKey为undefined，则不进行初始化，部分管理器可能不需要内存
+      return;
+    }
+    if (Memory[this.memoryKey] === undefined) {
+      Memory[this.memoryKey] = {};
+    }
+    this.memory = Memory[this.memoryKey] as TMemory;
+  }
 
   /**
    * 检查管理器是否处于活动状态
@@ -127,19 +171,19 @@ export abstract class BaseManager {
     return { nextUpdateIn, updateInterval: this.updateInterval };
   }
 
-  /**
-   * 安全执行方法 - 包装可能出错的代码
-   */
-  protected safeExecute<T>(operation: () => T, operationName?: string): T | undefined {
-    try {
-      return operation();
-    } catch (error) {
-      const name = operationName || '未知操作';
-      console.log(`${this.constructor.name} - ${name} 执行失败:`, error);
-      this.setError(error);
-      return undefined;
-    }
-  }
+  // /**
+  //  * 安全执行方法 - 包装可能出错的代码
+  //  */
+  // protected safeExecute<T>(operation: () => T, operationName?: string): T | undefined {
+  //   try {
+  //     return operation();
+  //   } catch (error) {
+  //     const name = operationName || '未知操作';
+  //     console.log(`${this.constructor.name} - ${name} 执行失败:`, error);
+  //     this.setError(error);
+  //     return undefined;
+  //   }
+  // }
 
   /**
    * 发送事件

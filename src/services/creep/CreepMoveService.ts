@@ -1,15 +1,20 @@
-import { EventBus } from "core/EventBus";
-import { BaseService } from "./BaseService";
-import { ServiceContainer } from "core/ServiceContainer";
+import { BaseService } from "../BaseService";
 
 /**
  * Creep移动缓存服务
  */
 export class CreepMoveService extends BaseService {
-  // TODO: 后续增加缓存功能和动态避障逻辑
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+  protected memoryKey?: string = undefined;
+  public initialize(): void {
+    throw new Error("Method not implemented.");
   }
+  public update(): void {
+    throw new Error("Method not implemented.");
+  }
+  public cleanup(): void {
+    throw new Error("Method not implemented.");
+  }
+  // TODO: 后续增加缓存功能和动态避障逻辑
 
   /**
    * 移动creep到目标位置

@@ -1,48 +1,57 @@
+import { UnifiedMemoryCycleStructureMemory } from "../types";
 import { EventBus } from "../core/EventBus";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { BaseManager } from "../managers/BaseManager";
 
 /**
  * 基础服务类 - 所有业务服务的基类
  */
-export abstract class BaseService {
+export abstract class BaseService<TMemory = any> {
   protected eventBus: EventBus;
-  protected serviceContainer: ServiceContainer;
+  protected manager: BaseManager;
+  protected memory!: TMemory;
+  protected abstract readonly memoryKey?: string;
   protected hasErrors: boolean = false;
   protected errorCount: number = 0;
   protected maxErrorCount: number = 5; // 服务可以容忍更多错误
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+  constructor(eventBus: EventBus, manager: BaseManager, memory: any) {
     this.eventBus = eventBus;
-    this.serviceContainer = serviceContainer;
+    this.manager = manager;
+    this.initializeMemory(memory);
     this.setupEventListeners();
   }
 
   /**
    * 初始化服务
    */
-  public initialize(): void {
-    // 子类可重写
-  }
+  public abstract initialize(): void;
 
   /**
    * 更新服务
    */
-  public update(): void {
-    // 子类可重写
-  }
+  public abstract update(): void;
 
   /**
    * 清理服务
    */
-  public cleanup(): void {
-    // 子类可重写
-  }
+  public abstract cleanup(): void;
 
   /**
    * 设置事件监听器
    */
   protected setupEventListeners(): void {
     // 子类可重写
+  }
+
+  private initializeMemory(memory: any): void {
+    if (this.memoryKey === undefined) {
+      // 如果memoryKey为undefined，则不进行初始化，部分服务可能不需要内存
+      return;
+    }
+    if (memory[this.memoryKey] === undefined) {
+      memory[this.memoryKey] = {};
+    }
+    this.memory = memory[this.memoryKey] as TMemory;
   }
 
   /**
@@ -73,17 +82,17 @@ export abstract class BaseService {
     }
   }
 
-  /**
-   * 安全执行方法 - 包装可能出错的代码
-   */
-  protected safeExecute<T>(operation: () => T, operationName?: string): T | undefined {
-    try {
-      return operation();
-    } catch (error: any) {
-      const name = operationName || '未知操作';
-      console.log(`${this.constructor.name} - ${name} 执行失败:`, error.stack || error);
-      this.setError(error);
-      return undefined;
-    }
-  }
+  // /**
+  //  * 安全执行方法 - 包装可能出错的代码
+  //  */
+  // protected safeExecute<T>(operation: () => T, operationName?: string): T | undefined {
+  //   try {
+  //     return operation();
+  //   } catch (error: any) {
+  //     const name = operationName || '未知操作';
+  //     console.log(`${this.constructor.name} - ${name} 执行失败:`, error.stack || error);
+  //     this.setError(error);
+  //     return undefined;
+  //   }
+  // }
 }
