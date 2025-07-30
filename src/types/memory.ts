@@ -2,7 +2,6 @@
 import {
   SystemMemory,
   StatsMemory,
-  CoordinationMemory,
   EventBusMemory
 } from './core';
 import {
@@ -10,7 +9,7 @@ import {
 } from './creep';
 import { TaskSystemMemory } from './task';
 import { VisualsMemory } from './visual';
-import { ConstructionPlannerMemory } from './construction';
+import { ConstructionManagerMemory } from './construction';
 import { LogisticsMemory } from './logistics';
 
 // 扩展全局Memory接口
@@ -22,8 +21,17 @@ declare global {
     // log: any;
     [key: string]: any;
 
-    // 扩展CreepManager内存
+    // creep管理系统
     creepManager?: CreepManagerMemory;
+
+    // 建筑规划系统
+    constructionManager?: ConstructionManagerMemory;
+
+    // 后勤管理系统
+    logisticsManager?: LogisticsMemory;
+
+    // 协调管理系统
+    coordinationManager?: ConstructionManagerMemory;
 
     eventBus: EventBusMemory;
     tasks?: TaskSystemMemory;
@@ -35,9 +43,8 @@ declare global {
     };
     system?: SystemMemory;
     stats?: StatsMemory;
-    coordination?: CoordinationMemory;
+
     visuals?: VisualsMemory;
-    constructPlanner?: ConstructionPlannerMemory;
   }
 
   // 扩展CreepMemory接口
@@ -72,11 +79,6 @@ declare global {
     creepCounts: { [role: string]: number };
     threatLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
     lastUpdated: number;
-    logistics?: LogisticsMemory;
-    bootstrapStatus: {
-      // 后面把各服务的初始化信息全部放到这里
-      logistics: boolean;
-    }
   }
 
   // 扩展全局对象

@@ -1,3 +1,34 @@
+import { UnifiedMemoryCycleStructureMemory } from "./core";
+// ========================== 内存类型开始 ==========================
+
+export interface ConstructionManagerMemory extends UnifiedMemoryCycleStructureMemory {
+  layouts: {
+    [roomName: string]: RoomLayoutMemory;
+  };
+  lastRun: number;
+}
+
+// 房间布局蓝图
+export interface RoomLayoutMemory {
+  version: number;
+  lastUpdated: number;
+  status: 'planning' | 'done';
+  nextPlannerIndex: number;
+  buildings: {
+    [plannerName: string]: BuildingPlanMemory[];
+  };
+}
+
+// 建造建筑规划
+export interface BuildingPlanMemory {
+  pos: { x: number; y: number; roomName: string };
+  structureType: BuildableStructureConstant;
+  logisticsRole: LogisticsRole;
+  resourceType?: ResourceConstant;
+}
+
+// ========================== 内存类型结束 ==========================
+
 // 后勤角色(后续可能进一步扩展)
 export type LogisticsRole = 'provider' | 'consumer' | 'non_logistics_management_building';
 
@@ -11,33 +42,6 @@ export enum ConstructionStatus {
 // 单个建筑的布局位置
 export interface StructurePosition {
   pos: { x: number; y: number; roomName: string };
-}
-
-// 建造建筑规划
-export interface BuildingPlan {
-  pos: { x: number; y: number; roomName: string };
-  structureType: BuildableStructureConstant;
-  logisticsRole: LogisticsRole;
-  resourceType?: ResourceConstant;
-}
-
-// 房间布局蓝图
-export interface RoomLayout {
-  version: number;
-  lastUpdated: number;
-  status: 'planning' | 'done';
-  nextPlannerIndex: number;
-  buildings: {
-    [plannerName: string]: BuildingPlan[];
-  };
-}
-
-// 建筑规划模块的内存
-export interface ConstructionPlannerMemory {
-  layouts: {
-    [roomName: string]: RoomLayout;
-  };
-  lastRun: number;
 }
 
 // 道路段信息

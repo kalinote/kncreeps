@@ -8,7 +8,7 @@ import { BaseService } from "../services/BaseService";
  */
 export abstract class BaseManager<TMemory = any> {
   protected eventBus: EventBus;
-  protected services: BaseService[] = [];
+  protected services: Map<string, BaseService> = new Map();
   protected serviceContainer: ServiceContainer;
   protected memory!: TMemory;
   protected abstract readonly memoryKey?: string;
@@ -19,17 +19,14 @@ export abstract class BaseManager<TMemory = any> {
   protected maxErrorCount: number = 3;
   protected updateInterval: number = 0;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer, services: (new (eventBus: EventBus, manager: BaseManager, memory: any) => BaseService)[]) {
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     this.eventBus = eventBus;
     this.serviceContainer = serviceContainer;
 
     this.initializeMemory();
     this.initialize();
-    for (const ServiceClass of services) {
-      this.services.push(new ServiceClass(eventBus, this, this.memory));
-    }
 
-    for (const service of this.services) {
+    for (const service of this.services.values()) {
       service.initialize();
     }
     this.setupEventListeners();
@@ -48,7 +45,7 @@ export abstract class BaseManager<TMemory = any> {
   public update() {
     if (!this.shouldUpdate()) return;
     this.updateManager();
-    for (const service of this.services) {
+    for (const service of this.services.values()) {
       service.update();
     }
     this.updateCompleted();
@@ -57,14 +54,21 @@ export abstract class BaseManager<TMemory = any> {
   public abstract updateManager(): void;
 
   /**
-   * 抽象方法 - 各管理器必须实现的初始化逻辑
+   * 初始化管理器
    */
   public abstract initialize(): void;
 
   /**
-   * 抽象方法 - 各管理器必须实现的清理逻辑
+   * 清理管理器
    */
   public abstract cleanup(): void;
+
+  /**
+   * 注册服务
+   */
+  public registerServices(name: string, service: BaseService) {
+    this.services.set(name, service);
+  }
 
   private initializeMemory(): void {
     if (this.memoryKey === undefined) {

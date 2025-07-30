@@ -1,12 +1,11 @@
-import { BaseService } from './BaseService';
-import { EventBus } from '../core/EventBus';
-import { ServiceContainer } from '../core/ServiceContainer';
+import { BaseService } from "../BaseService";
+import { EventBus } from "../../core/EventBus";
 import {
   ConsumerInfo,
   ConsumerType,
   ProviderInfo,
   ProviderType,
-  TransportNetworkMemory,
+  TransportNetworkServiceMemory,
   TransportTask,
   TaskPriority,
   TaskStatus,
@@ -16,7 +15,9 @@ import {
   ProviderStatus,
   Providers,
   Consumers
-} from '../types';
+} from '../../types';
+import { Safe, SafeMemoryAccess } from '../../utils/Decorators';
+import { BaseManager } from "../../managers/BaseManager";
 
 // 临时定义，后续可以移到Config文件中
 const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
@@ -37,16 +38,27 @@ const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
  * 运输服务
  * 负责维护运输网络，并根据供需生成运输任务。
  */
-export class TransportService extends BaseService {
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+export class TransportService extends BaseService<{ [roomName: string]: TransportNetworkServiceMemory }> {
+  protected readonly memoryKey: string = 'transportNetworkService';
+
+  public initialize(): void {
+    if (this.memory === undefined) {
+      this.memory = {};
+    }
   }
 
+  public cleanup(): void {}
+
+  constructor(eventBus: EventBus, manager: BaseManager, memory: any) {
+    super(eventBus, manager, memory);
+  }
+
+  @Safe("TransportService.update")
   public update(): void {
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (room.controller?.my) {
-        this.safeExecute(() => this.updateTransportNetwork(room), `updateTransportNetwork for ${roomName}`);
+        this.updateTransportNetwork(room)
       }
     }
   }
@@ -54,12 +66,10 @@ export class TransportService extends BaseService {
   /**
    * 更新房间的运输网络内存
    */
+  @SafeMemoryAccess("TransportService.updateTransportNetwork")
   private updateTransportNetwork(room: Room): void {
-    if (!room.memory.logistics) {
-      room.memory.logistics = {};
-    }
-    if (!room.memory.logistics.transportNetwork) {
-      room.memory.logistics.transportNetwork = {
+    if (!this.memory[room.name]) {
+      this.memory[room.name] = {
         providers: {},
         consumers: {},
         lastUpdated: Game.time
@@ -67,7 +77,7 @@ export class TransportService extends BaseService {
       return;
     }
 
-    const network = room.memory.logistics.transportNetwork;
+    const network = this.memory[room.name];
 
     // 垃圾回收
     // TODO 垃圾回收的频率需要进一步设计
@@ -121,38 +131,38 @@ export class TransportService extends BaseService {
     network.lastUpdated = Game.time;
   }
 
-  /**
-   * 识别容器的角色
-   * TODO 由建筑规划系统来判断容器角色，并设置状态
-   * 后续可能提供由flag来手动标记的功能(在某个容器上放置制定规则的flag，来手动标记)
-   */
-  private identifyContainerRole(room: Room, container: StructureContainer): void {
-    const network = room.memory.logistics?.transportNetwork;
-    if (!network) return;
+  // /**
+  //  * 识别容器的角色
+  //  * TODO 由建筑规划系统来判断容器角色，并设置状态
+  //  * 后续可能提供由flag来手动标记的功能(在某个容器上放置制定规则的flag，来手动标记)
+  //  */
+  // private identifyContainerRole(room: Room, container: StructureContainer): void {
+  //   const network = this.memory[room.name];
+  //   if (!network) return;
 
-    const nearbySource = container.pos.findInRange(FIND_SOURCES, 3)[0];
-    if (nearbySource) {
-      network.providers[container.id] = this.createProviderInfo(container, RESOURCE_ENERGY, 'ready');
-      return;
-    }
+  //   const nearbySource = container.pos.findInRange(FIND_SOURCES, 3)[0];
+  //   if (nearbySource) {
+  //     network.providers[container.id] = this.createProviderInfo(container, RESOURCE_ENERGY, 'ready');
+  //     return;
+  //   }
 
-    const nearbyMineral = container.pos.findInRange(FIND_MINERALS, 3)[0];
-    if (nearbyMineral) {
-      network.providers[container.id] = this.createProviderInfo(container, nearbyMineral.mineralType, 'ready');
-      return;
-    }
+  //   const nearbyMineral = container.pos.findInRange(FIND_MINERALS, 3)[0];
+  //   if (nearbyMineral) {
+  //     network.providers[container.id] = this.createProviderInfo(container, nearbyMineral.mineralType, 'ready');
+  //     return;
+  //   }
 
-    if (room.controller && container.pos.inRangeTo(room.controller, 3)) {
-      network.consumers[container.id] = this.createConsumerInfo(container, RESOURCE_ENERGY);
-      return;
-    }
-  }
+  //   if (room.controller && container.pos.inRangeTo(room.controller, 3)) {
+  //     network.consumers[container.id] = this.createConsumerInfo(container, RESOURCE_ENERGY);
+  //     return;
+  //   }
+  // }
 
   /**
    * 外部调用接口：设置 Provider
    */
   public setProvider(target: Providers, roomName: string, resourceType: ResourceConstant, status: ProviderStatus): void {
-    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    const network = this.memory[roomName];
     if (!network) return;
     const info = this.createProviderInfo(target, resourceType, status);
     network.providers[target.id] = info;
@@ -162,7 +172,7 @@ export class TransportService extends BaseService {
    * 外部调用接口：设置 Consumer
    */
   public setConsumer(target: Consumers, roomName: string, resourceType: ResourceConstant): void {
-    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    const network = this.memory[roomName];
     if (!network) return;
     const info = this.createConsumerInfo(target, resourceType);
     network.consumers[target.id] = info;
@@ -172,7 +182,7 @@ export class TransportService extends BaseService {
    * 外部调用接口：移除 Provider
    */
   public removeProvider(target: Providers, roomName: string): void {
-    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    const network = this.memory[roomName];
     if (!network) return;
     delete network.providers[target.id];
   }
@@ -181,7 +191,7 @@ export class TransportService extends BaseService {
    * 外部调用接口：移除 Consumer
    */
   public removeConsumer(target: Consumers, roomName: string): void {
-    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    const network = this.memory[roomName];
     if (!network) return;
     delete network.consumers[target.id];
   }
@@ -190,7 +200,7 @@ export class TransportService extends BaseService {
    * 外部调用接口：更新 Provider 状态
    */
   public updateProviderStatus(target: Providers, roomName: string, resourceType?: ResourceConstant, status?: ProviderStatus): void {
-    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    const network = this.memory[roomName];
     if (!network) return;
     const info = network.providers[target.id];
     if (!info) return;
@@ -208,7 +218,7 @@ export class TransportService extends BaseService {
    * 外部调用接口：更新 Consumer 状态
    */
   public updateConsumerStatus(target: Consumers, roomName: string, resourceType?: ResourceConstant): void {
-    const network = Game.rooms[roomName].memory.logistics?.transportNetwork;
+    const network = this.memory[roomName];
     if (!network) return;
     const info = network.consumers[target.id];
     if (!info) return;
@@ -222,7 +232,7 @@ export class TransportService extends BaseService {
    * 外部调用接口：生成所有待处理的运输任务
    */
   public generateTransportTasks(room: Room): TransportTask[] {
-    const network = room.memory.logistics?.transportNetwork;
+    const network = this.memory[room.name];
     if (!network) return [];
 
     const openRequests = this.getOpenRequests(room, network);
@@ -293,7 +303,7 @@ export class TransportService extends BaseService {
 
   // --- 辅助方法 ---
 
-  private getOpenRequests(room: Room, network: TransportNetworkMemory): ConsumerInfo[] {
+  private getOpenRequests(room: Room, network: TransportNetworkServiceMemory): ConsumerInfo[] {
     const requests: ConsumerInfo[] = [];
     for (const id in network.consumers) {
       const consumer = network.consumers[id];
@@ -309,7 +319,7 @@ export class TransportService extends BaseService {
     return requests;
   }
 
-  private getAvailableSources(room: Room, network: TransportNetworkMemory): ProviderInfo[] {
+  private getAvailableSources(room: Room, network: TransportNetworkServiceMemory): ProviderInfo[] {
     const sources: ProviderInfo[] = [];
     for (const id in network.providers) {
       const provider = network.providers[id];

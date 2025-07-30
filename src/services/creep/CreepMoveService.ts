@@ -4,17 +4,12 @@ import { BaseService } from "../BaseService";
  * Creep移动缓存服务
  */
 export class CreepMoveService extends BaseService {
-  protected memoryKey?: string = undefined;
-  public initialize(): void {
-    throw new Error("Method not implemented.");
-  }
-  public update(): void {
-    throw new Error("Method not implemented.");
-  }
-  public cleanup(): void {
-    throw new Error("Method not implemented.");
-  }
   // TODO: 后续增加缓存功能和动态避障逻辑
+
+  protected memoryKey?: string = undefined;
+  public initialize(): void {}
+  public update(): void {}
+  public cleanup(): void {}
 
   /**
    * 移动creep到目标位置

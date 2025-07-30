@@ -1,24 +1,41 @@
 import { BaseManager } from './BaseManager';
 import { EventBus } from '../core/EventBus';
 import { ServiceContainer } from '../core/ServiceContainer';
-import { TransportService } from '../services/TransportService';
+import { TransportService } from '../services/logistics/TransportService';
+import { Safe } from '../utils/Decorators';
+import { LogisticsMemory } from '../types';
 
 /**
  * 后勤管理器
  * 负责协调所有后勤相关的服务，如运输、市场等。
  */
-export class LogisticsManager extends BaseManager {
-  private transportService: TransportService;
+export class LogisticsManager extends BaseManager<LogisticsMemory> {
+  protected readonly memoryKey: string = 'logisticsManager';
+
+  public initialize(): void {
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0
+      }
+    }
+  }
+
+  public cleanup(): void {}
+
+  public get transportService(): TransportService {
+    return this.services.get('transportService') as TransportService;
+  }
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
-    this.transportService = serviceContainer.get('transportService') as TransportService;
+    this.registerServices('transportService', new TransportService(this.eventBus, this, this.memory));
   }
 
-  public update(): void {
-    this.safeExecute(() => {
-      // 在当前阶段，后勤管理器只负责驱动运输服务
-      this.transportService.update();
-    }, 'LogisticsManager.update');
+  @Safe("LogisticsManager.updateManager")
+  public updateManager(): void {
+    this.transportService.update();
   }
 }

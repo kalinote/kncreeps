@@ -1,4 +1,4 @@
-import { BuildingPlan, RoomLayout } from "../../types";
+import { BuildingPlanMemory, RoomLayoutMemory } from "../../types";
 
 /**
  * 规划器的基类
@@ -21,7 +21,7 @@ export abstract class BasePlanner {
    * @param room 需要规划的房间对象
    * @returns 返回一个包含所有建筑位置的数组
    */
-  public abstract plan(room: Room): BuildingPlan[];
+  public abstract plan(room: Room): BuildingPlanMemory[];
 
   /**
    * 将路径点转换为标准的位置格式

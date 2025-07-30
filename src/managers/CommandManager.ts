@@ -9,14 +9,14 @@ import { GameConfig } from "../config/GameConfig";
  * 命令管理器 - 管理所有调试命令
  */
 export class CommandManager extends BaseManager {
-  protected memoryKey?: string = undefined;
+  protected readonly memoryKey = undefined;
 
   private commandRegistry: CommandRegistry;
   private globalDebugObject: any;
   private globalVisualObject: any;
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer, []);
+    super(eventBus, serviceContainer);
     this.updateInterval = GameConfig.MANAGER_CONFIGS.COMMAND_MANAGER?.UPDATE_INTERVAL || 0;
     this.commandRegistry = new CommandRegistry(serviceContainer);
     this.setupGlobalObjects();

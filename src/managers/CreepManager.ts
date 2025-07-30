@@ -7,6 +7,7 @@ import { CreepProductionService } from "../services/creep/CreepProductionService
 import { CreepLifecycleService } from "../services/creep/CreepLifecycleService";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { CreepMoveService } from "../services/creep/CreepMoveService";
+import { Safe } from "../utils/Decorators";
 
 
 /**
@@ -15,27 +16,31 @@ import { CreepMoveService } from "../services/creep/CreepMoveService";
 export class CreepManager extends BaseManager<CreepManagerMemory> {
   protected readonly memoryKey: string = 'creepManager';
 
+  public get productionService(): CreepProductionService {
+    return this.services.get('productionService') as CreepProductionService;
+  }
+  public get lifecycleService(): CreepLifecycleService {
+    return this.services.get('lifecycleService') as CreepLifecycleService;
+  }
+  public get moveService(): CreepMoveService {
+    return this.services.get('moveService') as CreepMoveService;
+  }
+
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(
-      eventBus,
-      serviceContainer,
-      [CreepProductionService, CreepLifecycleService, CreepMoveService]
-    );
+    super(eventBus, serviceContainer);
 
     this.updateInterval = GameConfig.MANAGER_CONFIGS.CREEP_MANAGER.UPDATE_INTERVAL;
-  }
 
-  private get productionService(): CreepProductionService {
-    return this.serviceContainer.get<CreepProductionService>('creepProductionService');
-  }
-
-  private get lifecycleService(): CreepLifecycleService {
-    return this.serviceContainer.get<CreepLifecycleService>('creepLifecycleService');
+    // 注册服务
+    this.registerServices('productionService', new CreepProductionService(this.eventBus, this, this.memory));
+    this.registerServices('lifecycleService', new CreepLifecycleService(this.eventBus, this, this.memory));
+    this.registerServices('moveService', new CreepMoveService(this.eventBus, this, this.memory));
   }
 
   /**
    * 主更新方法
    */
+  @Safe(`CreepManager.updateManager`)
   public updateManager(): void {}
 
   /**
@@ -116,24 +121,32 @@ export class CreepManager extends BaseManager<CreepManagerMemory> {
    * 手动请求Creep替换 - 委托给生产服务
    */
   public requestCreepReplacement(creep: Creep): void {
-    // 使用新的生产需求接口
-    this.productionService.addProductionNeed(
-      creep.room.name,
-      creep.memory.role,
-      GameConfig.PRIORITIES.HIGH,
-      creep.room.energyAvailable,
-      undefined,
-      undefined,
-      undefined,
-      `Manual replacement request: ${creep.name}`
-    );
+    this.emit(GameConfig.EVENTS.CREEP_PRODUCTION_NEEDED, {
+      roomName: creep.room.name,
+      role: creep.memory.role,
+      priority: GameConfig.PRIORITIES.HIGH,
+      availableEnergy: creep.room.energyAvailable,
+      energyBudget: undefined,
+      taskType: undefined,
+      taskCount: undefined,
+      reason: `手动替换需求: ${creep.name}`
+    });
   }
 
   /**
    * 手动添加生产需求 - 委托给生产服务
    */
   public addProductionNeed(roomName: string, role: string, priority: number, availableEnergy: number): void {
-    this.productionService.addProductionNeed(roomName, role, priority, availableEnergy, undefined, undefined, undefined, 'Manual production request');
+    this.emit(GameConfig.EVENTS.CREEP_PRODUCTION_NEEDED, {
+      roomName,
+      role,
+      priority,
+      availableEnergy,
+      energyBudget: undefined,
+      taskType: undefined,
+      taskCount: undefined,
+      reason: `手动添加生产需求`
+    });
   }
 
   /**

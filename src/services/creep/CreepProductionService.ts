@@ -486,7 +486,7 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
   /**
    * 添加生产需求
    */
-  public addProductionNeed(
+  private addProductionNeed(
     roomName: string,
     role: string,
     priority: number,

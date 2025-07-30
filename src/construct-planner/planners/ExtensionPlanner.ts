@@ -1,4 +1,4 @@
-import { BuildingPlan } from "types";
+import { BuildingPlanMemory } from "types";
 import { BasePlanner } from "./BasePlanner";
 
 export class ExtensionPlanner extends BasePlanner {
@@ -7,7 +7,7 @@ export class ExtensionPlanner extends BasePlanner {
 
   private static readonly EXTENSION_LIMITS = CONTROLLER_STRUCTURES["extension"];
 
-  public plan(room: Room): BuildingPlan[] {
+  public plan(room: Room): BuildingPlanMemory[] {
     if (!room.controller) {
       return [];
     }
@@ -45,7 +45,7 @@ export class ExtensionPlanner extends BasePlanner {
    * @param count 需要建造的扩展数量
    * @returns 建筑规划
    */
-  private calculateOptimalPositions(room: Room, basePosition: RoomPosition, count: number): BuildingPlan[] {
+  private calculateOptimalPositions(room: Room, basePosition: RoomPosition, count: number): BuildingPlanMemory[] {
     return [];
   }
 

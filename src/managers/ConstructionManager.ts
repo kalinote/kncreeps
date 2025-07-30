@@ -2,37 +2,32 @@ import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { GameConfig } from "../config/GameConfig";
-import { PlannerRegistry } from "../construct-planner/PlannerRegistry";
-import { EventStrategyRegistry } from "../construct-planner/EventStrategyRegistry";
-import { RoomLayout } from "../types";
-import { ConstructPlannerService } from "../services/ConstructPlannerService";
+import { ConstructionManagerMemory, RoomLayoutMemory } from "../types";
 import { EventConfig } from "../config/EventConfig";
-import { TransportService } from "services/TransportService";
+import { ConstructPlannerService } from "../services/construction/ConstructPlannerService";
+import { Safe } from "../utils/Decorators";
+import { TransportService } from "../services/logistics/TransportService";
+import { LogisticsManager } from "./LogisticsManager";
 
 /**
  * 建筑管理器
  * 负责驱动建筑规划和创建建筑工地。
  */
-export class ConstructionManager extends BaseManager {
-  // TODO 明确ConstructionManager和ConstructPlannerService的职责，并且PlannerRegistry只应该创建一次
-  private plannerRegistry: PlannerRegistry;
-  private strategyRegistry: EventStrategyRegistry;
-  private constructPlannerService: ConstructPlannerService;
-  private transportService: TransportService;
+export class ConstructionManager extends BaseManager<ConstructionManagerMemory> {
+  protected readonly memoryKey: string = 'constructionManager';
+
+  public get constructPlannerService(): ConstructPlannerService {
+    return this.services.get('constructPlannerService') as ConstructPlannerService;
+  }
+
+  public get transportService(): TransportService {
+    return this.serviceContainer.get<LogisticsManager>("logisticsManager").transportService;
+  }
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
-    this.plannerRegistry = new PlannerRegistry();
-    this.strategyRegistry = new EventStrategyRegistry();
-    this.constructPlannerService = serviceContainer.get<ConstructPlannerService>('constructPlannerService');
-    this.transportService = serviceContainer.get<TransportService>('transportService');
 
-    // 修复运行时错误：直接在此处设置事件监听，而不是在被父类构造函数过早调用的重写方法中
-    for (const eventType of this.strategyRegistry.getMonitoredEvents()) {
-      this.on(eventType, (data: any) => this.handleEmergencyEvent(eventType, data));
-    }
-    // 监听RCL等级变化事件
-    // this.on(GameConfig.EVENTS.RCL_LEVEL_CHANGED, (data: any) => this.handleRclChange(data));
+    this.registerServices('constructPlannerService', new ConstructPlannerService(this.eventBus, this, this.memory));
   }
 
   /**
@@ -45,33 +40,36 @@ export class ConstructionManager extends BaseManager {
     });
   }
 
-  private initializeMemory(): void {
-    if (!Memory.constructPlanner) {
-      Memory.constructPlanner = {
+  public initialize(): void {
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0,
         layouts: {},
-        lastRun: Game.time
-      };
+        lastRun: 0
+      }
     }
   }
+  public cleanup(): void {}
 
-  public update(): void {
-    this.initializeMemory();
+  @Safe(`ConstructionManager.updateManager`)
+  public updateManager(): void {
     // 使用一个较低的更新频率来减少CPU消耗
     if (Game.time % 10 !== 0) return;
 
-    this.safeExecute(() => {
-      for (const roomName in Game.rooms) {
-        const room = Game.rooms[roomName];
-        if (room.controller?.my) {
-          // 1. 运行规划状态机
-          this.runPlannerStateMachine(room);
-          // 2. 运行建造决策逻辑
-          this.runBuilder(room);
-          // 3. 更新建造状态并触发事件
-          this.constructPlannerService.updateConstructionStatus();
-        }
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (room.controller?.my) {
+        // 1. 运行规划状态机
+        this.runPlannerStateMachine(room);
+        // 2. 运行建造决策逻辑
+        this.runBuilder(room);
+        // 3. 更新建造状态并触发事件
+        this.constructPlannerService.updateConstructionStatus();
       }
-    }, 'ConstructionManager.update');
+    }
   }
 
   /**
@@ -116,7 +114,7 @@ export class ConstructionManager extends BaseManager {
       }
 
       const plannerName = planningOrder[layout.nextPlannerIndex];
-      const planner = this.plannerRegistry.getPlanner(plannerName);
+      const planner = this.constructPlannerService.plannerRegistry.getPlanner(plannerName);
 
       if (planner) {
         console.log(`[Planner] 为 ${room.name} 执行 [${plannerName}] 规划...`);
@@ -153,7 +151,7 @@ export class ConstructionManager extends BaseManager {
 
     // 决策一：如果处于紧急策略中，优先尝试执行紧急建造
     if (room.memory.activeConstructionStrategy) {
-      const strategy = this.strategyRegistry.getStrategy(room.memory.activeConstructionStrategy);
+      const strategy = this.constructPlannerService.strategyRegistry.getStrategy(room.memory.activeConstructionStrategy);
       if (strategy) {
         // 尝试进行紧急建造，如果成功创建了工地，则本轮结束
         const emergencyBuildStarted = this.tryBuild(room, layout, strategy.priorityPlanners);
@@ -191,7 +189,7 @@ export class ConstructionManager extends BaseManager {
    * @param priorityList 规划器名称列表
    * @returns 是否成功创建了工地
    */
-  private tryBuild(room: Room, layout: RoomLayout, priorityList: string[]): boolean {
+  private tryBuild(room: Room, layout: RoomLayoutMemory, priorityList: string[]): boolean {
     for (const plannerName of priorityList) {
       const buildingPlans = layout.buildings[plannerName] || [];
 
@@ -244,7 +242,7 @@ export class ConstructionManager extends BaseManager {
     const room = Game.rooms[roomName];
     if (!room) return;
 
-    const strategy = this.strategyRegistry.getStrategy(eventType);
+    const strategy = this.constructPlannerService.strategyRegistry.getStrategy(eventType);
     if (!strategy) return;
 
     console.log(`[Emergency] 房间 ${roomName} 触发紧急策略: ${strategy.name}`);
@@ -263,7 +261,7 @@ export class ConstructionManager extends BaseManager {
       }
 
       for (const plannerName of strategy.priorityPlanners) {
-        const planner = this.plannerRegistry.getPlanner(plannerName);
+        const planner = this.constructPlannerService.plannerRegistry.getPlanner(plannerName);
         if (planner) {
           console.log(`[Emergency] 正在规划 [${plannerName}]...`);
           const buildingPlans = planner.plan(room);

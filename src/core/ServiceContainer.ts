@@ -7,8 +7,6 @@ import { BaseManager } from "../managers/BaseManager";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "../managers/CreepManager";
 import { TaskExecutionManager } from "../managers/TaskExecutionManager";
-import { CreepProductionService } from "../services/creep/CreepProductionService";
-import { CreepLifecycleService } from "../services/creep/CreepLifecycleService";
 import { EnergyService } from "../services/EnergyService";
 import { TaskManager } from "../managers/TaskManager";
 import { VisualManager } from "../managers/VisualManager";
@@ -16,16 +14,11 @@ import { VisualLayoutService } from '../services/VisualLayoutService';
 import { StatsService } from '../services/StatsService';
 import { SystemService } from '../services/SystemService';
 import { TaskStateService } from "../services/TaskStateService";
-import { TaskGeneratorService } from "../services/TaskGeneratorService";
 import { TaskSchedulerService } from "../services/TaskSchedulerService";
-import { RoomService } from "../services/RoomService";
 import { TaskExecutionService } from "../services/TaskExecutionService";
 import { ConstructionManager } from "../managers/ConstructionManager";
-import { ConstructPlannerService } from "../services/ConstructPlannerService";
 import { LayerManager } from "../managers/LayerManager";
 import { LogisticsManager } from "../managers/LogisticsManager";
-import { TransportService } from "../services/TransportService";
-import { CreepMoveService } from "../services/creep/CreepMoveService";
 import { TaskGroupService } from "../services/TaskGroupService";
 import { CommandManager } from "../managers/CommandManager";
 
@@ -96,19 +89,10 @@ export class ServiceContainer {
 
     // 注册业务服务
     this.registerSingleton('energyService', () => new EnergyService(this.get('eventBus'), this));
-    this.registerSingleton('creepProductionService', () =>
-      new CreepProductionService(this.get('eventBus'), this)
-    );
-    this.registerSingleton('creepLifecycleService', () =>
-      new CreepLifecycleService(this.get('eventBus'), this)
-    );
-    // 注册移动缓存服务
-    this.registerSingleton('creepMoveService', () => new CreepMoveService(this.get('eventBus'), this));
-    this.registerSingleton('roomService', () => new RoomService(this.get('eventBus'), this));
+
 
     // 注册任务系统服务
     this.registerSingleton('taskStateService', () => new TaskStateService(this.get('eventBus'), this));
-    this.registerSingleton('taskGeneratorService', () => new TaskGeneratorService(this.get('eventBus'), this));
     this.registerSingleton('taskSchedulerService', () => new TaskSchedulerService(this.get('eventBus'), this));
     this.registerSingleton('taskExecutionService', () => new TaskExecutionService(this.get('eventBus'), this));
     this.registerSingleton('taskGroupService', () => new TaskGroupService(this.get('eventBus'), this));
@@ -133,13 +117,9 @@ export class ServiceContainer {
 
     // 注册建筑管理器
     this.registerSingleton('constructionManager', () => new ConstructionManager(this.get('eventBus'), this));
-    this.registerSingleton('constructPlannerService', () =>
-      new ConstructPlannerService(this.get('eventBus'), this)
-    );
 
     // 注册后勤系统
     this.registerSingleton('logisticsManager', () => new LogisticsManager(this.get('eventBus'), this));
-    this.registerSingleton('transportService', () => new TransportService(this.get('eventBus'), this));
 
     // 注册可视化管理器和服务
     this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus'), this));

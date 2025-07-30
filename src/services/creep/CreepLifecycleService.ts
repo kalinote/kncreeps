@@ -18,7 +18,11 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
    * 因为CreepLifecycleServiceMemory是针对于单个creep的，所以没有需要整体初始化的地方
    * 暂时没有...
    */
-  public initialize(): void {}
+  public initialize(): void {
+    if (this.memory === undefined) {
+      this.memory = {};
+    }
+  }
 
   public update(): void {
     this.updateCreepStates();

@@ -1,29 +1,45 @@
-import { BaseService } from './BaseService';
-import { EventBus } from '../core/EventBus';
-import { ServiceContainer } from '../core/ServiceContainer';
-import { PlannerRegistry } from '../construct-planner/PlannerRegistry';
-import { RoadPlanner } from '../construct-planner/planners/RoadPlanner';
-import { ContainerPlanner } from '../construct-planner/planners/ContainerPlanner';
-import { ConstructionStatus, RoadPlanInfo, RoadConstructionStatus, BuildingPlan } from '../types';
-import { EventConfig } from '../config/EventConfig';
+import { BaseService } from "../BaseService";
+import { EventBus } from "../../core/EventBus";
+import { ServiceContainer } from "../../core/ServiceContainer";
+import { PlannerRegistry } from "../../construct-planner/PlannerRegistry";
+import { RoadPlanner } from "../../construct-planner/planners/RoadPlanner";
+import { ContainerPlanner } from "../../construct-planner/planners/ContainerPlanner";
+import { RoadPlanInfo, RoadConstructionStatus, BuildingPlanMemory } from "../../types";
+import { EventConfig } from "../../config/EventConfig";
+import { BaseManager } from "../../managers/BaseManager";
+import { EventStrategyRegistry } from "../../construct-planner/EventStrategyRegistry";
 
 /**
  * 建筑规划服务 - 负责管理所有规划器的状态和事件触发
  */
 export class ConstructPlannerService extends BaseService {
-  // TODO 明确ConstructionManager和ConstructPlannerService的职责，并且PlannerRegistry只应该创建一次
-  private plannerRegistry: PlannerRegistry;
+  protected memoryKey?: string | undefined;
+  public initialize(): void {}
+  public update(): void {}
+  public cleanup(): void {}
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-    this.plannerRegistry = new PlannerRegistry();
+  private _plannerRegistry: PlannerRegistry;
+  private _strategyRegistry: EventStrategyRegistry;
+
+  public get plannerRegistry(): PlannerRegistry {
+    return this._plannerRegistry;
+  }
+
+  public get strategyRegistry(): EventStrategyRegistry {
+    return this._strategyRegistry;
+  }
+
+  constructor(eventBus: EventBus, manager: BaseManager, memory: any) {
+    super(eventBus, manager, memory);
+    this._plannerRegistry = new PlannerRegistry();
+    this._strategyRegistry = new EventStrategyRegistry();
   }
 
   /**
    * 获取道路规划信息
    */
   public getRoadPlanInfo(room: Room): RoadPlanInfo | null {
-    const roadPlanner = this.plannerRegistry.getPlanner('road') as RoadPlanner;
+    const roadPlanner = this._plannerRegistry.getPlanner('road') as RoadPlanner;
     if (!roadPlanner) return null;
 
     return roadPlanner.getRoadPlanInfo(room);
@@ -33,7 +49,7 @@ export class ConstructPlannerService extends BaseService {
    * 获取道路建造状态
    */
   public getRoadConstructionStatus(room: Room): RoadConstructionStatus | null {
-    const roadPlanner = this.plannerRegistry.getPlanner('road') as RoadPlanner;
+    const roadPlanner = this._plannerRegistry.getPlanner('road') as RoadPlanner;
     if (!roadPlanner) return null;
 
     return roadPlanner.getRoadConstructionStatus(room);
@@ -43,7 +59,7 @@ export class ConstructPlannerService extends BaseService {
    * 获取未建造的道路
    */
   public getUnbuiltRoads(room: Room): any[] {
-    const roadPlanner = this.plannerRegistry.getPlanner('road') as RoadPlanner;
+    const roadPlanner = this._plannerRegistry.getPlanner('road') as RoadPlanner;
     if (!roadPlanner) return [];
 
     return roadPlanner.getUnbuiltRoads(room);
@@ -64,8 +80,8 @@ export class ConstructPlannerService extends BaseService {
   /**
    * 获取container规划信息
    */
-  public getContainerPlanInfo(room: Room): BuildingPlan[] {
-    const containerPlanner = this.plannerRegistry.getPlanner('container') as ContainerPlanner;
+  public getContainerPlanInfo(room: Room): BuildingPlanMemory[] {
+    const containerPlanner = this._plannerRegistry.getPlanner('container') as ContainerPlanner;
     if (!containerPlanner) return [];
 
     return containerPlanner.plan(room);

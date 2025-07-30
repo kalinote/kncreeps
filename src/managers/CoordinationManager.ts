@@ -1,18 +1,34 @@
 import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
-import { CoordinationMemory, ResourceAllocation, CrossRoomTask } from "../types";
+import { CoordinationManagerMemory, CrossRoomTaskMemory, ResourceAllocationMemory } from "../types";
+import { Safe } from "../utils/Decorators";
 
 /**
  * 协调管理器 - 负责跨房间协调和资源分配
+ * TODO 考虑合并到后勤管理系统，作为一个服务实现
  */
-export class CoordinationManager extends BaseManager {
-  private lastCoordinationCheck: number = 0;
+export class CoordinationManager extends BaseManager<CoordinationManagerMemory> {
+  protected readonly memoryKey: string = 'coordinationManager';
+
+  public initialize(): void {
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0,
+        roomPriorities: {},
+        resourceAllocation: {},
+        crossRoomTasks: []
+      }
+    }
+  }
+  public cleanup(): void {}
 
   constructor(eventBus: EventBus, serviceContainer: any) {
     super(eventBus, serviceContainer);
     this.updateInterval = GameConfig.MANAGER_CONFIGS.COORDINATION_MANAGER.UPDATE_INTERVAL;
-    this.initializeCoordinationMemory();
   }
 
   /**
@@ -33,44 +49,24 @@ export class CoordinationManager extends BaseManager {
   }
 
   /**
-   * 初始化协调内存
-   */
-  private initializeCoordinationMemory(): void {
-    if (!Memory.coordination) {
-      Memory.coordination = {
-        lastUpdate: Game.time,
-        roomPriorities: {},
-        resourceAllocation: {},
-        crossRoomTasks: []
-      };
-    }
-  }
-
-  /**
    * 更新协调管理器
    */
-  public update(): void {
-    if (!this.shouldUpdate()) return;
-
-    this.safeExecute(() => {
-      // 检查是否需要协调
-      const checkInterval = GameConfig.UPDATE_FREQUENCIES.COORDINATION_CHECK || 50;
-      if (Game.time - this.lastCoordinationCheck >= checkInterval) {
-        this.updateRoomPriorities();
-        this.updateResourceAllocation();
-        this.processCrossRoomTasks();
-        this.lastCoordinationCheck = Game.time;
-      }
-    }, 'CoordinationManager.update');
-
-    this.updateCompleted();
+  @Safe("CoordinationManager.updateManager")
+  public updateManager(): void {
+    const checkInterval = GameConfig.MANAGER_CONFIGS.COORDINATION_MANAGER.UPDATE_INTERVAL || 50;
+    if (Game.time - this.memory.lastUpdate >= checkInterval) {
+      this.updateRoomPriorities();
+      this.updateResourceAllocation();
+      this.processCrossRoomTasks();
+      this.memory.lastUpdate = Game.time;
+    }
   }
 
   /**
    * 更新房间优先级
    */
   private updateRoomPriorities(): void {
-    if (!Memory.coordination) return;
+    if (!this.memory) return;
 
     const roomPriorities: { [roomName: string]: number } = {};
 
@@ -104,21 +100,21 @@ export class CoordinationManager extends BaseManager {
       }
     }
 
-    Memory.coordination.roomPriorities = roomPriorities;
+    this.memory.roomPriorities = roomPriorities;
   }
 
   /**
    * 更新资源分配
    */
   private updateResourceAllocation(): void {
-    if (!Memory.coordination) return;
+    if (!this.memory) return;
 
-    const resourceAllocation: { [roomName: string]: ResourceAllocation } = {};
+    const resourceAllocation: { [roomName: string]: ResourceAllocationMemory } = {};
 
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (room.controller?.my) {
-        const priority = Memory.coordination.roomPriorities[roomName] || 0;
+        const priority = this.memory.roomPriorities[roomName] || 0;
 
         // 计算该房间的creep分配
         const creeps = Object.values(Game.creeps).filter(creep =>
@@ -139,22 +135,22 @@ export class CoordinationManager extends BaseManager {
       }
     }
 
-    Memory.coordination.resourceAllocation = resourceAllocation;
+    this.memory.resourceAllocation = resourceAllocation;
   }
 
   /**
    * 处理跨房间任务
    */
   private processCrossRoomTasks(): void {
-    if (!Memory.coordination) return;
+    if (!this.memory) return;
 
     // 清理已完成或失败的任务
-    Memory.coordination.crossRoomTasks = Memory.coordination.crossRoomTasks.filter(
+    this.memory.crossRoomTasks = this.memory.crossRoomTasks.filter(
       task => task.status === 'pending' || task.status === 'in_progress'
     );
 
     // 处理待处理的任务
-    for (const task of Memory.coordination.crossRoomTasks) {
+    for (const task of this.memory.crossRoomTasks) {
       if (task.status === 'pending') {
         this.processCrossRoomTask(task);
       }
@@ -164,7 +160,7 @@ export class CoordinationManager extends BaseManager {
   /**
    * 处理单个跨房间任务
    */
-  private processCrossRoomTask(task: CrossRoomTask): void {
+  private processCrossRoomTask(task: CrossRoomTaskMemory): void {
     // 这里可以根据任务类型进行具体处理
     // 例如：资源运输、creep支援等
 
@@ -183,7 +179,7 @@ export class CoordinationManager extends BaseManager {
   /**
    * 处理资源运输任务
    */
-  private handleResourceTransportTask(task: CrossRoomTask): void {
+  private handleResourceTransportTask(task: CrossRoomTaskMemory): void {
     // 检查源房间和目标房间的状态
     const sourceRoom = Game.rooms[task.sourceRoom];
     const targetRoom = Game.rooms[task.targetRoom];
@@ -208,7 +204,7 @@ export class CoordinationManager extends BaseManager {
   /**
    * 处理creep支援任务
    */
-  private handleCreepSupportTask(task: CrossRoomTask): void {
+  private handleCreepSupportTask(task: CrossRoomTaskMemory): void {
     // 检查目标房间是否需要支援
     const targetRoom = Game.rooms[task.targetRoom];
     if (!targetRoom) {
@@ -239,7 +235,7 @@ export class CoordinationManager extends BaseManager {
     const { roomName, alerts, severity } = data;
 
     // 根据严重程度调整房间优先级
-    if (Memory.coordination) {
+    if (this.memory) {
       let priorityBoost = 0;
 
       switch (severity) {
@@ -258,8 +254,8 @@ export class CoordinationManager extends BaseManager {
       }
 
       if (priorityBoost > 0) {
-        Memory.coordination.roomPriorities[roomName] =
-          (Memory.coordination.roomPriorities[roomName] || 0) + priorityBoost;
+        this.memory.roomPriorities[roomName] =
+          (this.memory.roomPriorities[roomName] || 0) + priorityBoost;
       }
     }
   }
@@ -291,13 +287,13 @@ export class CoordinationManager extends BaseManager {
    * 调整低creep数量时的优先级
    */
   private adjustPrioritiesForLowCreepCount(): void {
-    if (!Memory.coordination) return;
+    if (!this.memory) return;
 
     // 在creep数量很少时，优先保证能量采集
-    for (const roomName in Memory.coordination.roomPriorities) {
+    for (const roomName in this.memory.roomPriorities) {
       const room = Game.rooms[roomName];
       if (room && room.energyAvailable < room.energyCapacityAvailable * 0.3) {
-        Memory.coordination.roomPriorities[roomName] += 30;
+        this.memory.roomPriorities[roomName] += 30;
       }
     }
   }
@@ -306,9 +302,9 @@ export class CoordinationManager extends BaseManager {
    * 创建跨房间任务
    */
   private createCrossRoomTask(type: string, sourceRoom: string, targetRoom: string, priority: number): void {
-    if (!Memory.coordination) return;
+    if (!this.memory) return;
 
-    const task: CrossRoomTask = {
+    const task: CrossRoomTaskMemory = {
       id: `cross_${Game.time}_${Math.floor(Math.random() * 1000)}`,
       type,
       sourceRoom,
@@ -318,41 +314,33 @@ export class CoordinationManager extends BaseManager {
       createdAt: Game.time
     };
 
-    Memory.coordination.crossRoomTasks.push(task);
+    this.memory.crossRoomTasks.push(task);
   }
 
   /**
    * 获取房间优先级
    */
   public getRoomPriority(roomName: string): number {
-    return Memory.coordination?.roomPriorities[roomName] || 0;
+    return this.memory?.roomPriorities[roomName] || 0;
   }
 
   /**
    * 获取资源分配信息
    */
-  public getResourceAllocation(roomName?: string): ResourceAllocation | { [roomName: string]: ResourceAllocation } | null {
-    if (!Memory.coordination) return null;
+  public getResourceAllocation(roomName?: string): ResourceAllocationMemory | { [roomName: string]: ResourceAllocationMemory } | null {
+    if (!this.memory) return null;
 
     if (roomName) {
-      return Memory.coordination.resourceAllocation[roomName] || null;
+      return this.memory.resourceAllocation[roomName] || null;
     }
 
-    return Memory.coordination.resourceAllocation;
+    return this.memory.resourceAllocation;
   }
 
   /**
    * 获取跨房间任务
    */
-  public getCrossRoomTasks(): CrossRoomTask[] {
-    return Memory.coordination?.crossRoomTasks || [];
-  }
-
-  /**
-   * 重置协调管理器
-   */
-  protected onReset(): void {
-    this.lastCoordinationCheck = 0;
-    this.initializeCoordinationMemory();
+  public getCrossRoomTasks(): CrossRoomTaskMemory[] {
+    return this.memory?.crossRoomTasks || [];
   }
 }

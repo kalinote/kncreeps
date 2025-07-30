@@ -71,31 +71,11 @@ export interface RoomStats {
   lastUpdate: number;
 }
 
-// 协调内存类型
-export interface CoordinationMemory {
-  lastUpdate: number;
-  roomPriorities: { [roomName: string]: number };
-  resourceAllocation: { [roomName: string]: ResourceAllocation };
-  crossRoomTasks: CrossRoomTask[];
-}
 
-// 资源分配类型
-export interface ResourceAllocation {
-  energy: number;
-  creeps: { [role: string]: number };
-  priority: number;
-}
 
-// 跨房间任务类型
-export interface CrossRoomTask {
-  id: string;
-  type: string;
-  sourceRoom: string;
-  targetRoom: string;
-  priority: number;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
-  createdAt: number;
-}
+
+
+
 
 // 事件总线内存类型
 export interface EventBusMemory {
