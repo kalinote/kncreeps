@@ -21,3 +21,6 @@ export * from './memory';
 
 // 房间分析类型
 export * from './room';
+
+// 统计系统类型
+export * from './stats';

@@ -21,7 +21,6 @@ export interface SystemMemory {
   lastCleanup: number;
   errorCount: number;
   managerStatus: { [managerName: string]: ManagerStatus };
-  performance: PerformanceStats;
 }
 
 // 管理器状态类型
@@ -31,51 +30,6 @@ export interface ManagerStatus {
   errorCount: number;
   lastUpdate?: number;
 }
-
-// 性能统计类型
-export interface PerformanceStats {
-  lastUpdate: number;
-  averageTickTime: number;
-  totalCreeps?: number;
-  totalRooms?: number;
-  totalTasks?: number;
-}
-
-// 统计内存类型
-export interface StatsMemory {
-  lastUpdate: number;
-  globalStats: GlobalStats;
-  roomStats: { [roomName: string]: RoomStats };
-  performanceHistory: PerformanceStats[];
-}
-
-// 全局统计类型
-export interface GlobalStats {
-  totalCreeps: number;
-  totalRooms: number;
-  totalEnergy: number;
-  totalEnergyCapacity: number;
-  totalTasks: number;
-  completedTasks: number;
-  failedTasks: number;
-}
-
-// 房间统计类型
-export interface RoomStats {
-  roomName: string;
-  energyAvailable: number;
-  energyCapacity: number;
-  creepCount: number;
-  constructionSites: number;
-  controllerLevel: number;
-  lastUpdate: number;
-}
-
-
-
-
-
-
 
 // 事件总线内存类型
 export interface EventBusMemory {

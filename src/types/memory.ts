@@ -1,7 +1,6 @@
 // 导入其他模块的类型
 import {
   SystemMemory,
-  StatsMemory,
   EventBusMemory,
   UnifiedMemoryCycleStructureMemory
 } from './core';
@@ -13,6 +12,7 @@ import { VisualManagerMemory } from './visual';
 import { ConstructionManagerMemory } from './construction';
 import { LogisticsMemory } from './logistics';
 import { RoomManagerMemory } from './room';
+import { StatsManagerMemory } from './stats';
 
 // 扩展全局Memory接口
 declare global {
@@ -41,6 +41,9 @@ declare global {
     // 房间管理系统
     roomManager?: RoomManagerMemory;
 
+    // 全局统计系统
+    statsManager?: StatsManagerMemory;
+
     eventBus: EventBusMemory;
     tasks?: TaskSystemMemory;
     gameEngine?: {
@@ -50,7 +53,7 @@ declare global {
       startTime?: number;
     };
     system?: SystemMemory;
-    stats?: StatsMemory;
+
 
 
   }
