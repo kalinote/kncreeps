@@ -54,7 +54,7 @@ export class ConstructionManager extends BaseManager<ConstructionManagerMemory> 
   }
   public cleanup(): void {}
 
-  @Safe(`ConstructionManager.updateManager`)
+  @Safe()
   public updateManager(): void {
     // 使用一个较低的更新频率来减少CPU消耗
     if (Game.time % 10 !== 0) return;
@@ -75,20 +75,18 @@ export class ConstructionManager extends BaseManager<ConstructionManagerMemory> 
   /**
    * 规划状态机
    * @param room 房间对象
+   *
+   * // TODO 后续考虑放到某个service中，不应该由manager来处理
    */
   private runPlannerStateMachine(room: Room): void {
-    let layout = Memory.constructPlanner!.layouts[room.name];
+    let layout = this.memory.layouts[room.name];
 
     // 状态一：初始化规划
     if (!layout) {
-      if (!room.controller) return;
+      if (!room.controller?.my) return;
 
-      // 记录首次尝试规划的时间
-      if (room.memory.planningAttemptedAt === undefined) {
-        room.memory.planningAttemptedAt = Game.time;
-      }
       // 检查是否达到了延迟规划的时间
-      if (Game.time - room.memory.planningAttemptedAt < GameConfig.CONSTRUCTION.PLANNING_DELAY) {
+      if (Game.time - this.memory.initAt < GameConfig.CONSTRUCTION.PLANNING_DELAY) {
         return;
       }
 
@@ -135,31 +133,32 @@ export class ConstructionManager extends BaseManager<ConstructionManagerMemory> 
     const layout = Memory.constructPlanner!.layouts[room.name];
     if (!layout || layout.status !== 'done') return;
 
-    // 修复紧急状态解除逻辑：在建造前检查是否可以清除紧急状态
-    if (room.memory.activeConstructionStrategy) {
-      // 当前只处理“受攻击”事件，其解除条件是敌人消失
-      if (room.memory.activeConstructionStrategy === GameConfig.EVENTS.ROOM_UNDER_ATTACK) {
-        const hostiles = room.find(FIND_HOSTILE_CREEPS);
-        if (hostiles.length === 0) {
-          console.log(`[Emergency] 房间 ${room.name} 威胁已解除，恢复常规建造流程。`);
-          delete room.memory.activeConstructionStrategy;
-        }
-      }
-    }
+    // TODO 关于紧急状态等相关系统需要重构实现，目前已经去除原来由RoomService管理的房间状态系统，后续增加单独的service来管理
+    // // 修复紧急状态解除逻辑：在建造前检查是否可以清除紧急状态
+    // if (room.memory.activeConstructionStrategy) {
+    //   // 当前只处理“受攻击”事件，其解除条件是敌人消失
+    //   if (room.memory.activeConstructionStrategy === GameConfig.EVENTS.ROOM_UNDER_ATTACK) {
+    //     const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    //     if (hostiles.length === 0) {
+    //       console.log(`[Emergency] 房间 ${room.name} 威胁已解除，恢复常规建造流程。`);
+    //       delete room.memory.activeConstructionStrategy;
+    //     }
+    //   }
+    // }
 
     if (room.find(FIND_MY_CONSTRUCTION_SITES).length > 0) return;
 
-    // 决策一：如果处于紧急策略中，优先尝试执行紧急建造
-    if (room.memory.activeConstructionStrategy) {
-      const strategy = this.constructPlannerService.strategyRegistry.getStrategy(room.memory.activeConstructionStrategy);
-      if (strategy) {
-        // 尝试进行紧急建造，如果成功创建了工地，则本轮结束
-        const emergencyBuildStarted = this.tryBuild(room, layout, strategy.priorityPlanners);
-        if (emergencyBuildStarted) {
-          return;
-        }
-      }
-    }
+    // // 决策一：如果处于紧急策略中，优先尝试执行紧急建造
+    // if (room.memory.activeConstructionStrategy) {
+    //   const strategy = this.constructPlannerService.strategyRegistry.getStrategy(room.memory.activeConstructionStrategy);
+    //   if (strategy) {
+    //     // 尝试进行紧急建造，如果成功创建了工地，则本轮结束
+    //     const emergencyBuildStarted = this.tryBuild(room, layout, strategy.priorityPlanners);
+    //     if (emergencyBuildStarted) {
+    //       return;
+    //     }
+    //   }
+    // }
 
     // 决策二：如果紧急建造无事可做（或没有紧急情况），则执行常规建造
     const buildStarted = this.tryBuild(room, layout, GameConfig.CONSTRUCTION.BUILD_PRIORITY_ORDER);
@@ -230,49 +229,50 @@ export class ConstructionManager extends BaseManager<ConstructionManagerMemory> 
     return false;
   }
 
-  /**
-   * 处理紧急事件
-   * @param eventType 事件类型
-   * @param data 事件数据
-   */
-  private handleEmergencyEvent(eventType: string, data: any): void {
-    const roomName = data.roomName;
-    if (!roomName) return;
+  // TODO 关于紧急状态等相关系统需要重构实现，目前已经去除原来由RoomService管理的房间状态系统，后续增加单独的service来管理
+  // /**
+  //  * 处理紧急事件
+  //  * @param eventType 事件类型
+  //  * @param data 事件数据
+  //  */
+  // private handleEmergencyEvent(eventType: string, data: any): void {
+  //   const roomName = data.roomName;
+  //   if (!roomName) return;
 
-    const room = Game.rooms[roomName];
-    if (!room) return;
+  //   const room = Game.rooms[roomName];
+  //   if (!room) return;
 
-    const strategy = this.constructPlannerService.strategyRegistry.getStrategy(eventType);
-    if (!strategy) return;
+  //   const strategy = this.constructPlannerService.strategyRegistry.getStrategy(eventType);
+  //   if (!strategy) return;
 
-    console.log(`[Emergency] 房间 ${roomName} 触发紧急策略: ${strategy.name}`);
+  //   console.log(`[Emergency] 房间 ${roomName} 触发紧急策略: ${strategy.name}`);
 
-    // 激活策略
-    room.memory.activeConstructionStrategy = eventType;
+  //   // 激活策略
+  //   room.memory.activeConstructionStrategy = eventType;
 
-    // 如果需要，立即触发一次快速规划
-    if (strategy.triggerPlanner) {
-      console.log(`[Emergency] 为 ${roomName} 触发快速防御规划...`);
-      const layout = Memory.constructPlanner!.layouts[roomName];
-      // 确保布局已初始化
-      if (!layout) {
-        console.log(`[Emergency] 无法执行快速规划：房间 ${roomName} 尚未有基础布局。`);
-        return;
-      }
+  //   // 如果需要，立即触发一次快速规划
+  //   if (strategy.triggerPlanner) {
+  //     console.log(`[Emergency] 为 ${roomName} 触发快速防御规划...`);
+  //     const layout = Memory.constructPlanner!.layouts[roomName];
+  //     // 确保布局已初始化
+  //     if (!layout) {
+  //       console.log(`[Emergency] 无法执行快速规划：房间 ${roomName} 尚未有基础布局。`);
+  //       return;
+  //     }
 
-      for (const plannerName of strategy.priorityPlanners) {
-        const planner = this.constructPlannerService.plannerRegistry.getPlanner(plannerName);
-        if (planner) {
-          console.log(`[Emergency] 正在规划 [${plannerName}]...`);
-          const buildingPlans = planner.plan(room);
-          layout.buildings[planner.name] = buildingPlans;
-          console.log(`[Emergency] 规划了 ${buildingPlans.length} 个 [${plannerName}]。`);
-        }
-      }
-      // 更新布局的时间戳
-      layout.lastUpdated = Game.time;
-    }
-  }
+  //     for (const plannerName of strategy.priorityPlanners) {
+  //       const planner = this.constructPlannerService.plannerRegistry.getPlanner(plannerName);
+  //       if (planner) {
+  //         console.log(`[Emergency] 正在规划 [${plannerName}]...`);
+  //         const buildingPlans = planner.plan(room);
+  //         layout.buildings[planner.name] = buildingPlans;
+  //         console.log(`[Emergency] 规划了 ${buildingPlans.length} 个 [${plannerName}]。`);
+  //       }
+  //     }
+  //     // 更新布局的时间戳
+  //     layout.lastUpdated = Game.time;
+  //   }
+  // }
 
   /**
    * 处理建造完成事件

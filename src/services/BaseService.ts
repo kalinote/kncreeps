@@ -5,16 +5,16 @@ import { BaseManager } from "../managers/BaseManager";
 /**
  * 基础服务类 - 所有业务服务的基类
  */
-export abstract class BaseService<TMemory = any> {
+export abstract class BaseService<TMemory = any, TManager = BaseManager> {
   protected eventBus: EventBus;
-  protected manager: BaseManager;
+  protected manager: TManager;
   protected memory!: TMemory;
   protected abstract readonly memoryKey?: string;
   protected hasErrors: boolean = false;
   protected errorCount: number = 0;
   protected maxErrorCount: number = 5; // 服务可以容忍更多错误
 
-  constructor(eventBus: EventBus, manager: BaseManager, memory: any) {
+  constructor(eventBus: EventBus, manager: TManager, memory: any) {
     this.eventBus = eventBus;
     this.manager = manager;
     this.initializeMemory(memory);

@@ -15,7 +15,7 @@ export function Safe(operationName?: string) {
       try {
         return originalMethod.apply(this, args);
       } catch (error: any) {
-        const name = operationName || propertyKey || "未知操作";
+        const name = operationName || `${this.constructor.name}.${propertyKey}` || "未知操作";
         console.log(`${this.constructor.name} - ${name} 执行失败:`, error.stack || error);
 
         // 如果实例上有 setError 方法
@@ -46,7 +46,7 @@ export function SafeMemoryAccess(operationName?: string) {
       try {
         return originalMethod.apply(this, args);
       } catch (error: any) {
-        const name = operationName || propertyKey || this.memoryKey || "未知操作";
+        const name = operationName || `${this.constructor.name}.${propertyKey}.${this.memoryKey}` || "未知操作";
         console.log(`${this.constructor.name} - ${name} 内存访问失败:`, error.stack || error);
 
         if (typeof (this as any).setError === "function") {

@@ -18,3 +18,6 @@ export * from './visual';
 
 // 内存扩展类型
 export * from './memory';
+
+// 房间分析类型
+export * from './room';

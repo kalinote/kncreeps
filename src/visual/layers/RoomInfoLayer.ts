@@ -1,5 +1,5 @@
 import { LayerType } from '../../types';
-import { RoomService } from '../../services/RoomService';
+import { RoomService } from '../../services/room/RoomService';
 import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
 import { ServiceContainer } from '../../core/ServiceContainer';
