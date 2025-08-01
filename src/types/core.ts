@@ -16,21 +16,6 @@ export interface GameEvent {
   timestamp: number;
 }
 
-// 系统内存类型
-export interface SystemMemory {
-  lastCleanup: number;
-  errorCount: number;
-  managerStatus: { [managerName: string]: ManagerStatus };
-}
-
-// 管理器状态类型
-export interface ManagerStatus {
-  hasError: boolean;
-  lastError: number;
-  errorCount: number;
-  lastUpdate?: number;
-}
-
 // 事件总线内存类型
 export interface EventBusMemory {
   eventQueue: GameEvent[];

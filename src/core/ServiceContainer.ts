@@ -1,6 +1,5 @@
 import { EventBus } from "./EventBus";
 import { ManagerRegistry } from "./ManagerRegistry";
-import { SystemManager } from "../managers/SystemManager";
 import { StatsManager } from "../managers/StatsManager";
 import { CoordinationManager } from "../managers/CoordinationManager";
 import { BaseManager } from "../managers/BaseManager";
@@ -10,9 +9,6 @@ import { TaskExecutionManager } from "../managers/TaskExecutionManager";
 import { EnergyService } from "../services/EnergyService";
 import { TaskManager } from "../managers/TaskManager";
 import { VisualManager } from "../managers/VisualManager";
-import { VisualLayoutService } from '../services/visual/VisualLayoutService';
-import { StatsService } from '../services/StatsService';
-import { SystemService } from '../services/SystemService';
 import { TaskStateService } from "../services/TaskStateService";
 import { TaskSchedulerService } from "../services/TaskSchedulerService";
 import { TaskExecutionService } from "../services/TaskExecutionService";
@@ -31,7 +27,7 @@ const serviceConfig = {
     'systemService'
   ],
   // 系统管理器，也需要较早初始化
-  systemManagers: ['systemManager', 'statsManager', 'coordinationManager'],
+  systemManagers: ['statsManager', 'coordinationManager'],
   // 业务管理器，将被注册到 ManagerRegistry
   managers: [
     'logisticsManager', // 感知
@@ -79,7 +75,6 @@ export class ServiceContainer {
     this.registerSingleton('managerRegistry', () => new ManagerRegistry(this.get('eventBus')));
 
     // 注册系统管理器
-    this.registerSingleton('systemManager', () => new SystemManager(this.get('eventBus'), this));
     this.registerSingleton('statsManager', () => new StatsManager(this.get('eventBus'), this));
     this.registerSingleton('coordinationManager', () => new CoordinationManager(this.get('eventBus'), this));
 
@@ -123,12 +118,6 @@ export class ServiceContainer {
 
     // 注册命令管理器
     this.registerSingleton('commandManager', () => new CommandManager(this.get('eventBus'), this));
-
-    // 注册统计服务
-    this.registerSingleton('statsService', () => new StatsService(this.get('eventBus'), this));
-
-    // 注册系统服务
-    this.registerSingleton('systemService', () => new SystemService(this.get('eventBus'), this));
   }
 
   /**

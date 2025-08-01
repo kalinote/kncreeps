@@ -1,6 +1,5 @@
 // 导入其他模块的类型
 import {
-  SystemMemory,
   EventBusMemory,
   UnifiedMemoryCycleStructureMemory
 } from './core';
@@ -52,10 +51,6 @@ declare global {
       version?: string;
       startTime?: number;
     };
-    system?: SystemMemory;
-
-
-
   }
 
   // 扩展CreepMemory接口
