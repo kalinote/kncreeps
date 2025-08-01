@@ -10,7 +10,6 @@ import { TaskManager } from "../managers/TaskManager";
 import { VisualManager } from "../managers/VisualManager";
 import { TaskStateService } from "../services/task/TaskStateService";
 import { TaskSchedulerService } from "../services/task/TaskSchedulerService";
-import { TaskExecutionService } from "../services/task/TaskExecutionService";
 import { ConstructionManager } from "../managers/ConstructionManager";
 import { LayerManager } from "../managers/LayerManager";
 import { LogisticsManager } from "../managers/LogisticsManager";
@@ -80,12 +79,6 @@ export class ServiceContainer {
     // 注册业务服务
     this.registerSingleton('energyService', () => new EnergyService(this.get('eventBus'), this));
 
-
-    // 注册任务系统服务
-    this.registerSingleton('taskStateService', () => new TaskStateService(this.get('eventBus'), this));
-    this.registerSingleton('taskSchedulerService', () => new TaskSchedulerService(this.get('eventBus'), this));
-    this.registerSingleton('taskGroupService', () => new TaskGroupService(this.get('eventBus'), this));
-
     // 注册任务系统
     this.registerSingleton('taskManager', () => new TaskManager(this.get('eventBus'), this));
 
@@ -93,12 +86,6 @@ export class ServiceContainer {
     this.registerSingleton('roomManager', () => new RoomManager(this.get('eventBus'), this));
     this.registerSingleton('creepManager', () =>
       new CreepManager(
-        this.get('eventBus'),
-        this
-      )
-    );
-    this.registerSingleton('taskExecutionManager', () =>
-      new TaskExecutionManager(
         this.get('eventBus'),
         this
       )

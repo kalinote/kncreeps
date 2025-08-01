@@ -1,22 +1,21 @@
-import { ServiceContainer } from "../core/ServiceContainer";
-import { TaskType, TaskKind, TaskFSMMemory } from "../types";
+import { TaskType, TaskFSMMemory, FSMExecutorClass } from "../types";
 import { HarvestFSMExecutor } from "./executors/HarvestFSMExecutor";
 import { TransportFSMExecutor } from "./executors/TransportFSMExecutor";
 import { UpgradeFSMExecutor } from "./executors/UpgradeFSMExecutor";
 import { BuildFSMExecutor } from "./executors/BuildFSMExecutor";
 import { TaskStateMachine } from "./fsm/StateMachine";
+import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 /**
  * FSM 执行器注册表
  * 管理基于状态机的任务执行器
  */
 export class FSMExecutorRegistry {
-  // 修改类型定义，使用更宽松的泛型约束
-  private executors: Map<TaskType, new (memory: TaskFSMMemory<any>, creep: Creep, serviceContainer: ServiceContainer) => TaskStateMachine<any>> = new Map();
-  private serviceContainer: ServiceContainer;
+  private service: TaskExecutionService;
+  private executors: Map<TaskType, FSMExecutorClass> = new Map();
 
-  constructor(serviceContainer: ServiceContainer) {
-    this.serviceContainer = serviceContainer;
+  constructor(service: TaskExecutionService) {
+    this.service = service;
     this.registerExecutors();
   }
 
@@ -28,15 +27,12 @@ export class FSMExecutorRegistry {
     this.executors.set(TaskType.TRANSPORT, TransportFSMExecutor);
     this.executors.set(TaskType.UPGRADE, UpgradeFSMExecutor);
     this.executors.set(TaskType.BUILD, BuildFSMExecutor);
-
-    // 注意：其他执行器暂时不注册，等后续重构时再添加
-    // this.executors.set(TaskType.ATTACK, AttackFSMExecutor);
   }
 
   /**
    * 获取 FSM 执行器
    */
-  public getExecutor(taskType: TaskType): (new (memory: TaskFSMMemory<any>, creep: Creep, serviceContainer: ServiceContainer) => TaskStateMachine<any>) | undefined {
+  public getExecutor(taskType: TaskType): FSMExecutorClass | undefined {
     return this.executors.get(taskType);
   }
 
@@ -55,7 +51,7 @@ export class FSMExecutorRegistry {
     if (!ExecutorClass) {
       return undefined;
     }
-    return new ExecutorClass(memory, creep, this.serviceContainer);
+    return new ExecutorClass(memory, this.service, creep);
   }
 
   /**

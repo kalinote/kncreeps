@@ -1,12 +1,11 @@
 import { TaskStateMachine } from "../fsm/StateMachine";
 import { StateHandlers, TaskType, BuildState, BuildTask } from "../../types";
 import { TaskFSMMemory } from "../../types";
-import { ServiceContainer } from "../../core/ServiceContainer";
-
+import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
-  constructor(taskMemory: TaskFSMMemory<BuildState>, creep: Creep, serviceContainer: ServiceContainer) {
-    super(taskMemory, creep, serviceContainer);
+  constructor(taskMemory: TaskFSMMemory<BuildState>, service: TaskExecutionService, creep: Creep) {
+    super(taskMemory, service, creep);
   }
 
   protected getExpectedTaskType(): TaskType {

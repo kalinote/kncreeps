@@ -4,13 +4,14 @@ import { CreepMoveService } from "../../services/creep/CreepMoveService";
 import { SourceAnalyzer } from "../../utils/SourceAnalyzer";
 import { ServiceContainer } from "../../core/ServiceContainer";
 import { TaskManager } from "managers/TaskManager";
+import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 /**
  * 采集任务 FSM 执行器
  */
 export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
-  constructor(taskMemory: TaskFSMMemory<HarvestState>, creep: Creep, serviceContainer: ServiceContainer) {
-    super(taskMemory, creep, serviceContainer);
+  constructor(taskMemory: TaskFSMMemory<HarvestState>, service: TaskExecutionService, creep: Creep) {
+    super(taskMemory, service, creep);
   }
 
   protected getFinishedState(): HarvestState {

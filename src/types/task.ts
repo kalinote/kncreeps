@@ -1,4 +1,6 @@
+import { TaskExecutionService } from "../services/task/TaskExecutionService";
 import { UnifiedMemoryCycleStructureMemory } from "./core";
+import { TaskStateMachine } from "../task/fsm/StateMachine";
 // ========================== 内存类型开始 ==========================
 
 // 任务系统内存类型
@@ -135,6 +137,9 @@ export interface AttackTask extends BaseTask {
 export type Task = HarvestTask | TransportTask | BuildTask | UpgradeTask | AttackTask;
 
 // ========================== 内存类型结束 ==========================
+
+// FSM 执行器类类型
+export type FSMExecutorClass = new (memory: TaskFSMMemory<any>, service: TaskExecutionService, creep: Creep) => TaskStateMachine<any>;
 
 // 任务类型枚举
 export enum TaskType {

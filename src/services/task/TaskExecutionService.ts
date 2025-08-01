@@ -2,17 +2,29 @@ import { BaseService } from "../BaseService";
 import { EventBus } from "../../core/EventBus";
 import { ServiceContainer } from "../../core/ServiceContainer";
 import { TaskManager } from "../../managers/TaskManager";
-import { Task, TaskExecutionServiceMemory, TaskStatus } from "../../types";
+import { FSMExecutorClass, Task, TaskExecutionServiceMemory, TaskFSMMemory, TaskManagerMemory, TaskStatus, TaskType } from "../../types";
 import { TaskStateService } from "./TaskStateService";
 import { GameConfig } from "../../config/GameConfig";
 import { Safe } from "../../utils/Decorators";
+import { FSMExecutorRegistry } from "../../task/FSMExecutorRegistry";
+import { TaskStateMachine } from "task/fsm/StateMachine";
 
 /**
  * 任务执行服务 - 负责驱动所有Creep执行其分配到的任务
  */
-export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory> {
+export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory, TaskManager> {
   protected readonly memoryKey: string = "execution";
 
+  private _fsmExecutorRegistry: FSMExecutorRegistry;
+
+  public get fsmExecutorRegistry(): FSMExecutorRegistry {
+    return this._fsmExecutorRegistry;
+  }
+
+  constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
+    super(eventBus, manager, memory);
+    this._fsmExecutorRegistry = new FSMExecutorRegistry(this);
+  }
 
   public cleanup(): void {}
 
@@ -36,7 +48,7 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
         continue;
       }
 
-      const task = this.taskManager.getCreepTask(creep.name);
+      const task = this.manager.getCreepTask(creep.name);
 
       if (task) {
         this.executeTask(creep, task);
@@ -44,27 +56,14 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
     }
   }
 
-  private executeTask(creep: Creep, task: Task): { success: boolean; message?: string } {
-    // 检查是否使用 FSM 执行器
-    if (this.taskManager.isFSMTask(task.type) && task.fsm) {
-      // 调试输出，后续删除
-      // console.log(`[TaskExecutionService] 使用 FSM 执行器: ${task.type}`);
-      return this.executeFSMTask(creep, task);
-    } else {
-      // 调试输出，后续删除
-      // console.log(`[TaskExecutionService] 使用传统执行器: ${task.type}`);
-      return this.executeLegacyTask(creep, task);
-    }
-  }
-
   // 添加新的 FSM 执行方法：
-  private executeFSMTask(creep: Creep, task: Task): { success: boolean; message?: string } {
+  private executeTask(creep: Creep, task: Task): { success: boolean; message?: string } {
     try {
-      const fsmExecutor = this.taskManager.createFSMExecutor(task.type, task.fsm!, creep);
+      const fsmExecutor = this.manager.createFSMExecutor(task.type, task.fsm!, creep);
       if (!fsmExecutor) {
         const errorMessage = `未找到任务类型 '${task.type}' 的 FSM 执行器`;
         console.log(`[TaskExecutionService] ${errorMessage} for task ID: ${task.id}`);
-        this.taskManager.updateTaskStatus(task.id, TaskStatus.FAILED);
+        this.manager.updateTaskStatus(task.id, TaskStatus.FAILED);
         this.emit(GameConfig.EVENTS.TASK_FAILED, {
           taskId: task.id,
           reason: errorMessage
@@ -78,11 +77,11 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
       // 检查该creep的任务是否完成
       if (fsmExecutor.isFinished()) {
         // 该 creep 已完成自身任务，立即解除绑定，防止占用共享任务名额
-        this.taskStateService.unassignCreep(creep.name);
+        this.manager.taskStateService.unassignCreep(creep.name);
 
         // 检查任务是否整体完成（所有creep都完成）
         if (fsmExecutor.isTaskFinished()) {
-          this.taskManager.updateTaskStatus(task.id, TaskStatus.COMPLETED);
+          this.manager.updateTaskStatus(task.id, TaskStatus.COMPLETED);
           this.emit(GameConfig.EVENTS.TASK_COMPLETED, {
             taskId: task.id,
             taskType: task.type,
@@ -94,7 +93,7 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
 
       // 更新任务状态为进行中
       if (task.status !== TaskStatus.IN_PROGRESS) {
-        this.taskManager.updateTaskStatus(task.id, TaskStatus.IN_PROGRESS);
+        this.manager.updateTaskStatus(task.id, TaskStatus.IN_PROGRESS);
         this.emit(GameConfig.EVENTS.TASK_STARTED, {
           taskId: task.id,
           taskType: task.type,
@@ -110,56 +109,19 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
     }
   }
 
-  /**
-   * 执行单个Creep的任务，并根据结果更新任务状态和发送事件
-   */
-  private executeLegacyTask(creep: Creep, task: Task): { success: boolean; message?: string } {
-    const executor = this.taskManager.getTaskExecutor(task.type);
-    if (!executor) {
-      const errorMessage = `未找到任务类型 '${task.type}' 的执行器`;
-      console.log(`[TaskExecutionService] ${errorMessage} for task ID: ${task.id}`);
-      this.taskManager.updateTaskStatus(task.id, TaskStatus.FAILED);
-      this.emit(GameConfig.EVENTS.TASK_FAILED, {
-        taskId: task.id,
-        reason: errorMessage
-      });
-      return { success: false, message: errorMessage };
-    }
+  public getCreepTask(creepName: string): Task | null {
+    return this.manager.getCreepTask(creepName);
+  }
 
-    // 执行任务并获取结果
-    const result = executor.execute(creep, task);
+  public getExecutor(taskType: TaskType): FSMExecutorClass | undefined {
+    return this.fsmExecutorRegistry.getExecutor(taskType);
+  }
 
-    // 根据执行结果更新任务状态
-    if (result.completed) {
-      const newStatus = result.success ? TaskStatus.COMPLETED : TaskStatus.FAILED;
-      this.taskManager.updateTaskStatus(task.id, newStatus);
+  public createExecutor(taskType: TaskType, memory: TaskFSMMemory, creep: Creep): TaskStateMachine<any> | undefined {
+    return this.fsmExecutorRegistry.createExecutor(taskType, memory, creep);
+  }
 
-      // 发送任务完成或失败的事件
-      const eventType = result.success ? GameConfig.EVENTS.TASK_COMPLETED : GameConfig.EVENTS.TASK_FAILED;
-      this.emit(eventType, {
-        taskId: task.id,
-        taskType: task.type,
-        creepName: creep.name,
-        roomName: task.roomName,
-        reason: result.message // 失败时附带原因
-      });
-    } else if (task.status !== TaskStatus.IN_PROGRESS) {
-      // 如果任务是首次执行，则更新状态为IN_PROGRESS并发送开始事件
-      this.taskManager.updateTaskStatus(task.id, TaskStatus.IN_PROGRESS);
-      this.emit(GameConfig.EVENTS.TASK_STARTED, {
-        taskId: task.id,
-        taskType: task.type,
-        creepName: creep.name,
-        roomName: task.roomName
-      });
-    } else {
-      // 任务正在进行中，可以发送进度事件（如果需要）
-      // this.emit(GameConfig.EVENTS.TASK_PROGRESS, { ... });
-    }
-
-    return {
-      success: result.success,
-      message: result.message
-    };
+  public hasExecutor(taskType: TaskType): boolean {
+    return this.fsmExecutorRegistry.hasExecutor(taskType);
   }
 }

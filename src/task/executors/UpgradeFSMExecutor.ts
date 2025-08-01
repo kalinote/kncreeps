@@ -1,12 +1,11 @@
 import { TaskStateMachine } from "../fsm/StateMachine";
 import { StateHandlers, TaskType, UpgradeState, UpgradeTask } from "../../types";
 import { TaskFSMMemory } from "../../types";
-import { ServiceContainer } from "../../core/ServiceContainer";
-
+import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
-  constructor(taskMemory: TaskFSMMemory<UpgradeState>, creep: Creep, serviceContainer: ServiceContainer) {
-    super(taskMemory, creep, serviceContainer);
+  constructor(taskMemory: TaskFSMMemory<UpgradeState>, service: TaskExecutionService, creep: Creep) {
+    super(taskMemory, service, creep);
   }
 
   protected getFinishedState(): UpgradeState {
