@@ -3,7 +3,7 @@ import { BaseLayer } from "./BaseLayer";
 import { EventBus } from "../../core/EventBus";
 import { ServiceContainer } from "../../core/ServiceContainer";
 import { VisualConfig } from "../../config/VisualConfig";
-import { TaskStateService } from "../../services/TaskStateService";
+import { TaskStateService } from "../../services/task/TaskStateService";
 import { PriorityCalculator } from "../../utils/PriorityCalculator";
 
 export class TaskAssignmentLayer extends BaseLayer {

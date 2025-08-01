@@ -5,17 +5,16 @@ import { CoordinationManager } from "../managers/CoordinationManager";
 import { BaseManager } from "../managers/BaseManager";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "../managers/CreepManager";
-import { TaskExecutionManager } from "../managers/TaskExecutionManager";
 import { EnergyService } from "../services/EnergyService";
 import { TaskManager } from "../managers/TaskManager";
 import { VisualManager } from "../managers/VisualManager";
-import { TaskStateService } from "../services/TaskStateService";
-import { TaskSchedulerService } from "../services/TaskSchedulerService";
-import { TaskExecutionService } from "../services/TaskExecutionService";
+import { TaskStateService } from "../services/task/TaskStateService";
+import { TaskSchedulerService } from "../services/task/TaskSchedulerService";
+import { TaskExecutionService } from "../services/task/TaskExecutionService";
 import { ConstructionManager } from "../managers/ConstructionManager";
 import { LayerManager } from "../managers/LayerManager";
 import { LogisticsManager } from "../managers/LogisticsManager";
-import { TaskGroupService } from "../services/TaskGroupService";
+import { TaskGroupService } from "../services/task/TaskGroupService";
 import { CommandManager } from "../managers/CommandManager";
 
 const serviceConfig = {
@@ -85,7 +84,6 @@ export class ServiceContainer {
     // 注册任务系统服务
     this.registerSingleton('taskStateService', () => new TaskStateService(this.get('eventBus'), this));
     this.registerSingleton('taskSchedulerService', () => new TaskSchedulerService(this.get('eventBus'), this));
-    this.registerSingleton('taskExecutionService', () => new TaskExecutionService(this.get('eventBus'), this));
     this.registerSingleton('taskGroupService', () => new TaskGroupService(this.get('eventBus'), this));
 
     // 注册任务系统

@@ -1,19 +1,24 @@
-import { BaseService } from "./BaseService";
+import { BaseService } from "../BaseService";
 import { TaskStateService } from "./TaskStateService";
-import { HarvestTask, TransportTask, UpgradeTask, BuildTask, AttackTask, TaskPriority, TaskType } from "../types";
-import { SourceAnalyzer } from "../utils/SourceAnalyzer";
-import { TransportService } from "./TransportService";
+import { HarvestTask, TransportTask, UpgradeTask, BuildTask, AttackTask, TaskPriority, TaskType, TaskGeneratorServiceMemory } from "../../types";
+import { SourceAnalyzer } from "../../utils/SourceAnalyzer";
 
 /**
  * 任务生成器服务 - 根据房间状态自动创建任务
  */
-export class TaskGeneratorService extends BaseService {
-  private get taskStateService(): TaskStateService {
-    return this.serviceContainer.get('taskStateService');
-  }
+export class TaskGeneratorService extends BaseService<TaskGeneratorServiceMemory> {
+  protected readonly memoryKey: string = "generator";
+  public cleanup(): void {}
 
-  private get transportService(): TransportService {
-    return this.serviceContainer.get('transportService');
+  public initialize(): void {
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0
+      }
+    }
   }
 
   /**

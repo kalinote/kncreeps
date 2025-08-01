@@ -1,47 +1,47 @@
-import { BaseService } from "./BaseService";
-import { EventBus } from "../core/EventBus";
-import { ServiceContainer } from "../core/ServiceContainer";
-import { TaskManager } from "../managers/TaskManager";
-import { Task, TaskStatus } from "../types";
+import { BaseService } from "../BaseService";
+import { EventBus } from "../../core/EventBus";
+import { ServiceContainer } from "../../core/ServiceContainer";
+import { TaskManager } from "../../managers/TaskManager";
+import { Task, TaskExecutionServiceMemory, TaskStatus } from "../../types";
 import { TaskStateService } from "./TaskStateService";
-import { GameConfig } from "../config/GameConfig";
+import { GameConfig } from "../../config/GameConfig";
+import { Safe } from "../../utils/Decorators";
 
 /**
  * 任务执行服务 - 负责驱动所有Creep执行其分配到的任务
  */
-export class TaskExecutionService extends BaseService {
-  private get taskManager(): TaskManager {
-    return this.serviceContainer.get('taskManager');
-  }
+export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory> {
+  protected readonly memoryKey: string = "execution";
 
-  // 方便访问任务状态服务
-  private get taskStateService(): TaskStateService {
-    return this.serviceContainer.get('taskStateService');
-  }
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-  }
+  public cleanup(): void {}
 
-  /**
-   * 执行所有Creep的任务
-   */
-  public run(): void {
-    this.safeExecute(() => {
-      for (const name in Game.creeps) {
-        const creep = Game.creeps[name];
-        // 如果creep正在生成，则跳过
-        if (creep.spawning) {
-          continue;
-        }
-
-        const task = this.taskManager.getCreepTask(creep.name);
-
-        if (task) {
-          this.executeTask(creep, task);
-        }
+  public initialize(): void {
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0
       }
-    }, 'TaskExecutionService.run');
+    }
+  }
+
+  @Safe()
+  public update(): void {
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+      // 如果creep正在生成，则跳过
+      if (creep.spawning) {
+        continue;
+      }
+
+      const task = this.taskManager.getCreepTask(creep.name);
+
+      if (task) {
+        this.executeTask(creep, task);
+      }
+    }
   }
 
   private executeTask(creep: Creep, task: Task): { success: boolean; message?: string } {

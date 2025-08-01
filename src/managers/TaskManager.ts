@@ -1,78 +1,61 @@
-import { TaskExecutorRegistry } from "../task/TaskExecutorRegistry";
 import { EventBus } from "../core/EventBus";
-import { Task, TaskType, TaskStatus, TaskPriority, TaskSystemMemory, TaskFSMMemory } from "../types";
+import { Task, TaskType, TaskStatus, TaskPriority, TaskManagerMemory, TaskFSMMemory } from "../types";
 import { BaseManager } from "./BaseManager";
-import { TaskRoleMapping } from "../config/TaskConfig";
 import { GameConfig } from "../config/GameConfig";
-import { TaskGeneratorService } from "../services/TaskGeneratorService";
-import { TaskSchedulerService } from "../services/TaskSchedulerService";
-import { TaskStateService } from "../services/TaskStateService";
-import { FSMExecutorRegistry } from "../task/FSMExecutorRegistry";
 import { TaskStateMachine } from "../task/fsm/StateMachine";
 import { ServiceContainer } from "../core/ServiceContainer";
+import { TaskExecutionService } from "../services/task/TaskExecutionService";
+import { TaskGeneratorService } from "../services/task/TaskGeneratorService";
+import { TaskGroupService } from "../services/task/TaskGroupService";
+import { TaskSchedulerService } from "services/task/TaskSchedulerService";
+import { TaskStateService } from "services/task/TaskStateService";
 
 /**
  * 任务管理器 - 管理所有任务的生命周期
  */
-export class TaskManager extends BaseManager {
-  private executorRegistry: TaskExecutorRegistry;
-  private fsmExecutorRegistry: FSMExecutorRegistry;
+export class TaskManager extends BaseManager<TaskManagerMemory> {
+  protected readonly memoryKey: string = "taskManager";
+
+  public get taskExecutionService(): TaskExecutionService {
+    return this.services.get("taskExecutionService") as TaskExecutionService;
+  }
+  public get taskGeneratorService(): TaskGeneratorService {
+    return this.services.get("taskGeneratorService") as TaskGeneratorService;
+  }
+  public get taskGroupService(): TaskGroupService {
+    return this.services.get("taskGroupService") as TaskGroupService;
+  }
+
+  public get taskSchedulerService(): TaskSchedulerService {
+    return this.services.get("taskSchedulerService") as TaskSchedulerService;
+  }
+
+  public get taskStateService(): TaskStateService {
+    return this.services.get("taskStateService") as TaskStateService;
+  }
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer);
     this.updateInterval = GameConfig.MANAGER_CONFIGS.TASK_MANAGER.UPDATE_INTERVAL;
-    this.executorRegistry = new TaskExecutorRegistry();
-    this.fsmExecutorRegistry = new FSMExecutorRegistry(serviceContainer);
-    this.taskStateService.initialize();
+
+    this.registerServices("taskExecutionService", new TaskExecutionService(this.eventBus, this.serviceContainer));
+    this.registerServices("taskGeneratorService", new TaskGeneratorService(this.eventBus, this.serviceContainer));
+    this.registerServices("taskGroupService", new TaskGroupService(this.eventBus, this.serviceContainer));
+    this.registerServices("taskSchedulerService", new TaskSchedulerService(this.eventBus, this.serviceContainer));
+    this.registerServices("taskStateService", new TaskStateService(this.eventBus, this.serviceContainer));
   }
 
-  private get taskGeneratorService(): TaskGeneratorService {
-    return this.serviceContainer.get('taskGeneratorService');
-  }
+  public updateManager(): void {}
+  public cleanup(): void {}
 
-  private get taskSchedulerService(): TaskSchedulerService {
-    return this.serviceContainer.get('taskSchedulerService');
-  }
-
-  private get taskStateService(): TaskStateService {
-    return this.serviceContainer.get('taskStateService');
-  }
-
-  /**
-   * 更新方法 - 被 GameEngine 调用
-   */
-  public update(): void {
-    if (!this.shouldUpdate()) return;
-
-    this.safeExecute(() => {
-      // 1. 生成新任务
-      this.taskGeneratorService.update();
-
-      // 2. 分配任务给空闲creep
-      this.taskSchedulerService.update();
-
-      // 3. 清理完成的任务
-      this.taskStateService.cleanup();
-
-      // 4. 输出调试信息
-      if (TaskRoleMapping.shouldPerformCleanup(Game.time, 'STATS_OUTPUT')) {
-        this.logTaskStats();
+  public initialize(): void {
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0
       }
-    }, 'TaskManager.update');
-
-    this.updateCompleted();
-  }
-
-  /**
-   * 输出任务统计信息
-   */
-  private logTaskStats(): void {
-    const stats = this.taskStateService.getStats();
-    // console.log(`[TaskManager] 任务统计 - 待处理:${stats.pendingTasks}, 总计:${stats.totalTasks}, 已创建:${stats.tasksCreated}, 已完成:${stats.tasksCompleted}`);
-
-    if (Memory.tasks?.creepTasks) {
-      const assignments = Object.keys(Memory.tasks.creepTasks).length;
-      // console.log(`[TaskManager] 已分配任务的creep数量: ${assignments}`);
     }
   }
 
@@ -83,9 +66,6 @@ export class TaskManager extends BaseManager {
     return this.executorRegistry.getExecutor(taskType);
   }
 
-  // All other methods are now moved to TaskStateService.
-  // We can add proxy methods here if other managers need them,
-  // but for now, we assume they will get the service from the container.
   public getCreepTask(creepName: string): Task | null {
     return this.taskStateService.getCreepTask(creepName);
   }

@@ -1,31 +1,28 @@
-import { BaseService } from "./BaseService";
+import { BaseService } from "../BaseService";
 import { TaskStateService } from "./TaskStateService";
-import { Task, TaskType, TaskAssignmentType, TaskPriority, TaskStatus } from "../types";
-import { TaskExecutorRegistry } from "../task/TaskExecutorRegistry";
-import { EventBus } from "../core/EventBus";
-import { PriorityCalculator } from "../utils/PriorityCalculator";
-import { TaskManager } from "../managers/TaskManager";
+import { Task, TaskType, TaskAssignmentType, TaskPriority, TaskStatus, TaskSchedulerServiceMemory } from "../../types";
+import { PriorityCalculator } from "../../utils/PriorityCalculator";
 
 /**
  * 任务调度器服务 - 负责任务分配和调度
  * 采用统一的动态优先级模型，取代了旧的"独占-共享"两段式调度。
  */
-export class TaskSchedulerService extends BaseService {
-  private executorRegistry: TaskExecutorRegistry;
-  private taskStateService: TaskStateService;
-  private taskManager: TaskManager;
+export class TaskSchedulerService extends BaseService<TaskSchedulerServiceMemory> {
+  protected readonly memoryKey: string = "scheduler";
 
-  constructor(eventBus: EventBus, serviceContainer: any) {
-    super(eventBus, serviceContainer);
-    this.executorRegistry = new TaskExecutorRegistry();
-    this.taskStateService = this.serviceContainer.get<TaskStateService>('taskStateService');
-    this.taskManager = this.serviceContainer.get<TaskManager>('taskManager');
+  public cleanup(): void {}
+
+  public initialize(): void {
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0
+      }
+    }
   }
 
-  /**
-   * 为所有可用 creep 分配最合适的任务。
-   * 采用基于动态优先级的统一调度模型。
-   */
   public update(): void {
     const availableCreeps = this.getAvailableCreeps();
     if (availableCreeps.length === 0) {

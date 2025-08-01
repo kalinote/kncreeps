@@ -6,7 +6,7 @@ import {
 import {
   CreepManagerMemory
 } from './creep';
-import { TaskSystemMemory } from './task';
+import { TaskManagerMemory } from './task';
 import { VisualManagerMemory } from './visual';
 import { ConstructionManagerMemory } from './construction';
 import { LogisticsMemory } from './logistics';
@@ -43,8 +43,11 @@ declare global {
     // 全局统计系统
     statsManager?: StatsManagerMemory;
 
+    // 任务管理系统
+    taskManager?: TaskManagerMemory;
+
     eventBus: EventBusMemory;
-    tasks?: TaskSystemMemory;
+
     gameEngine?: {
       initialized: boolean;
       lastTick: number;

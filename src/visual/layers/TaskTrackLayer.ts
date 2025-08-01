@@ -3,7 +3,7 @@ import { VisualConfig } from '../../config/VisualConfig';
 import { ServiceContainer } from '../../core/ServiceContainer';
 import { EventBus } from '../../core/EventBus';
 import { LayerType, Task, TaskType } from '../../types';
-import { TaskStateService } from '../../services/TaskStateService';
+import { TaskStateService } from '../../services/task/TaskStateService';
 
 /**
  * 任务追踪图层

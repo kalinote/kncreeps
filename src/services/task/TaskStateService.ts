@@ -1,43 +1,27 @@
-import { EventBus } from "../core/EventBus";
-import { GameConfig } from "../config/GameConfig";
+import { GameConfig } from "../../config/GameConfig";
 import {
   Task, TaskType, TaskStatus, TaskAssignmentType, TaskLifetime, TaskFSMMemory,
-  TaskKind, HarvestState, TransportState, BuildState, UpgradeState, AttackState
-} from "../types";
-import { BaseService } from "./BaseService";
-import { ServiceContainer } from "core/ServiceContainer";
+  TaskKind, HarvestState, TransportState, BuildState, UpgradeState, AttackState,
+  TaskStateServiceMemory
+} from "../../types";
+import { BaseService } from "../BaseService";
 
 /**
  * 任务状态服务 - 管理任务的状态和生命周期
  */
-export class TaskStateService extends BaseService {
+export class TaskStateService extends BaseService<TaskStateServiceMemory> {
+  protected readonly memoryKey: string = "state";
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-  }
+  public update(): void {}
 
   public initialize(): void {
-    this.initializeMemory();
-  }
-
-  /**
-   * 初始化内存结构
-   */
-  private initializeMemory(): void {
-    if (!Memory.tasks) {
-      Memory.tasks = {
-        taskQueue: [],
-        creepTasks: {},
-        taskAssignments: {},
-        completedTasks: [],
-        lastCleanup: 0,
-        stats: {
-          tasksCreated: 0,
-          tasksCompleted: 0,
-          tasksFailed: 0,
-          averageExecutionTime: 0
-        }
-      };
+    if (!this.memory.initAt) {
+      this.memory = {
+        initAt: Game.time,
+        lastUpdate: Game.time,
+        lastCleanup: Game.time,
+        errorCount: 0
+      }
     }
   }
 
