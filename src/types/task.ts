@@ -45,7 +45,14 @@ export interface TaskSchedulerServiceMemory extends UnifiedMemoryCycleStructureM
 
 // 任务状态服务内存类型
 export interface TaskStateServiceMemory extends UnifiedMemoryCycleStructureMemory {
-
+  taskQueue: Task[];                                      // 任务队列
+  creepTasks: { [creepName: string]: string };            // creep -> taskId 映射
+  taskAssignments: { [taskId: string]: string[] };         // taskId -> creepNames 映射
+  completedTasks: string[];                               // 已完成的任务ID列表（用于清理）
+  tasksCreated: number;                                   // 创建的任务数量
+  tasksCompleted: number;                                 // 完成的任务数量
+  tasksFailed: number;                                    // 失败的任务数量
+  averageExecutionTime: number;                           // 平均执行时间
 }
 
 // 基础任务接口

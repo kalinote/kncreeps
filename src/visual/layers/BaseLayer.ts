@@ -1,5 +1,6 @@
-import { EventBus } from '../../core/EventBus';
-import { ServiceContainer } from '../../core/ServiceContainer';
+import { RoomService } from 'services/room/RoomService';
+import { ConstructPlannerService } from 'services/construction/ConstructPlannerService';
+import { VisualLayoutService } from '../../services/visual/VisualLayoutService';
 import { ChartBuffer, LayerType } from '../../types'; // 从全局类型文件导入
 
 /**
@@ -10,14 +11,12 @@ export abstract class BaseLayer {
   protected abstract title: string;
   public abstract layerType: LayerType;
   public priority: number = 99;
-  protected eventBus: EventBus;
-  protected serviceContainer: ServiceContainer;
+  protected service: VisualLayoutService;
   protected buffer: ChartBuffer = [];
   protected textStyle: TextStyle = {};
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    this.eventBus = eventBus;
-    this.serviceContainer = serviceContainer;
+  constructor(service: VisualLayoutService) {
+    this.service = service;
   }
 
   /**

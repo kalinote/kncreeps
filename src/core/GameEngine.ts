@@ -1,7 +1,4 @@
 import { EventBus } from "./EventBus";
-import { SystemManager } from "../managers/SystemManager";
-import { StatsManager } from "../managers/StatsManager";
-import { CoordinationManager } from "../managers/CoordinationManager";
 import { BaseManager } from "../managers/BaseManager";
 import { GameConfig } from "../config/GameConfig";
 import { ServiceContainer } from "./ServiceContainer";
@@ -13,9 +10,6 @@ import { ServiceContainer } from "./ServiceContainer";
 export class GameEngine {
   private serviceContainer: ServiceContainer;
   private eventBus!: EventBus;
-  private systemManager!: SystemManager;
-  private statsManager!: StatsManager;
-  private coordinationManager!: CoordinationManager;
   private managers: Map<string, BaseManager> = new Map();
   private isInitialized: boolean = false;
   private lastRunTick: number = 0;
@@ -41,15 +35,6 @@ export class GameEngine {
 
       // 获取核心服务
       this.eventBus = this.serviceContainer.get('eventBus');
-      this.systemManager = this.serviceContainer.get('systemManager');
-      this.statsManager = this.serviceContainer.get('statsManager');
-      this.coordinationManager = this.serviceContainer.get('coordinationManager');
-
-      // 初始化系统管理器
-      this.systemManager.update();
-
-      // 初始化所有服务
-      this.serviceContainer.initializeServices();
 
       // 设置全局引用, 必须在初始化管理器之前
       this.setupGlobalReferences();
@@ -63,8 +48,6 @@ export class GameEngine {
 
       this.isInitialized = true;
       console.log(`游戏引擎初始化完成 - Tick: ${Game.time}`);
-      // console.log(`服务容器状态: ${JSON.stringify(this.serviceContainer.getServiceStats())}`);
-
     } catch (error) {
       console.log('游戏引擎初始化失败:', error);
       this.handleInitializationError(error);
@@ -112,9 +95,6 @@ export class GameEngine {
       if (Game.time === this.lastRunTick) {
         return;
       }
-
-      // 1. 更新系统管理器
-      this.systemManager.update();
 
       // 2. 处理事件队列
       this.eventBus.processEvents();

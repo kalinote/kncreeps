@@ -1,8 +1,8 @@
 import { LayerType } from '../../types';
-import { RoomService } from '../../services/room/RoomService';
 import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
-import { ServiceContainer } from '../../core/ServiceContainer';
+import { VisualLayoutService } from '../../services/visual/VisualLayoutService';
+import { RoomService } from 'services/room/RoomService';
 
 /**
  * 房间信息图层
@@ -12,11 +12,13 @@ export class RoomInfoLayer extends BaseLayer {
   protected name = 'RoomInfoLayer';
   protected title: string = "房间信息";
   public layerType: LayerType = LayerType.DATA;
-  private roomService: RoomService;
 
-  constructor(eventBus: any, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-    this.roomService = serviceContainer.get('roomService');
+  protected get roomService(): RoomService {
+    return this.service.roomService;
+  }
+
+  constructor(service: VisualLayoutService) {
+    super(service);
     this.textStyle = VisualConfig.STYLES.ROOM_INFO_STYLE;
   }
 

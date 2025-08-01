@@ -2,15 +2,17 @@ import { BasePlanner } from "./planners/BasePlanner";
 import { ContainerPlanner } from "./planners/ContainerPlanner";
 import { ExtensionPlanner } from "./planners/ExtensionPlanner";
 import { RoadPlanner } from "./planners/RoadPlanner";
-
+import { ConstructPlannerService } from '../services/construction/ConstructPlannerService';
 /**
  * 规划器注册表
  * 统一管理所有的建筑规划器。
  */
 export class PlannerRegistry {
   private planners: Map<string, BasePlanner> = new Map();
+  private service: ConstructPlannerService;
 
-  constructor() {
+  constructor(service: ConstructPlannerService) {
+    this.service = service;
     this.registerPlanners();
   }
 
@@ -18,9 +20,9 @@ export class PlannerRegistry {
    * 注册所有的规划器实例
    */
   private registerPlanners(): void {
-    this.register(new RoadPlanner());
-    this.register(new ContainerPlanner());
-    this.register(new ExtensionPlanner());
+    this.register(new RoadPlanner(this.service));
+    this.register(new ContainerPlanner(this.service));
+    this.register(new ExtensionPlanner(this.service));
   }
 
   /**

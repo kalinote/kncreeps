@@ -1,24 +1,25 @@
 import { BaseService } from "../BaseService";
 import { PerformanceStatsServiceMemory } from "../../types";
-
+import { StatsManager } from "../../managers/StatsManager";
+import { EventBus } from "../../core/EventBus";
 
 export class PerformanceStatsService extends BaseService<PerformanceStatsServiceMemory> {
-  protected readonly memoryKey: string = 'performance';
-
   public cleanup(): void {}
+
+  constructor(eventBus: EventBus, manager: StatsManager, memory: any) {
+    super(eventBus, manager, memory, 'performance');
+  }
 
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0,
-        lastUpdate: Game.time,
-        averageTickTime: 0,
-        averageTickTimeCount: 0,
-        currentTickTime: 0,
-        performanceHistory: []
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+      this.memory.lastUpdate = Game.time;
+      this.memory.averageTickTime = 0;
+      this.memory.averageTickTimeCount = 0;
+      this.memory.currentTickTime = 0;
+      this.memory.performanceHistory = [];
     }
   }
 

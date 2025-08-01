@@ -1,24 +1,26 @@
 import { BaseService } from "../BaseService";
-import { TaskGroupServiceMemory, TaskKind } from "../../types";
+import { TaskGroupServiceMemory, TaskManagerMemory } from "../../types";
+import { EventBus } from "../../core/EventBus";
+import { TaskManager } from "../../managers/TaskManager";
 
 /**
  * // TODO 任务组服务
  * 负责管理一组需要协同执行的任务(比如集群作战等)
  */
 export class TaskGroupService extends BaseService<TaskGroupServiceMemory> {
-  protected readonly memoryKey: string = "group";
-
   public update(): void {}
   public cleanup(): void {}
 
+  constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
+    super(eventBus, manager, memory, 'group');
+  }
+
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
   }
 }

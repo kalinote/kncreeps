@@ -1,20 +1,18 @@
 import { BaseService } from "../BaseService";
 import { EventBus } from "../../core/EventBus";
-import { ServiceContainer } from "../../core/ServiceContainer";
 import { TaskManager } from "../../managers/TaskManager";
 import { FSMExecutorClass, Task, TaskExecutionServiceMemory, TaskFSMMemory, TaskManagerMemory, TaskStatus, TaskType } from "../../types";
-import { TaskStateService } from "./TaskStateService";
 import { GameConfig } from "../../config/GameConfig";
 import { Safe } from "../../utils/Decorators";
 import { FSMExecutorRegistry } from "../../task/FSMExecutorRegistry";
 import { TaskStateMachine } from "task/fsm/StateMachine";
+import { CreepMoveService } from "../creep/CreepMoveService";
+import { EnergyService } from "../logistics/EnergyService";
 
 /**
  * 任务执行服务 - 负责驱动所有Creep执行其分配到的任务
  */
 export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory, TaskManager> {
-  protected readonly memoryKey: string = "execution";
-
   private _fsmExecutorRegistry: FSMExecutorRegistry;
 
   public get fsmExecutorRegistry(): FSMExecutorRegistry {
@@ -22,20 +20,26 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
   }
 
   constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
-    super(eventBus, manager, memory);
+    super(eventBus, manager, memory, 'execution');
     this._fsmExecutorRegistry = new FSMExecutorRegistry(this);
+  }
+
+  public get moveService(): CreepMoveService {
+    return this.manager.creepManager.moveService;
+  }
+
+  public get energyService(): EnergyService {
+    return this.manager.logisticsManager.energyService;
   }
 
   public cleanup(): void {}
 
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
   }
 

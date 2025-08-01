@@ -9,6 +9,7 @@ export interface VisualManagerMemory extends UnifiedMemoryCycleStructureMemory {
 
 export interface LayerSettingsMemory {
   enabled: boolean;
+  priority: number;
 }
 
 // ========================== 内存类型结束 ==========================

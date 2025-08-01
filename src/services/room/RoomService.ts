@@ -10,12 +10,10 @@ import { RoomManager } from "../../managers/RoomManager";
  * 房间服务 - 提供房间状态分析、威胁检测和信息管理
  */
 export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisMemory }, RoomManager> {
-  protected readonly memoryKey: string = 'analysis';
-
   public cleanup(): void {}
 
   constructor(eventBus: EventBus, manager: RoomManager, memory: RoomManagerMemory) {
-    super(eventBus, manager, memory);
+    super(eventBus, manager, memory, 'analysis');
     this.initializeRoomsMemory();
   }
 
@@ -38,16 +36,15 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
     if (!this.memory[roomName]) {
       console.log(`[RoomService] 初始化房间 ${roomName} 内存`);
       const room = Game.rooms[roomName];
-      this.memory[roomName] = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0,
-        energyAvailable: room?.energyAvailable || 0,
-        energyCapacity: room?.energyCapacityAvailable || 0,
-        controllerLevel: room?.controller?.level || 0,
-        creepCounts: {},
-      };
+      this.memory[roomName] = {} as RoomAnalysisMemory;
+      this.memory[roomName].initAt = Game.time;
+      this.memory[roomName].lastUpdate = Game.time;
+      this.memory[roomName].lastCleanup = Game.time;
+      this.memory[roomName].errorCount = 0;
+      this.memory[roomName].energyAvailable = room?.energyAvailable || 0;
+      this.memory[roomName].energyCapacity = room?.energyCapacityAvailable || 0;
+      this.memory[roomName].controllerLevel = room?.controller?.level || 0;
+      this.memory[roomName].creepCounts = {};
     }
   }
 

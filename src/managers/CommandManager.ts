@@ -9,8 +9,6 @@ import { GameConfig } from "../config/GameConfig";
  * 命令管理器 - 管理所有调试命令
  */
 export class CommandManager extends BaseManager {
-  protected readonly memoryKey = undefined;
-
   private commandRegistry: CommandRegistry;
   private globalDebugObject: any;
   private globalVisualObject: any;

@@ -17,7 +17,7 @@ import {
   Consumers
 } from '../../types';
 import { Safe, SafeMemoryAccess } from '../../utils/Decorators';
-import { BaseManager } from "../../managers/BaseManager";
+import { LogisticsManager } from "../../managers/LogisticsManager";
 
 // 临时定义，后续可以移到Config文件中
 const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
@@ -39,18 +39,12 @@ const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
  * 负责维护运输网络，并根据供需生成运输任务。
  */
 export class TransportService extends BaseService<{ [roomName: string]: TransportNetworkServiceMemory }> {
-  protected readonly memoryKey: string = 'transportNetworkService';
-
-  public initialize(): void {
-    if (this.memory === undefined) {
-      this.memory = {};
-    }
-  }
+  public initialize(): void {}
 
   public cleanup(): void {}
 
-  constructor(eventBus: EventBus, manager: BaseManager, memory: any) {
-    super(eventBus, manager, memory);
+  constructor(eventBus: EventBus, manager: LogisticsManager, memory: any) {
+    super(eventBus, manager, memory, 'transportNetworkService');
   }
 
   @Safe("TransportService.update")

@@ -3,20 +3,46 @@ import { BaseManager } from './BaseManager';
 import { VisualConfig } from '../config/VisualConfig';
 import { EventConfig } from '../config/EventConfig';
 import { GameConfig } from '../config/GameConfig';
-import { VisualManagerMemory } from 'types';
+import { VisualManagerMemory, LayerType } from '../types';
 import { Safe, SafeMemoryAccess } from '../utils/Decorators';
+import { RoomManager } from './RoomManager';
+import { ConstructionManager } from './ConstructionManager';
+import { TaskManager } from './TaskManager';
+import { ServiceContainer } from '../core/ServiceContainer';
+import { VisualLayoutService } from '../services/visual/VisualLayoutService';
+import { LayerRegistry } from '../visual/LayerRegistry';
 
 /**
  * 可视化管理器 - 负责渲染调度和缓存控制
  */
 export class VisualManager extends BaseManager<VisualManagerMemory> {
-  protected readonly memoryKey: string = 'visualManager';
-
   public cleanup(): void {}
 
-  constructor(eventBus: EventBus, serviceContainer: any) {
-    super(eventBus, serviceContainer);
+  public get roomManager(): RoomManager {
+    return this.serviceContainer.get<RoomManager>('roomManager');
+  }
+
+  public get constructionManager(): ConstructionManager {
+    return this.serviceContainer.get<ConstructionManager>('constructionManager');
+  }
+
+  public get taskManager(): TaskManager {
+    return this.serviceContainer.get<TaskManager>('taskManager');
+  }
+
+  public get visualLayoutService(): VisualLayoutService {
+    return this.services.get('visualLayoutService') as VisualLayoutService;
+  }
+
+  public get layerRegistry(): LayerRegistry {
+    return this.visualLayoutService.layerRegistry;
+  }
+
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+    super(eventBus, serviceContainer, 'visualManager');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.VISUAL_MANAGER.UPDATE_INTERVAL;
+
+    this.registerServices("visualLayoutService", new VisualLayoutService(eventBus, this, this.memory));
   }
 
   /**
@@ -25,14 +51,18 @@ export class VisualManager extends BaseManager<VisualManagerMemory> {
   @Safe("VisualManager.initialize")
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0,
-        cache: null
-      };
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+      this.memory.cache = null;
     }
+  }
+
+  protected setupEventListeners(): void {
+    this.on(EventConfig.EVENTS.VISUALS_DRAW_REQUEST, () => {
+      this.renderAllLayers();
+    });
   }
 
   /**
@@ -108,6 +138,49 @@ export class VisualManager extends BaseManager<VisualManagerMemory> {
     if (currentSize > VisualConfig.PERFORMANCE.MAX_VISUAL_SIZE) {
       console.log(`警告: 可视化数据大小 ${currentSize} 超过限制`);
       this.emit(EventConfig.EVENTS.VISUAL_OVERFLOW, { size: currentSize });
+    }
+  }
+
+  // TODO 这些功能应该放到一个service中，而不是在manager中执行
+  private renderAllLayers(): void {
+    // 1. 为数据类图层计算布局
+    const dataLayers = this.layerRegistry.getAllLayers().filter(l => l.layerType === LayerType.DATA && this.visualLayoutService.isLayerEnabled(l.getName()));
+    const layoutMap = this.visualLayoutService.calculateLayout(dataLayers);
+
+    // 2. 遍历所有可见房间
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (!room.controller?.my) continue;
+
+      // 3. 获取该房间需要渲染的图层
+      const activeLayers = this.layerRegistry.getAllLayers()
+        .filter(layer => this.visualLayoutService.isLayerEnabled(layer.getName()))
+        .sort((a, b) => a.getPriority() - b.getPriority());
+
+      // 4. 渲染所有图层
+      for (const layer of activeLayers) {
+        try {
+          if (layer.layerType === LayerType.DATA) {
+            const offset = layoutMap.get(layer.getName());
+
+            // 4.1 数据类图层绘制窗口
+            const title = `${layer.getTitle()}`;
+            const window = new RoomVisual(roomName);
+            window.rect(offset!.x, offset!.y - 0.8 /* 去掉标题高度 */, offset!.width, offset!.height, { fill: '#000000', opacity: 0.5, stroke: '#FFFFFF', strokeWidth: 0.1 });
+            window.text(title, offset!.x + 0.25 /* 左边距 */, offset!.y, { color: '#FFFFFF', font: 0.8 , align: "left"});
+            window.line(offset!.x, offset!.y + 0.35/* 这个值暂时是随便定的 */, offset!.x + offset!.width, offset!.y + 0.35, { color: '#FFFFFF', width: 0.05 });
+
+            if (offset) {
+              // console.log(`[LayerManager] 渲染图层: ${layer.getName()} 在房间 ${roomName} 的坐标: ${offset.x}, ${offset.y}`);
+              layer.render(room, {x: offset!.x + 0.5, y: offset!.y + 1.2 /* 标题高度 */});
+            }
+          } else {
+            layer.render(room);
+          }
+        } catch (error: any) {
+          console.log(`[LayerManager] 图层渲染失败: ${layer.getName()} 在房间 ${roomName}: ${error.stack || error}`);
+        }
+      }
     }
   }
 

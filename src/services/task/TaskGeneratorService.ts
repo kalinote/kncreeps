@@ -1,23 +1,25 @@
 import { BaseService } from "../BaseService";
-import { HarvestTask, TransportTask, UpgradeTask, BuildTask, AttackTask, TaskPriority, TaskType, TaskGeneratorServiceMemory } from "../../types";
+import { HarvestTask, TransportTask, UpgradeTask, BuildTask, AttackTask, TaskPriority, TaskType, TaskGeneratorServiceMemory, TaskManagerMemory } from "../../types";
+import { EventBus } from "../../core/EventBus";
+import { TaskManager } from "../../managers/TaskManager";
 import { SourceAnalyzer } from "../../utils/SourceAnalyzer";
-import { TaskManager } from "managers/TaskManager";
 
 /**
  * 任务生成器服务 - 根据房间状态自动创建任务
  */
 export class TaskGeneratorService extends BaseService<TaskGeneratorServiceMemory, TaskManager> {
-  protected readonly memoryKey: string = "generator";
   public cleanup(): void {}
+
+  constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
+    super(eventBus, manager, memory, 'generator');
+  }
 
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
   }
 

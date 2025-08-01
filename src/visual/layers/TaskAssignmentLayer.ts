@@ -1,21 +1,22 @@
 import { LayerType, TaskAssignmentType } from "../../types";
 import { BaseLayer } from "./BaseLayer";
-import { EventBus } from "../../core/EventBus";
-import { ServiceContainer } from "../../core/ServiceContainer";
 import { VisualConfig } from "../../config/VisualConfig";
 import { TaskStateService } from "../../services/task/TaskStateService";
 import { PriorityCalculator } from "../../utils/PriorityCalculator";
+import { VisualLayoutService } from '../../services/visual/VisualLayoutService';
 
 export class TaskAssignmentLayer extends BaseLayer {
   protected name: string = "TaskAssignmentLayer";
   protected title: string = "任务分配情况";
   public layerType: LayerType = LayerType.DATA;
-  private taskStateService: TaskStateService;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+  protected get taskStateService(): TaskStateService {
+    return this.service.taskStateService;
+  }
+
+  constructor(service: VisualLayoutService) {
+    super(service);
     this.textStyle = VisualConfig.STYLES.TASK_ASSIGNMENT_STYLE;
-    this.taskStateService = this.serviceContainer.get<TaskStateService>("taskStateService");
   }
 
   public preRender(room: Room): void {

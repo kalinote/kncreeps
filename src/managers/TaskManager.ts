@@ -10,13 +10,12 @@ import { TaskGroupService } from "../services/task/TaskGroupService";
 import { TaskSchedulerService } from "services/task/TaskSchedulerService";
 import { TaskStateService } from "services/task/TaskStateService";
 import { LogisticsManager } from "./LogisticsManager";
+import { CreepManager } from "./CreepManager";
 
 /**
  * 任务管理器 - 管理所有任务的生命周期
  */
 export class TaskManager extends BaseManager<TaskManagerMemory> {
-  protected readonly memoryKey: string = "taskManager";
-
   public get taskExecutionService(): TaskExecutionService {
     return this.services.get("taskExecutionService") as TaskExecutionService;
   }
@@ -41,8 +40,12 @@ export class TaskManager extends BaseManager<TaskManagerMemory> {
     return this.serviceContainer.get("logisticsManager") as LogisticsManager;
   }
 
+  public get creepManager(): CreepManager {
+    return this.serviceContainer.get("creepManager") as CreepManager;
+  }
+
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+    super(eventBus, serviceContainer, 'taskManager');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.TASK_MANAGER.UPDATE_INTERVAL;
 
     this.registerServices("taskExecutionService", new TaskExecutionService(this.eventBus, this, this.memory));
@@ -57,12 +60,10 @@ export class TaskManager extends BaseManager<TaskManagerMemory> {
 
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
   }
 

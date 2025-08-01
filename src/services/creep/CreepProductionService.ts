@@ -1,26 +1,29 @@
 import { GameConfig } from "../../config/GameConfig";
 import { TaskRoleMapping } from "../../config/TaskConfig";
 import { BodyBuilder } from "../../utils/BodyBuilder";
-import { ProductionNeed, Task, TaskType, TaskStatus, TaskAssignmentType, CreepProductionServiceMemory } from "../../types";
+import { ProductionNeed, Task, TaskType, TaskStatus, CreepProductionServiceMemory } from "../../types";
 import { BaseService } from "../BaseService";
+import { CreepManager } from "../../managers/CreepManager";
+import { SafeMemoryAccess } from "../../utils/Decorators";
+import { EventBus } from "../../core/EventBus";
 
 /**
  * Creep生产服务
  */
-export class CreepProductionService extends BaseService<CreepProductionServiceMemory> {
-  protected readonly memoryKey: string = 'creepProduction';
+export class CreepProductionService extends BaseService<CreepProductionServiceMemory, CreepManager> {
+  constructor(eventBus: EventBus, manager: CreepManager, memory: any) {
+    super(eventBus, manager, memory, 'creepProduction');
+  }
 
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0,
-        queue: [],
-        lastProduction: Game.time,
-        energyBudget: 0,
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+      this.memory.queue = [];
+      this.memory.lastProduction = Game.time;
+      this.memory.energyBudget = 0;
     }
   }
 
@@ -186,7 +189,7 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
    */
   private updateProductionDemands(): void {
     // 获取所有待分配的任务
-    const pendingTasks = this.getPendingTasks();
+    const pendingTasks = this.manager.taskManager.taskSchedulerService.getPendingTasks();
 
     // 按房间分组任务
     const tasksByRoom = this.groupTasksByRoom(pendingTasks);
@@ -459,28 +462,6 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
         );
       }
     }
-  }
-
-  /**
-   * 获取待分配的任务 - 包含需要生产creep的任务
-   */
-  private getPendingTasks(): Task[] {
-    if (!Memory.tasks) return [];
-
-    return Memory.tasks.taskQueue.filter(task => {
-      // 对于transport任务，需要特殊处理
-      if (task.type === TaskType.TRANSPORT) {
-        // transport任务是EXCLUSIVE类型，一旦分配就变为IN_PROGRESS
-        // 但如果地面上还有更多资源，可能需要更多transporter
-        // 所以transport任务只要是活跃状态就计入需求
-        return task.status === TaskStatus.PENDING ||
-          task.status === TaskStatus.ASSIGNED ||
-          task.status === TaskStatus.IN_PROGRESS;
-      }
-
-      // 其他任务类型只考虑PENDING状态
-      return task.status === TaskStatus.PENDING;
-    });
   }
 
   /**
@@ -808,11 +789,10 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
   /**
    * 获取正在执行特定任务类型的指定角色creep数量
    */
+  @SafeMemoryAccess()
   private getCreepsAssignedToTaskType(roomName: string, role: string, taskType: TaskType): number {
-    if (!Memory.tasks || !Memory.tasks.creepTasks) return 0;
-
     let count = 0;
-    for (const creepName in Memory.tasks.creepTasks) {
+    for (const creepName in this.manager.taskManager.taskStateService.getTasks()) {
       const creep = Game.creeps[creepName];
       if (!creep) continue;
 
@@ -821,8 +801,7 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
       if (creepRoom !== roomName || creep.memory.role !== role) continue;
 
       // 检查任务类型
-      const taskId = Memory.tasks.creepTasks[creepName];
-      const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+      const task = this.manager.taskManager.taskStateService.getTaskByCreepName(creepName);
       if (task && task.type === taskType) {
         count++;
       }
@@ -845,7 +824,7 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
       if (creepRoom !== roomName || creep.memory.role !== role) continue;
 
       // 检查是否有任务分配
-      const hasTask = Memory.tasks && Memory.tasks.creepTasks && Memory.tasks.creepTasks[creepName];
+      const hasTask = this.manager.taskManager.taskStateService.getTaskIdByCreepName(creepName);
       if (!hasTask) {
         count++;
       }
@@ -868,10 +847,10 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
       if (!Game.rooms[room] || !Game.rooms[room].controller?.my) continue;
 
       console.log(`🏢 房间: ${room} (RCL ${Game.rooms[room].controller?.level || 1})`);
-      const tasks = this.getPendingTasks().filter(task => task.roomName === room);
+      const tasks = this.manager.taskManager.taskSchedulerService.getPendingTasksByRoom(room);
 
       console.log(`  📋 获取pending任务:`);
-      console.log(`    总任务数: ${Memory.tasks?.taskQueue.length || 0}, pending任务数: ${tasks.length}`);
+      console.log(`    总任务数: ${this.manager.taskManager.taskStateService.getTasks().length}, pending任务数: ${tasks.length}`);
 
       if (tasks.length > 0) {
         const tasksByType = this.groupTasksByType(tasks);

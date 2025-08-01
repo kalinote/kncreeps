@@ -1,4 +1,3 @@
-import { UnifiedMemoryCycleStructureMemory } from "../types";
 import { EventBus } from "../core/EventBus";
 import { BaseManager } from "../managers/BaseManager";
 
@@ -8,15 +7,29 @@ import { BaseManager } from "../managers/BaseManager";
 export abstract class BaseService<TMemory = any, TManager = BaseManager> {
   protected eventBus: EventBus;
   protected manager: TManager;
-  protected memory!: TMemory;
-  protected abstract readonly memoryKey?: string;
+  protected readonly memoryKey?: string;
   protected hasErrors: boolean = false;
   protected errorCount: number = 0;
   protected maxErrorCount: number = 5; // 服务可以容忍更多错误
 
-  constructor(eventBus: EventBus, manager: TManager, memory: any) {
+  // 添加getter
+  protected get memory(): TMemory {
+    if (this.memoryKey === undefined) {
+      throw new Error(`服务 ${this.constructor.name} 没有设置memoryKey`);
+    }
+
+    // 从manager的memory中获取
+    const managerMemory = (this.manager as any).memory;
+    if (!managerMemory[this.memoryKey]) {
+      managerMemory[this.memoryKey] = {};
+    }
+    return managerMemory[this.memoryKey] as TMemory;
+  }
+
+  constructor(eventBus: EventBus, manager: TManager, memory: any, memoryKey?: string) {
     this.eventBus = eventBus;
     this.manager = manager;
+    this.memoryKey = memoryKey;
     this.initializeMemory(memory);
     this.setupEventListeners();
   }
@@ -51,7 +64,6 @@ export abstract class BaseService<TMemory = any, TManager = BaseManager> {
     if (memory[this.memoryKey] === undefined) {
       memory[this.memoryKey] = {};
     }
-    this.memory = memory[this.memoryKey] as TMemory;
   }
 
   /**
@@ -81,18 +93,4 @@ export abstract class BaseService<TMemory = any, TManager = BaseManager> {
       console.log(`服务 ${this.constructor.name} 因重复错误已被标记为不健康`);
     }
   }
-
-  // /**
-  //  * 安全执行方法 - 包装可能出错的代码
-  //  */
-  // protected safeExecute<T>(operation: () => T, operationName?: string): T | undefined {
-  //   try {
-  //     return operation();
-  //   } catch (error: any) {
-  //     const name = operationName || '未知操作';
-  //     console.log(`${this.constructor.name} - ${name} 执行失败:`, error.stack || error);
-  //     this.setError(error);
-  //     return undefined;
-  //   }
-  // }
 }

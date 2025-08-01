@@ -8,13 +8,14 @@ import { CreepLifecycleService } from "../services/creep/CreepLifecycleService";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { CreepMoveService } from "../services/creep/CreepMoveService";
 import { Safe } from "../utils/Decorators";
+import { TaskManager } from "./TaskManager";
 
 
 /**
  * Creep管理器
  */
 export class CreepManager extends BaseManager<CreepManagerMemory> {
-  protected readonly memoryKey: string = 'creepManager';
+  public cleanup(): void {}
 
   public get productionService(): CreepProductionService {
     return this.services.get('productionService') as CreepProductionService;
@@ -26,8 +27,12 @@ export class CreepManager extends BaseManager<CreepManagerMemory> {
     return this.services.get('moveService') as CreepMoveService;
   }
 
+  public get taskManager(): TaskManager {
+    return this.serviceContainer.get<TaskManager>('taskManager');
+  }
+
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+    super(eventBus, serviceContainer, 'creepManager');
 
     this.updateInterval = GameConfig.MANAGER_CONFIGS.CREEP_MANAGER.UPDATE_INTERVAL;
 
@@ -48,17 +53,11 @@ export class CreepManager extends BaseManager<CreepManagerMemory> {
    */
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0,
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
-  }
-
-  public cleanup(): void {
-    throw new Error("Method not implemented.");
   }
 
   /**

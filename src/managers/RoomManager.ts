@@ -11,8 +11,6 @@ import { LogisticsManager } from "./LogisticsManager";
  * 房间管理器 - 协调房间相关的服务和操作
  */
 export class RoomManager extends BaseManager<RoomManagerMemory> {
-  protected readonly memoryKey: string = 'roomManager';
-
   public get roomService(): RoomService {
     return this.services.get('roomService') as RoomService;
   }
@@ -25,7 +23,7 @@ export class RoomManager extends BaseManager<RoomManagerMemory> {
   public cleanup(): void {}
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+    super(eventBus, serviceContainer, 'roomManager');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.ROOM_MANAGER.UPDATE_INTERVAL;
 
     this.registerServices('roomService', new RoomService(this.eventBus, this, this.memory));
@@ -33,12 +31,10 @@ export class RoomManager extends BaseManager<RoomManagerMemory> {
 
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
   }
 

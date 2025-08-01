@@ -5,7 +5,6 @@ export interface ConstructionManagerMemory extends UnifiedMemoryCycleStructureMe
   layouts: {
     [roomName: string]: RoomLayoutMemory;
   };
-  lastRun: number;
 }
 
 // 房间布局蓝图

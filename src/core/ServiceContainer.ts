@@ -5,24 +5,17 @@ import { CoordinationManager } from "../managers/CoordinationManager";
 import { BaseManager } from "../managers/BaseManager";
 import { RoomManager } from "../managers/RoomManager";
 import { CreepManager } from "../managers/CreepManager";
-import { EnergyService } from "../services/EnergyService";
 import { TaskManager } from "../managers/TaskManager";
 import { VisualManager } from "../managers/VisualManager";
-import { TaskStateService } from "../services/task/TaskStateService";
-import { TaskSchedulerService } from "../services/task/TaskSchedulerService";
 import { ConstructionManager } from "../managers/ConstructionManager";
-import { LayerManager } from "../managers/LayerManager";
 import { LogisticsManager } from "../managers/LogisticsManager";
-import { TaskGroupService } from "../services/task/TaskGroupService";
 import { CommandManager } from "../managers/CommandManager";
 
 const serviceConfig = {
   // 核心服务，需要最先初始化
   coreServices: [
     'eventBus',
-    'managerRegistry',
-    // SystemService 负责初始化内存等，应尽早初始化
-    'systemService'
+    'managerRegistry'
   ],
   // 系统管理器，也需要较早初始化
   systemManagers: ['statsManager', 'coordinationManager'],
@@ -33,22 +26,8 @@ const serviceConfig = {
     'creepManager',
     'constructionManager',
     'taskManager', // 决策
-    'taskExecutionManager', // 执行
     'visualManager',
-    'layerManager',
     'commandManager'
-  ],
-  // 业务服务
-  services: [
-    'energyService',
-    'roomService',
-    'taskStateService',
-    'taskGeneratorService',
-    'taskSchedulerService',
-    'taskExecutionService',
-    'taskGroupService',
-    'statsService',
-    'constructPlannerService',
   ]
 };
 
@@ -76,9 +55,6 @@ export class ServiceContainer {
     this.registerSingleton('statsManager', () => new StatsManager(this.get('eventBus'), this));
     this.registerSingleton('coordinationManager', () => new CoordinationManager(this.get('eventBus'), this));
 
-    // 注册业务服务
-    this.registerSingleton('energyService', () => new EnergyService(this.get('eventBus'), this));
-
     // 注册任务系统
     this.registerSingleton('taskManager', () => new TaskManager(this.get('eventBus'), this));
 
@@ -99,7 +75,6 @@ export class ServiceContainer {
 
     // 注册可视化管理器和服务
     this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus'), this));
-    this.registerSingleton('layerManager', () => new LayerManager(this.get('eventBus'), this));
 
     // 注册命令管理器
     this.registerSingleton('commandManager', () => new CommandManager(this.get('eventBus'), this));
@@ -187,18 +162,6 @@ export class ServiceContainer {
     }
 
     console.log('ServiceContainer: 管理器已初始化');
-  }
-
-  /**
-   * 初始化所有服务
-   */
-  public initializeServices(): void {
-    // 初始化业务服务
-    for (const serviceName of serviceConfig.services) {
-      this.get(serviceName);
-    }
-
-    console.log('ServiceContainer: 业务服务已初始化');
   }
 
   /**

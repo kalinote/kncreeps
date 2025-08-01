@@ -9,25 +9,21 @@ import { Safe } from "../utils/Decorators";
  * TODO 考虑合并到后勤管理系统，作为一个服务实现
  */
 export class CoordinationManager extends BaseManager<CoordinationManagerMemory> {
-  protected readonly memoryKey: string = 'coordinationManager';
-
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0,
-        roomPriorities: {},
-        resourceAllocation: {},
-        crossRoomTasks: []
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+      this.memory.roomPriorities = {};
+      this.memory.resourceAllocation = {};
+      this.memory.crossRoomTasks = [];
     }
   }
   public cleanup(): void {}
 
   constructor(eventBus: EventBus, serviceContainer: any) {
-    super(eventBus, serviceContainer);
+    super(eventBus, serviceContainer, 'coordinationManager');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.COORDINATION_MANAGER.UPDATE_INTERVAL;
   }
 

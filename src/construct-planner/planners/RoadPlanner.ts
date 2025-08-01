@@ -163,11 +163,12 @@ export class RoadPlanner extends BasePlanner {
    * 获取道路规划信息
    */
   public getRoadPlanInfo(room: Room): RoadPlanInfo | null {
-    if (!Memory.constructPlanner?.layouts?.[room.name]?.buildings?.road) {
+    const layout = this.service.getLayout(room.name);
+    if (!layout || !layout.buildings.road) {
       return null;
     }
 
-    const roadPositions = Memory.constructPlanner.layouts[room.name].buildings.road;
+    const roadPositions = layout.buildings.road;
     const segments = this.buildRoadSegments(room, roadPositions);
 
     // 更新所有段的状态
@@ -183,7 +184,7 @@ export class RoadPlanner extends BasePlanner {
       segments,
       totalPositions,
       completedPositions,
-      lastUpdated: Memory.constructPlanner.layouts[room.name].lastUpdated
+      lastUpdated: layout.lastUpdated
     };
   }
 

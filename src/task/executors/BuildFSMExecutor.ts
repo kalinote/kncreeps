@@ -83,7 +83,7 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
     }
 
     // 若未获取到能量，使用能量服务寻找最近能量源
-    const sources = this.energyService.findEnergySources(creep);
+    const sources = this.service.energyService.findEnergySources(creep);
     if (sources && sources.length > 0) {
       const target = sources[0].object;
       const result = this.pickupResource(creep, target, RESOURCE_ENERGY);
@@ -119,7 +119,7 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
       case OK:
         return this.switchState(BuildState.BUILDING, '建造成功');
       case ERR_NOT_IN_RANGE:
-        this.moveService.moveTo(creep, target);
+        this.service.moveService.moveTo(creep, target);
         return this.switchState(BuildState.BUILDING, '移动到目标建筑');
       case ERR_NOT_ENOUGH_ENERGY:
         return this.switchState(BuildState.GET_ENERGY, '能量不足');

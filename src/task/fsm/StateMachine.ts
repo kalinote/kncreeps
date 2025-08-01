@@ -43,16 +43,12 @@ export abstract class TaskStateMachine<TState extends string> {
       return;
     }
 
-    try {
-      const nextState = handler(this.creep);
+    const nextState = handler(this.creep);
 
-      // 如果处理器返回了新状态，则进行状态转换
-      if (nextState && nextState !== currentState) {
-        this.creepState.currentState = nextState;
-        // console.log(`[TaskStateMachine] creep: ${this.creep.name} 状态转换: ${currentState} -> ${nextState}`);
-      }
-    } catch (error) {
-      console.log(`[TaskStateMachine] 状态处理器执行错误: ${currentState}`, error);
+    // 如果处理器返回了新状态，则进行状态转换
+    if (nextState && nextState !== currentState) {
+      this.creepState.currentState = nextState;
+      // console.log(`[TaskStateMachine] creep: ${this.creep.name} 状态转换: ${currentState} -> ${nextState}`);
     }
   }
 

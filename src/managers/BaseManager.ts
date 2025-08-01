@@ -1,7 +1,7 @@
-import { UnifiedMemoryCycleStructureMemory } from "../types";
 import { EventBus } from "../core/EventBus";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { BaseService } from "../services/BaseService";
+import { ConstructPlannerService } from "services/construction/ConstructPlannerService";
 
 /**
  * 基础管理器类 - 所有管理器的基类
@@ -10,8 +10,7 @@ export abstract class BaseManager<TMemory = any> {
   protected eventBus: EventBus;
   protected services: Map<string, BaseService> = new Map();
   protected serviceContainer: ServiceContainer;
-  protected memory!: TMemory;
-  protected abstract readonly memoryKey?: string;
+  protected readonly memoryKey?: string;
   protected isManagerActive: boolean = true;
   protected hasErrors: boolean = false;
   protected lastUpdateTick: number = 0;
@@ -19,16 +18,23 @@ export abstract class BaseManager<TMemory = any> {
   protected maxErrorCount: number = 3;
   protected updateInterval: number = 0;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+  protected get memory(): TMemory {
+    if (this.memoryKey === undefined) {
+      throw new Error(`管理器 ${this.constructor.name} 没有设置memoryKey`);
+    }
+    if (!Memory[this.memoryKey]) {
+      Memory[this.memoryKey] = {};
+    }
+    return Memory[this.memoryKey] as TMemory;
+  }
+
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer, memoryKey?: string) {
     this.eventBus = eventBus;
     this.serviceContainer = serviceContainer;
+    this.memoryKey = memoryKey;
 
     this.initializeMemory();
     this.initialize();
-
-    for (const service of this.services.values()) {
-      service.initialize();
-    }
     this.setupEventListeners();
   }
 
@@ -68,6 +74,7 @@ export abstract class BaseManager<TMemory = any> {
    */
   public registerServices(name: string, service: BaseService) {
     this.services.set(name, service);
+    service.initialize();
   }
 
   private initializeMemory(): void {
@@ -78,7 +85,6 @@ export abstract class BaseManager<TMemory = any> {
     if (Memory[this.memoryKey] === undefined) {
       Memory[this.memoryKey] = {};
     }
-    this.memory = Memory[this.memoryKey] as TMemory;
   }
 
   /**
@@ -174,20 +180,6 @@ export abstract class BaseManager<TMemory = any> {
     const nextUpdateIn = Math.max(0, nextUpdateTick - Game.time);
     return { nextUpdateIn, updateInterval: this.updateInterval };
   }
-
-  // /**
-  //  * 安全执行方法 - 包装可能出错的代码
-  //  */
-  // protected safeExecute<T>(operation: () => T, operationName?: string): T | undefined {
-  //   try {
-  //     return operation();
-  //   } catch (error) {
-  //     const name = operationName || '未知操作';
-  //     console.log(`${this.constructor.name} - ${name} 执行失败:`, error);
-  //     this.setError(error);
-  //     return undefined;
-  //   }
-  // }
 
   /**
    * 发送事件

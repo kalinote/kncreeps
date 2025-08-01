@@ -1,10 +1,17 @@
-import { BuildingPlanMemory, RoomLayoutMemory } from "../../types";
+import { ConstructPlannerService } from '../../services/construction/ConstructPlannerService';
+import { BuildingPlanMemory } from '../../types';
 
 /**
  * 规划器的基类
  * 定义了所有具体规划器必须遵循的接口。
  */
 export abstract class BasePlanner {
+  protected service: ConstructPlannerService;
+
+  constructor(service: ConstructPlannerService) {
+    this.service = service;
+  }
+
   /**
    * 规划器的唯一名称
    */

@@ -11,8 +11,6 @@ import { PerformanceStatsService } from "../services/stats/PerformanceStatsServi
  * 统计管理器 - 协调全局统计信息的收集流程
  */
 export class StatsManager extends BaseManager<StatsManagerMemory> {
-  protected readonly memoryKey: string = 'statsManager';
-
   public cleanup(): void {}
 
   public get globalStatsService(): GlobalStatsService {
@@ -26,7 +24,7 @@ export class StatsManager extends BaseManager<StatsManagerMemory> {
   }
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+    super(eventBus, serviceContainer, "statsManager");
     this.updateInterval = GameConfig.MANAGER_CONFIGS.STATS_MANAGER.UPDATE_INTERVAL;
 
     this.registerServices("globalStatsService", new GlobalStatsService(this.eventBus, this, this.memory));
@@ -39,12 +37,10 @@ export class StatsManager extends BaseManager<StatsManagerMemory> {
    */
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0
-      };
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
   }
 

@@ -1,15 +1,19 @@
-import { EnergySource, EnergySourceConfig, EnergySourceStrategy } from "../types";
-import { GameConfig } from "../config/GameConfig";
-import { BaseService } from "./BaseService";
-import { EventBus } from "core/EventBus";
-import { ServiceContainer } from "core/ServiceContainer";
+import { EnergySource, EnergySourceConfig, EnergySourceStrategy } from "../../types";
+import { GameConfig } from "../../config/GameConfig";
+import { BaseService } from "../BaseService";
+import { LogisticsManager } from "../../managers/LogisticsManager";
+import { EventBus } from "../../core/EventBus";
 
 /**
  * 能量服务 - 专注于能量源查找和配置管理
  */
 export class EnergyService extends BaseService {
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+  public update(): void {}
+  public cleanup(): void {}
+  public initialize(): void {}
+
+  constructor(eventBus: EventBus, manager: LogisticsManager, memory: any) {
+    super(eventBus, manager, memory, 'energy');
   }
 
   /**

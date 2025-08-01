@@ -1,25 +1,26 @@
 import { BaseService } from "../BaseService";
-import { Task, TaskType, TaskAssignmentType, TaskPriority, TaskStatus, TaskSchedulerServiceMemory } from "../../types";
+import { Task, TaskType, TaskAssignmentType, TaskStatus, TaskSchedulerServiceMemory, TaskManagerMemory } from "../../types";
 import { PriorityCalculator } from "../../utils/PriorityCalculator";
 import { TaskManager } from "../../managers/TaskManager";
+import { EventBus } from "../../core/EventBus";
 
 /**
  * 任务调度器服务 - 负责任务分配和调度
  * 采用统一的动态优先级模型，取代了旧的"独占-共享"两段式调度。
  */
 export class TaskSchedulerService extends BaseService<TaskSchedulerServiceMemory, TaskManager> {
-  protected readonly memoryKey: string = "scheduler";
-
   public cleanup(): void {}
+
+  constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
+    super(eventBus, manager, memory, 'scheduler');
+  }
 
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastUpdate: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
   }
 
@@ -226,5 +227,16 @@ export class TaskSchedulerService extends BaseService<TaskSchedulerServiceMemory
       return new RoomPosition(pos.x, pos.y, pos.roomName);
     }
     return null;
+  }
+
+  /**
+   * 获取待分配的任务 - 包含需要生产creep的任务
+   */
+  public getPendingTasks(): Task[] {
+    return this.manager.taskStateService.getPendingTasks()
+  }
+
+  public getPendingTasksByRoom(roomName: string): Task[] {
+    return this.manager.taskStateService.getPendingTasks().filter(task => task.roomName === roomName);
   }
 }

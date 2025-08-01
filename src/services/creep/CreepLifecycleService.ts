@@ -1,28 +1,21 @@
 import { EventBus } from "../../core/EventBus";
 import { GameConfig } from "../../config/GameConfig";
-import { CreepLifecycleServiceMemory, UnifiedMemoryCycleStructureMemory } from "../../types";
-import { CreepProductionService } from "./CreepProductionService";
+import { CreepLifecycleServiceMemory } from "../../types";
 import { BaseService } from "../BaseService";
-import { ServiceContainer } from "../../core/ServiceContainer";
+import { CreepManager } from "../../managers/CreepManager";
 
 /**
  * Creep生命周期服务 - 处理所有Creep的生命周期管理
  * 从CreepManager中提取出来，保持原有逻辑不变
  */
 export class CreepLifecycleService extends BaseService<{ [creepName: string]: CreepLifecycleServiceMemory }> {
-  protected readonly memoryKey: string = 'creepStates';
-
   private previousCreepNames: Set<string> = new Set();
 
-  /**
-   * 因为CreepLifecycleServiceMemory是针对于单个creep的，所以没有需要整体初始化的地方
-   * 暂时没有...
-   */
-  public initialize(): void {
-    if (this.memory === undefined) {
-      this.memory = {};
-    }
+  constructor(eventBus: EventBus, manager: CreepManager, memory: any) {
+    super(eventBus, manager, memory, 'creepStates');
   }
+
+  public initialize(): void {}
 
   public update(): void {
     this.updateCreepStates();
@@ -52,9 +45,6 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
    * 获取creepStates
    */
   private get creepStates(): { [creepName: string]: CreepLifecycleServiceMemory } {
-    if (!this.memory) {
-      this.memory = {};
-    }
     return this.memory;
   }
 
@@ -62,9 +52,6 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
    * 设置单个creep状态
    */
   private setCreepState(creepName: string, state: CreepLifecycleServiceMemory): void {
-    if (!this.memory) {
-      this.memory = {};
-    }
     this.memory[creepName] = state;
   }
 

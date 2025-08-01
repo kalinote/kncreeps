@@ -1,9 +1,6 @@
 import { TaskStateMachine } from "../fsm/StateMachine";
 import { TaskFSMMemory, HarvestState, HarvestTask, TaskKind, TaskType } from "../../types";
-import { CreepMoveService } from "../../services/creep/CreepMoveService";
 import { SourceAnalyzer } from "../../utils/SourceAnalyzer";
-import { ServiceContainer } from "../../core/ServiceContainer";
-import { TaskManager } from "managers/TaskManager";
 import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 /**
@@ -99,7 +96,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
     }
 
     // 移动到目标位置
-    const moveResult = this.moveService.moveTo(creep, targetPos);
+    const moveResult = this.service.moveService.moveTo(creep, targetPos);
     if (moveResult === ERR_NO_PATH) {
       // 路径不可达，清除分配位置并重新初始化
       this.clearAssignedPosition(creep);
@@ -190,7 +187,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
         creep.drop(RESOURCE_ENERGY);
         return this.switchState(HarvestState.HARVESTING, '丢弃成功');
       } else {
-        this.moveService.moveTo(creep, targetPos);
+        this.service.moveService.moveTo(creep, targetPos);
         return this.switchState(HarvestState.DUMPING, '移动到丢弃位置');
       }
     }
@@ -370,7 +367,7 @@ export class HarvestFSMExecutor extends TaskStateMachine<HarvestState> {
       case OK:
         return { success: true, completed: true };
       case ERR_NOT_IN_RANGE:
-        this.moveService.moveTo(creep, target);
+        this.service.moveService.moveTo(creep, target);
         return { success: true, completed: false };
       case ERR_FULL:
         return { success: false, completed: true };

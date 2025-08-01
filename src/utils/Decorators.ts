@@ -29,7 +29,7 @@ export function Safe(operationName?: string) {
   };
 }
 
-
+// TODO 可能需要进一步优化功能
 export function SafeMemoryAccess(operationName?: string) {
   return function (
     target: any,
@@ -40,7 +40,7 @@ export function SafeMemoryAccess(operationName?: string) {
 
     descriptor.value = function (this: any, ...args: any[]) {
       if (this.memory === undefined) {
-        this.memory = {};
+        return undefined;
       }
 
       try {

@@ -1,32 +1,53 @@
 import { BaseService } from '../BaseService';
-import { EventBus } from '../../core/EventBus';
-import { ServiceContainer } from '../../core/ServiceContainer';
 import { VisualConfig, DATA_LAYER_LAYOUTS } from '../../config/VisualConfig';
 import { EventConfig } from '../../config/EventConfig';
 import { BaseLayer } from '../../visual/layers/BaseLayer';
 import { LayerSettingsMemory } from '../../types';
+import { EventBus } from '../../core/EventBus';
+import { VisualManager } from '../../managers/VisualManager';
+import { RoomService } from '../room/RoomService';
+import { ConstructPlannerService } from '../construction/ConstructPlannerService';
+import { TaskStateService } from '../task/TaskStateService';
+import { LayerRegistry } from '../../visual/LayerRegistry';
 
 /**
  * 视觉布局服务
  * 负责计算图层布局和管理图层状态。
  */
-export class VisualLayoutService extends BaseService<{ [layerName: string]: LayerSettingsMemory }> {
-  protected readonly memoryKey: string = 'layerSettings';
-
+export class VisualLayoutService extends BaseService<{ [layerName: string]: LayerSettingsMemory }, VisualManager> {
   public update(): void {}
   public cleanup(): void {}
+
+  private _layerRegistry: LayerRegistry;
+
+  public get roomService(): RoomService {
+    return this.manager.roomManager.roomService;
+  }
+
+  public get constructPlannerService(): ConstructPlannerService {
+    return this.manager.constructionManager.constructPlannerService;
+  }
+
+  public get taskStateService(): TaskStateService {
+    return this.manager.taskManager.taskStateService;
+  }
+
+  public get layerRegistry(): LayerRegistry {
+    return this._layerRegistry;
+  }
+
+  constructor(eventBus: EventBus, manager: VisualManager, memory: any) {
+    super(eventBus, manager, memory, 'layerSettings');
+    this._layerRegistry = new LayerRegistry(this);
+  }
+
   /**
    * 初始化内存，确保所有图层都有默认的启用/禁用设置
    */
   public initialize(): void {
-    if (this.memory === undefined) {
-      this.memory = {};
-    }
-
     for (const layerName in VisualConfig.LAYER_DEFAULTS) {
-      if (this.memory[layerName] === undefined) {
-        this.memory[layerName] =
-          VisualConfig.LAYER_DEFAULTS[layerName as keyof typeof VisualConfig.LAYER_DEFAULTS];
+      if (!this.memory[layerName]) {
+        this.memory[layerName] = VisualConfig.LAYER_DEFAULTS[layerName as keyof typeof VisualConfig.LAYER_DEFAULTS] as LayerSettingsMemory;
       }
     }
   }

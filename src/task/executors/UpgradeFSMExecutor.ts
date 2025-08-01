@@ -98,7 +98,7 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
     }
 
     // 若未获取到能量，使用能量服务寻找最近能量源
-    const sources = this.energyService.findEnergySources(creep);
+    const sources = this.service.energyService.findEnergySources(creep);
     if (sources && sources.length > 0) {
       const target = sources[0].object;
       const result = this.pickupResource(creep, target, RESOURCE_ENERGY);
@@ -139,7 +139,7 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
       case OK:
         return this.switchState(UpgradeState.UPGRADING, '升级成功');
       case ERR_NOT_IN_RANGE:
-        this.moveService.moveTo(creep, controller);
+        this.service.moveService.moveTo(creep, controller);
         return this.switchState(UpgradeState.UPGRADING, '移动到控制器');
       case ERR_NOT_ENOUGH_RESOURCES:
         return this.switchState(UpgradeState.GET_ENERGY, '能量不足');

@@ -4,29 +4,31 @@ import { ServiceContainer } from "../../core/ServiceContainer";
 import { GameConfig } from "../../config/GameConfig";
 import { Safe } from "../../utils/Decorators";
 import { GlobalStatsServiceMemory } from "../../types";
+import { StatsManager } from "../../managers/StatsManager";
 
 /**
  * 统计服务 - 负责收集、处理和存储游戏统计数据
  */
 export class GlobalStatsService extends BaseService<GlobalStatsServiceMemory> {
-  protected readonly memoryKey: string = 'globalStats';
   public cleanup(): void {}
+
+  constructor(eventBus: EventBus, manager: StatsManager, memory: any) {
+    super(eventBus, manager, memory, 'globalStats');
+  }
 
   public initialize(): void {
     if (!this.memory.initAt) {
-      this.memory = {
-        initAt: Game.time,
-        lastCleanup: Game.time,
-        errorCount: 0,
-        lastUpdate: Game.time,
-        totalCreeps: 0,
-        totalRooms: 0,
-        totalEnergy: 0,
-        totalEnergyCapacity: 0,
-        totalTasks: 0,
-        completedTasks: 0,
-        failedTasks: 0
-      }
+      this.memory.initAt = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+      this.memory.lastUpdate = Game.time;
+      this.memory.totalCreeps = 0;
+      this.memory.totalRooms = 0;
+      this.memory.totalEnergy = 0;
+      this.memory.totalEnergyCapacity = 0;
+      this.memory.totalTasks = 0;
+      this.memory.completedTasks = 0;
+      this.memory.failedTasks = 0;
     }
   }
 
