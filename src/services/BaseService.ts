@@ -34,20 +34,28 @@ export abstract class BaseService<TMemory = any, TManager = BaseManager> {
     this.setupEventListeners();
   }
 
-  /**
-   * 初始化服务
-   */
-  public abstract initialize(): void;
+  // 对外服务
+  public initialize(): void {
+    this.onInitialize();
+  }
 
-  /**
-   * 更新服务
-   */
-  public abstract update(): void;
+  public update(): void {
+    this.onUpdate();
+  }
 
-  /**
-   * 清理服务
-   */
-  public abstract cleanup(): void;
+  public cleanup(): void {
+    this.onCleanup();
+  }
+
+  public reset(): void {
+    this.onReset();
+  }
+
+  // 对内服务
+  protected abstract onInitialize(): void;
+  protected abstract onUpdate(): void;
+  protected abstract onCleanup(): void;
+  protected abstract onReset(): void;
 
   /**
    * 设置事件监听器

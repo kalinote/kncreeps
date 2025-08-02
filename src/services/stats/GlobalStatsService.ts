@@ -10,13 +10,13 @@ import { StatsManager } from "../../managers/StatsManager";
  * 统计服务 - 负责收集、处理和存储游戏统计数据
  */
 export class GlobalStatsService extends BaseService<GlobalStatsServiceMemory> {
-  public cleanup(): void {}
-
+  protected onCleanup(): void {}
+  protected onReset(): void {}
   constructor(eventBus: EventBus, manager: StatsManager, memory: any) {
     super(eventBus, manager, memory, 'globalStats');
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastCleanup = Game.time;
@@ -44,7 +44,7 @@ export class GlobalStatsService extends BaseService<GlobalStatsServiceMemory> {
    * 更新全局统计信息
    */
   @Safe()
-  public update(): void {
+  protected onUpdate(): void {
     const myRooms = Object.values(Game.rooms).filter(r => r.controller?.my);
 
     this.memory.totalCreeps = Object.keys(Game.creeps).length;

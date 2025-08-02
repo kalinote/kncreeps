@@ -11,12 +11,14 @@ import { TaskManager } from './TaskManager';
 import { ServiceContainer } from '../core/ServiceContainer';
 import { VisualLayoutService } from '../services/visual/VisualLayoutService';
 import { LayerRegistry } from '../visual/LayerRegistry';
+import { LogisticsManager } from './LogisticsManager';
 
 /**
  * 可视化管理器 - 负责渲染调度和缓存控制
  */
 export class VisualManager extends BaseManager<VisualManagerMemory> {
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   public get roomManager(): RoomManager {
     return this.serviceContainer.get<RoomManager>('roomManager');
@@ -28,6 +30,10 @@ export class VisualManager extends BaseManager<VisualManagerMemory> {
 
   public get taskManager(): TaskManager {
     return this.serviceContainer.get<TaskManager>('taskManager');
+  }
+
+  public get logisticsManager(): LogisticsManager {
+    return this.serviceContainer.get<LogisticsManager>('logisticsManager');
   }
 
   public get visualLayoutService(): VisualLayoutService {
@@ -49,7 +55,7 @@ export class VisualManager extends BaseManager<VisualManagerMemory> {
    * 初始化内存
    */
   @Safe("VisualManager.initialize")
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -68,7 +74,7 @@ export class VisualManager extends BaseManager<VisualManagerMemory> {
   /**
    * 管理器主更新循环
    */
-  public updateManager(): void {
+  protected onUpdate(): void {
     this.render();
   }
 

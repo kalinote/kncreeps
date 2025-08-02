@@ -50,24 +50,44 @@ export abstract class BaseManager<TMemory = any> {
    */
   public update() {
     if (!this.shouldUpdate()) return;
-    this.updateManager();
+    this.onUpdate();
     for (const service of this.services.values()) {
       service.update();
     }
     this.updateCompleted();
   }
 
-  public abstract updateManager(): void;
+  /**
+   * 初始化方法 - 子类可以重写
+   */
+  public initialize(): void {
+    this.onInitialize();
+  }
+
+  public cleanup(): void {
+    this.onCleanup();
+    for (const service of this.services.values()) {
+      service.cleanup();
+    }
+  }
 
   /**
-   * 初始化管理器
+   * 重置管理器状态
    */
-  public abstract initialize(): void;
+  public reset(): void {
+    this.hasErrors = false;
+    this.isManagerActive = true;
+    this.errorCount = 0;
+    this.onReset();
+    for (const service of this.services.values()) {
+      service.reset();
+    }
+  }
 
-  /**
-   * 清理管理器
-   */
-  public abstract cleanup(): void;
+  protected abstract onUpdate(): void;
+  protected abstract onCleanup(): void;
+  protected abstract onReset(): void;
+  protected abstract onInitialize(): void;
 
   /**
    * 注册服务
@@ -101,15 +121,7 @@ export abstract class BaseManager<TMemory = any> {
     return this.hasErrors;
   }
 
-  /**
-   * 重置管理器状态
-   */
-  public reset(): void {
-    this.hasErrors = false;
-    this.isManagerActive = true;
-    this.errorCount = 0;
-    this.onReset();
-  }
+
 
   /**
    * 暂停管理器
@@ -237,24 +249,5 @@ export abstract class BaseManager<TMemory = any> {
     };
   }
 
-  /**
-   * 重置时调用的钩子方法
-   */
-  protected onReset(): void {
-    // 子类可以重写此方法来实现特定的重置逻辑
-  }
 
-  /**
-   * 初始化方法 - 子类可以重写
-   */
-  protected onInitialize(): void {
-    // 子类可以重写此方法来实现特定的初始化逻辑
-  }
-
-  /**
-   * 清理方法 - 子类可以重写
-   */
-  protected onCleanup(): void {
-    // 子类可以重写此方法来实现特定的清理逻辑
-  }
 }

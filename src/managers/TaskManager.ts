@@ -1,5 +1,5 @@
 import { EventBus } from "../core/EventBus";
-import { Task, TaskType, TaskStatus, TaskPriority, TaskManagerMemory, TaskFSMMemory, FSMExecutorClass } from "../types";
+import { Task, TaskType, TaskStatus, TaskManagerMemory, TaskFSMMemory, FSMExecutorClass } from "../types";
 import { BaseManager } from "./BaseManager";
 import { GameConfig } from "../config/GameConfig";
 import { TaskStateMachine } from "../task/fsm/StateMachine";
@@ -55,10 +55,11 @@ export class TaskManager extends BaseManager<TaskManagerMemory> {
     this.registerServices("taskStateService", new TaskStateService(this.eventBus, this, this.memory));
   }
 
-  public updateManager(): void {}
-  public cleanup(): void {}
+  protected onUpdate(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;

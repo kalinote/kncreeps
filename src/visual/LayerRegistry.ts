@@ -7,6 +7,7 @@ import { GlobalInfoLayer } from './layers/GlobalInfoLayer';
 import { RoomInfoLayer } from './layers/RoomInfoLayer';
 import { TaskAssignmentLayer } from './layers/TaskAssignmentLayer';
 import { TaskTrackLayer } from './layers/TaskTrackLayer';
+import { TransportNetworkLayer } from './layers/TransportNetworkLayer';
 
 /**
  * 图层注册表
@@ -28,6 +29,7 @@ export class LayerRegistry {
     this.register(new TaskTrackLayer(service));
     this.register(new ConstructionPlannerLayer(service));
     this.register(new TaskAssignmentLayer(service));
+    this.register(new TransportNetworkLayer(service));
   }
 
   /**

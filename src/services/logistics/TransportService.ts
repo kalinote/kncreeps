@@ -39,16 +39,34 @@ const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
  * 负责维护运输网络，并根据供需生成运输任务。
  */
 export class TransportService extends BaseService<{ [roomName: string]: TransportNetworkServiceMemory }> {
-  public initialize(): void {}
-
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   constructor(eventBus: EventBus, manager: LogisticsManager, memory: any) {
     super(eventBus, manager, memory, 'transportNetworkService');
   }
 
-  @Safe("TransportService.update")
-  public update(): void {
+  protected onInitialize(): void {
+    for (const roomName in Game.rooms) {
+      const room = Game.rooms[roomName];
+      if (room.controller?.my) {
+        this.initializeRoomMemory(roomName);
+      }
+    }
+  }
+
+  private initializeRoomMemory(roomName: string): void {
+    if (!this.memory[roomName]) {
+      this.memory[roomName] = {
+        providers: {},
+        consumers: {},
+        lastUpdated: Game.time
+      }
+    }
+  }
+
+  @Safe()
+  protected onUpdate(): void {
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (room.controller?.my) {
@@ -60,17 +78,8 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
   /**
    * 更新房间的运输网络内存
    */
-  @SafeMemoryAccess("TransportService.updateTransportNetwork")
+  @SafeMemoryAccess()
   private updateTransportNetwork(room: Room): void {
-    if (!this.memory[room.name]) {
-      this.memory[room.name] = {
-        providers: {},
-        consumers: {},
-        lastUpdated: Game.time
-      };
-      return;
-    }
-
     const network = this.memory[room.name];
 
     // 垃圾回收
@@ -124,33 +133,6 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
 
     network.lastUpdated = Game.time;
   }
-
-  // /**
-  //  * 识别容器的角色
-  //  * TODO 由建筑规划系统来判断容器角色，并设置状态
-  //  * 后续可能提供由flag来手动标记的功能(在某个容器上放置制定规则的flag，来手动标记)
-  //  */
-  // private identifyContainerRole(room: Room, container: StructureContainer): void {
-  //   const network = this.memory[room.name];
-  //   if (!network) return;
-
-  //   const nearbySource = container.pos.findInRange(FIND_SOURCES, 3)[0];
-  //   if (nearbySource) {
-  //     network.providers[container.id] = this.createProviderInfo(container, RESOURCE_ENERGY, 'ready');
-  //     return;
-  //   }
-
-  //   const nearbyMineral = container.pos.findInRange(FIND_MINERALS, 3)[0];
-  //   if (nearbyMineral) {
-  //     network.providers[container.id] = this.createProviderInfo(container, nearbyMineral.mineralType, 'ready');
-  //     return;
-  //   }
-
-  //   if (room.controller && container.pos.inRangeTo(room.controller, 3)) {
-  //     network.consumers[container.id] = this.createConsumerInfo(container, RESOURCE_ENERGY);
-  //     return;
-  //   }
-  // }
 
   /**
    * 外部调用接口：设置 Provider
@@ -377,5 +359,30 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
         amount: amount
       }
     };
+  }
+
+  /**
+   * 获取房间的 Provider 列表
+   */
+  public getProviders(roomName: string): ProviderInfo[] {
+    const network = this.memory[roomName];
+    if (!network) return [];
+    return Object.values(network.providers);
+  }
+
+  /**
+   * 获取房间的 Consumer 列表
+   */
+  public getConsumers(roomName: string): ConsumerInfo[] {
+    const network = this.memory[roomName];
+    if (!network) return [];
+    return Object.values(network.consumers);
+  }
+
+  /**
+   * 获取所有有运输网络的房间
+   */
+  public getTransportRooms(): string[] {
+    return Object.keys(this.memory).filter(roomName => Object.keys(this.memory[roomName].providers).length > 0 || Object.keys(this.memory[roomName].consumers).length > 0);
   }
 }

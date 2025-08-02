@@ -30,13 +30,9 @@ export class ConstructionPlannerLayer extends BaseLayer {
       return;
     }
 
-    // 获取所有我的房间
-    const myRooms = Object.values(Game.rooms).filter(room => room.controller?.my);
 
-    for (const room of myRooms) {
-      this.renderRoomRoadPlan(room);
-      this.renderRoomContainerPlan(room);
-    }
+    this.renderRoomRoadPlan(room);
+    this.renderRoomContainerPlan(room);
   }
 
   /**

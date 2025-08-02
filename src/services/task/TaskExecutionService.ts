@@ -32,9 +32,10 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
     return this.manager.logisticsManager.energyService;
   }
 
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -44,7 +45,7 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
   }
 
   @Safe()
-  public update(): void {
+  protected onUpdate(): void {
     for (const name in Game.creeps) {
       const creep = Game.creeps[name];
       // 如果creep正在生成，则跳过

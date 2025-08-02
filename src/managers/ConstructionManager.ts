@@ -1,11 +1,9 @@
 import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { ServiceContainer } from "../core/ServiceContainer";
-import { GameConfig } from "../config/GameConfig";
-import { ConstructionManagerMemory, RoomLayoutMemory } from "../types";
+import { ConstructionManagerMemory } from "../types";
 import { EventConfig } from "../config/EventConfig";
 import { ConstructPlannerService } from "../services/construction/ConstructPlannerService";
-import { Safe } from "../utils/Decorators";
 import { TransportService } from "../services/logistics/TransportService";
 import { LogisticsManager } from "./LogisticsManager";
 
@@ -14,7 +12,7 @@ import { LogisticsManager } from "./LogisticsManager";
  * 负责驱动建筑规划和创建建筑工地。
  */
 export class ConstructionManager extends BaseManager<ConstructionManagerMemory> {
-  public updateManager(): void {}
+  protected onUpdate(): void {}
 
   public get constructPlannerService(): ConstructPlannerService {
     return this.services.get('constructPlannerService') as ConstructPlannerService;
@@ -40,7 +38,7 @@ export class ConstructionManager extends BaseManager<ConstructionManagerMemory> 
     });
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -48,7 +46,8 @@ export class ConstructionManager extends BaseManager<ConstructionManagerMemory> 
       this.memory.errorCount = 0;
     }
   }
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
 
   /**

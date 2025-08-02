@@ -8,9 +8,10 @@ import { EventBus } from "../../core/EventBus";
  * 能量服务 - 专注于能量源查找和配置管理
  */
 export class EnergyService extends BaseService {
-  public update(): void {}
-  public cleanup(): void {}
-  public initialize(): void {}
+  protected onUpdate(): void {}
+  protected onCleanup(): void {}
+  protected onInitialize(): void {}
+  protected onReset(): void {}
 
   constructor(eventBus: EventBus, manager: LogisticsManager, memory: any) {
     super(eventBus, manager, memory, 'energy');

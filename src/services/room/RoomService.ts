@@ -1,7 +1,6 @@
 import { BaseService } from "../BaseService";
 import { EventBus } from "../../core/EventBus";
 import { GameConfig } from "../../config/GameConfig";
-import { BaseManager } from "../../managers/BaseManager";
 import { Safe } from "../../utils/Decorators";
 import { RoomAnalysisMemory, RoomManagerMemory } from "../../types";
 import { RoomManager } from "../../managers/RoomManager";
@@ -10,21 +9,22 @@ import { RoomManager } from "../../managers/RoomManager";
  * 房间服务 - 提供房间状态分析、威胁检测和信息管理
  */
 export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisMemory }, RoomManager> {
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   constructor(eventBus: EventBus, manager: RoomManager, memory: RoomManagerMemory) {
     super(eventBus, manager, memory, 'analysis');
-    this.initializeRoomsMemory();
   }
 
   /**
    * 初始化所有房间内存
    */
-  public initialize(): void {
+  protected onInitialize(): void {
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (room.controller?.my) {
         this.initializeRoomMemory(roomName);
+        this.initializeRoomLogistics(room);
       }
     }
   }
@@ -33,8 +33,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
    * 初始化指定房间的内存
    */
   private initializeRoomMemory(roomName: string): void {
-    if (!this.memory[roomName]) {
-      console.log(`[RoomService] 初始化房间 ${roomName} 内存`);
+    if (!this.memory[roomName] || !this.memory[roomName].initAt) {
       const room = Game.rooms[roomName];
       this.memory[roomName] = {} as RoomAnalysisMemory;
       this.memory[roomName].initAt = Game.time;
@@ -52,25 +51,9 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
    * 执行所有房间分析任务
    */
   @Safe()
-  public update(): void {
+  protected onUpdate(): void {
     this.scanRooms();
     this.updateRoomStates();
-  }
-
-  /**
-   * 初始化所有房间内存
-   */
-  private initializeRoomsMemory(): void {
-    if (!Memory.rooms) {
-      Memory.rooms = {};
-    }
-
-    for (const roomName in Game.rooms) {
-      const room = Game.rooms[roomName];
-      if (room.controller?.my) {
-        this.initializeRoomMemory(roomName);
-      }
-    }
   }
 
   @Safe()
@@ -110,6 +93,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
       if (room.controller?.my && !this.memory[roomName]) {
         console.log(`[RoomService] 发现新房间 ${roomName}`);
         this.initializeRoomMemory(roomName);
+        this.initializeRoomLogistics(room);
       }
     }
   }
@@ -128,11 +112,6 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
    */
   private updateRoomState(roomName: string): void {
     const room = Game.rooms[roomName];
-
-    if (!this.memory[roomName]) {
-      this.initializeRoomMemory(roomName);
-      this.initializeRoomLogistics(room);
-    }
 
     const previousEnergy = this.memory[roomName].energyAvailable || 0;
     const currentEnergy = room.energyAvailable;

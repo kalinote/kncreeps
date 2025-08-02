@@ -20,9 +20,9 @@ export class CommandManager extends BaseManager {
     this.setupGlobalObjects();
   }
 
-  public updateManager(): void {}
-  public initialize(): void {}
-  public cleanup(): void {}
+  protected onUpdate(): void {}
+  protected onInitialize(): void {}
+  protected onCleanup(): void {}
 
   /**
    * 设置全局对象

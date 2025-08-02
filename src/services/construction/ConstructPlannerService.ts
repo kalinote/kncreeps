@@ -14,7 +14,8 @@ import { TransportService } from "../logistics/TransportService";
  * 建筑规划服务 - 负责管理所有规划器的状态和事件触发
  */
 export class ConstructPlannerService extends BaseService<{[roomName: string]: RoomLayoutMemory}, ConstructionManager> {
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   private _plannerRegistry: PlannerRegistry;
   private _strategyRegistry: EventStrategyRegistry;
@@ -38,7 +39,7 @@ export class ConstructPlannerService extends BaseService<{[roomName: string]: Ro
 
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (room.controller?.my) {
@@ -59,7 +60,7 @@ export class ConstructPlannerService extends BaseService<{[roomName: string]: Ro
     }
   }
 
-  public update(): void {
+  protected onUpdate(): void {
     // 使用一个较低的更新频率来减少CPU消耗
     // TODO 后续改成配置文件设置
 

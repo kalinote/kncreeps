@@ -15,15 +15,14 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
     super(eventBus, manager, memory, 'creepStates');
   }
 
-  public initialize(): void {}
+  protected onInitialize(): void {}
 
-  public update(): void {
+  protected onUpdate(): void {
     this.updateCreepStates();
   }
 
-  public cleanup(): void {
-    throw new Error("Method not implemented.");
-  }
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   /**
    * 发送事件到事件总线

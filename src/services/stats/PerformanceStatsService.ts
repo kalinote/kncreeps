@@ -4,13 +4,14 @@ import { StatsManager } from "../../managers/StatsManager";
 import { EventBus } from "../../core/EventBus";
 
 export class PerformanceStatsService extends BaseService<PerformanceStatsServiceMemory> {
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   constructor(eventBus: EventBus, manager: StatsManager, memory: any) {
     super(eventBus, manager, memory, 'performance');
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastCleanup = Game.time;
@@ -23,7 +24,7 @@ export class PerformanceStatsService extends BaseService<PerformanceStatsService
     }
   }
 
-  public update(): void {
+  protected onUpdate(): void {
     this.updatePerformanceStats();
   }
 

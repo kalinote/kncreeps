@@ -6,9 +6,10 @@ import { BaseService } from "../BaseService";
 export class CreepMoveService extends BaseService {
   // TODO: 后续增加缓存功能和动态避障逻辑
 
-  public initialize(): void {}
-  public update(): void {}
-  public cleanup(): void {}
+  protected onInitialize(): void {}
+  protected onUpdate(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   /**
    * 移动creep到目标位置

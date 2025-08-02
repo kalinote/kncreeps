@@ -11,7 +11,8 @@ import { PerformanceStatsService } from "../services/stats/PerformanceStatsServi
  * 统计管理器 - 协调全局统计信息的收集流程
  */
 export class StatsManager extends BaseManager<StatsManagerMemory> {
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   public get globalStatsService(): GlobalStatsService {
     return this.services.get("globalStatsService") as GlobalStatsService;
@@ -35,7 +36,7 @@ export class StatsManager extends BaseManager<StatsManagerMemory> {
   /**
    * 初始化统计内存
    */
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -47,5 +48,5 @@ export class StatsManager extends BaseManager<StatsManagerMemory> {
   /**
    * 更新统计管理器，驱动统计服务
    */
-  public updateManager(): void {}
+  protected onUpdate(): void {}
 }

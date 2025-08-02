@@ -8,13 +8,14 @@ import { SourceAnalyzer } from "../../utils/SourceAnalyzer";
  * 任务生成器服务 - 根据房间状态自动创建任务
  */
 export class TaskGeneratorService extends BaseService<TaskGeneratorServiceMemory, TaskManager> {
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
     super(eventBus, manager, memory, 'generator');
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -26,7 +27,7 @@ export class TaskGeneratorService extends BaseService<TaskGeneratorServiceMemory
   /**
    * 为所有己方房间生成任务
    */
-  public update(): void {
+  protected onUpdate(): void {
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (room.controller?.my) {

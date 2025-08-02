@@ -2,7 +2,6 @@ import { BaseManager } from './BaseManager';
 import { EventBus } from '../core/EventBus';
 import { ServiceContainer } from '../core/ServiceContainer';
 import { TransportService } from '../services/logistics/TransportService';
-import { Safe } from '../utils/Decorators';
 import { LogisticsMemory } from '../types';
 import { EnergyService } from '../services/logistics/EnergyService';
 
@@ -11,7 +10,8 @@ import { EnergyService } from '../services/logistics/EnergyService';
  * 负责协调所有后勤相关的服务，如运输、市场等。
  */
 export class LogisticsManager extends BaseManager<LogisticsMemory> {
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   public get transportService(): TransportService {
     return this.services.get('transportService') as TransportService;
@@ -27,7 +27,7 @@ export class LogisticsManager extends BaseManager<LogisticsMemory> {
     this.registerServices('energyService', new EnergyService(this.eventBus, this, this.memory));
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -36,8 +36,5 @@ export class LogisticsManager extends BaseManager<LogisticsMemory> {
     }
   }
 
-  @Safe("LogisticsManager.updateManager")
-  public updateManager(): void {
-    this.transportService.update();
-  }
+  protected onUpdate(): void {}
 }

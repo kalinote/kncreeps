@@ -4,13 +4,13 @@ import { StatsManager } from "../../managers/StatsManager";
 import { EventBus } from "../../core/EventBus";
 
 export class RoomStatsService extends BaseService<{ [roomName: string]: RoomStatsServiceMemory }> {
-  public cleanup(): void {}
-
+  protected onCleanup(): void {}
+  protected onReset(): void {}
   constructor(eventBus: EventBus, manager: StatsManager, memory: any) {
     super(eventBus, manager, memory, 'roomStats');
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     for (const roomName in Game.rooms) {
       if (Game.rooms[roomName].controller?.my && !this.memory[roomName]?.initAt) {
         this.initializeRoom(roomName);
@@ -32,7 +32,7 @@ export class RoomStatsService extends BaseService<{ [roomName: string]: RoomStat
     this.memory[roomName].controllerLevel = 0;
   }
 
-  public update(): void {
+  protected onUpdate(): void {
     this.scanRooms();
     this.updataRoomsStats();
   }

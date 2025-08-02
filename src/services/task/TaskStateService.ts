@@ -13,13 +13,14 @@ import { TaskManager } from "../../managers/TaskManager";
  * 任务状态服务 - 管理任务的状态和生命周期
  */
 export class TaskStateService extends BaseService<TaskStateServiceMemory> {
-  public update(): void { }
+  protected onUpdate(): void {}
+  protected onReset(): void {}
 
   constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
     super(eventBus, manager, memory, 'state');
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -243,9 +244,9 @@ export class TaskStateService extends BaseService<TaskStateServiceMemory> {
    * 清理过期的和已完成的任务
    */
   @SafeMemoryAccess()
-  public cleanup(): void {
+  protected onCleanup(): void {
     // TODO 后续使用配置文件设置，或者使用非固定时间的更好方法
-    const cleanupInterval = 50;
+    const cleanupInterval = 10;
     if (Game.time - this.memory.lastCleanup < cleanupInterval) {
       return;
     }

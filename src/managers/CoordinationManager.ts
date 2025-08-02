@@ -9,7 +9,7 @@ import { Safe } from "../utils/Decorators";
  * TODO 考虑合并到后勤管理系统，作为一个服务实现
  */
 export class CoordinationManager extends BaseManager<CoordinationManagerMemory> {
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -20,7 +20,8 @@ export class CoordinationManager extends BaseManager<CoordinationManagerMemory> 
       this.memory.crossRoomTasks = [];
     }
   }
-  public cleanup(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   constructor(eventBus: EventBus, serviceContainer: any) {
     super(eventBus, serviceContainer, 'coordinationManager');
@@ -48,7 +49,7 @@ export class CoordinationManager extends BaseManager<CoordinationManagerMemory> 
    * 更新协调管理器
    */
   @Safe("CoordinationManager.updateManager")
-  public updateManager(): void {
+  protected onUpdate(): void {
     const checkInterval = GameConfig.MANAGER_CONFIGS.COORDINATION_MANAGER.UPDATE_INTERVAL || 50;
     if (Game.time - this.memory.lastUpdate >= checkInterval) {
       this.updateRoomPriorities();

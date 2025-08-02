@@ -3,7 +3,6 @@ import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { RoomService } from "../services/room/RoomService";
-import { Safe } from "../utils/Decorators";
 import { RoomManagerMemory } from "../types";
 import { LogisticsManager } from "./LogisticsManager";
 
@@ -19,8 +18,9 @@ export class RoomManager extends BaseManager<RoomManagerMemory> {
     return this.serviceContainer.get<LogisticsManager>('logisticsManager');
   }
 
-  public updateManager(): void {}
-  public cleanup(): void {}
+  protected onUpdate(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer, 'roomManager');
@@ -29,7 +29,7 @@ export class RoomManager extends BaseManager<RoomManagerMemory> {
     this.registerServices('roomService', new RoomService(this.eventBus, this, this.memory));
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;

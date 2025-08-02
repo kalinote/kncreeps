@@ -9,14 +9,16 @@ import { RoomService } from '../room/RoomService';
 import { ConstructPlannerService } from '../construction/ConstructPlannerService';
 import { TaskStateService } from '../task/TaskStateService';
 import { LayerRegistry } from '../../visual/LayerRegistry';
+import { TransportService } from '../logistics/TransportService';
 
 /**
  * 视觉布局服务
  * 负责计算图层布局和管理图层状态。
  */
 export class VisualLayoutService extends BaseService<{ [layerName: string]: LayerSettingsMemory }, VisualManager> {
-  public update(): void {}
-  public cleanup(): void {}
+  protected onUpdate(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   private _layerRegistry: LayerRegistry;
 
@@ -32,6 +34,10 @@ export class VisualLayoutService extends BaseService<{ [layerName: string]: Laye
     return this.manager.taskManager.taskStateService;
   }
 
+  public get transportService(): TransportService {
+    return this.manager.logisticsManager.transportService;
+  }
+
   public get layerRegistry(): LayerRegistry {
     return this._layerRegistry;
   }
@@ -44,7 +50,7 @@ export class VisualLayoutService extends BaseService<{ [layerName: string]: Laye
   /**
    * 初始化内存，确保所有图层都有默认的启用/禁用设置
    */
-  public initialize(): void {
+  protected onInitialize(): void {
     for (const layerName in VisualConfig.LAYER_DEFAULTS) {
       if (!this.memory[layerName]) {
         this.memory[layerName] = VisualConfig.LAYER_DEFAULTS[layerName as keyof typeof VisualConfig.LAYER_DEFAULTS] as LayerSettingsMemory;

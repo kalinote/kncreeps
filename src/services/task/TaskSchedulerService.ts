@@ -9,13 +9,13 @@ import { EventBus } from "../../core/EventBus";
  * 采用统一的动态优先级模型，取代了旧的"独占-共享"两段式调度。
  */
 export class TaskSchedulerService extends BaseService<TaskSchedulerServiceMemory, TaskManager> {
-  public cleanup(): void {}
-
+  protected onCleanup(): void {}
+  protected onReset(): void {}
   constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
     super(eventBus, manager, memory, 'scheduler');
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -24,7 +24,7 @@ export class TaskSchedulerService extends BaseService<TaskSchedulerServiceMemory
     }
   }
 
-  public update(): void {
+  protected onUpdate(): void {
     const availableCreeps = this.getAvailableCreeps();
     if (availableCreeps.length === 0) {
       return;

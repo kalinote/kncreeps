@@ -142,6 +142,12 @@ export class GameEngine {
     if (Game.time % GameConfig.UPDATE_FREQUENCIES.CLEANUP === 0) {
       this.performDeepCleanup();
     }
+
+    for (const [name, manager] of this.managers) {
+      if (manager.isActive()) {
+        manager.cleanup();
+      }
+    }
   }
 
   /**

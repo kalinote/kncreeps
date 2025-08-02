@@ -15,7 +15,7 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
     super(eventBus, manager, memory, 'creepProduction');
   }
 
-  public initialize(): void {
+  protected onInitialize(): void {
     if (!this.memory.initAt) {
       this.memory.initAt = Game.time;
       this.memory.lastUpdate = Game.time;
@@ -27,14 +27,13 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
     }
   }
 
-  public update(): void {
+  protected onUpdate(): void {
     this.assessProductionNeeds();
     this.executeProduction();
   }
 
-  public cleanup(): void {
-    throw new Error("Method not implemented.");
-  }
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   /**
    * 设置事件监听器
@@ -665,13 +664,6 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
    */
   public getProductionQueue(): ProductionNeed[] {
     return [...this.productionQueue];
-  }
-
-  /**
-   * 重置时的清理工作
-   */
-  public onReset(): void {
-    throw new Error("Method not implemented.");
   }
 
   /**
