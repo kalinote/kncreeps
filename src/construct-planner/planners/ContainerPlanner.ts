@@ -1,4 +1,4 @@
-import { BuildingPlan } from '../../types';
+import { BuildingPlanMemory } from '../../types';
 import { BasePlanner } from './BasePlanner';
 
 /**
@@ -14,12 +14,12 @@ export class ContainerPlanner extends BasePlanner {
    * @param room 需要规划的房间对象
    * @returns 返回一个包含所有容器位置的数组
    */
-  public plan(room: Room): BuildingPlan[] {
+  public plan(room: Room): BuildingPlanMemory[] {
     if (!room.controller) {
       return [];
     }
 
-    const plans: BuildingPlan[] = [];
+    const plans: BuildingPlanMemory[] = [];
     const spawn = room.find(FIND_MY_SPAWNS)[0];
     if (!spawn) {
       return [];

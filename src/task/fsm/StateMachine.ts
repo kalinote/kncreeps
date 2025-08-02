@@ -1,27 +1,21 @@
 import { TaskManager } from "../../managers/TaskManager";
-import { ServiceContainer } from "../../core/ServiceContainer";
 import { TaskFSMMemory, StateHandlers, CreepFSMState, Task, TaskType } from "../../types";
-import { CreepMoveService } from "../../services/CreepMoveService";
-import { EnergyService } from "../../services/EnergyService";
+import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 /**
  * 任务状态机基类
  * 负责管理任务的状态转换和内存持久化
  */
 export abstract class TaskStateMachine<TState extends string> {
-  protected moveService: CreepMoveService;
-  protected energyService: EnergyService;
   protected taskMemory: TaskFSMMemory<TState>;
   protected creepState: CreepFSMState<TState>;
-  protected serviceContainer: ServiceContainer;
   protected creep: Creep;
+  protected service: TaskExecutionService;
 
-  constructor(taskMemory: TaskFSMMemory<TState>, creep: Creep, serviceContainer: ServiceContainer) {
+  constructor(taskMemory: TaskFSMMemory<TState>, service: TaskExecutionService, creep: Creep) {
+    this.service = service;
     this.taskMemory = taskMemory;
     this.creep = creep;
-    this.serviceContainer = serviceContainer;
-    this.moveService = this.serviceContainer.get('creepMoveService');
-    this.energyService = this.serviceContainer.get('energyService');
 
     // 获取或初始化该creep的执行状态
     if (!taskMemory.creepStates[creep.name]) {
@@ -49,16 +43,12 @@ export abstract class TaskStateMachine<TState extends string> {
       return;
     }
 
-    try {
-      const nextState = handler(this.creep);
+    const nextState = handler(this.creep);
 
-      // 如果处理器返回了新状态，则进行状态转换
-      if (nextState && nextState !== currentState) {
-        this.creepState.currentState = nextState;
-        // console.log(`[TaskStateMachine] creep: ${this.creep.name} 状态转换: ${currentState} -> ${nextState}`);
-      }
-    } catch (error) {
-      console.log(`[TaskStateMachine] 状态处理器执行错误: ${currentState}`, error);
+    // 如果处理器返回了新状态，则进行状态转换
+    if (nextState && nextState !== currentState) {
+      this.creepState.currentState = nextState;
+      // console.log(`[TaskStateMachine] creep: ${this.creep.name} 状态转换: ${currentState} -> ${nextState}`);
     }
   }
 
@@ -158,8 +148,7 @@ export abstract class TaskStateMachine<TState extends string> {
    * 获取任务对象
    */
   protected getTask<T extends Task>(creep: Creep): T | null {
-    const taskManager: TaskManager = this.serviceContainer.get('taskManager');
-    const task = taskManager.getCreepTask(creep.name);
+    const task = this.service.getCreepTask(creep.name);
 
     if (task && task.type === this.getExpectedTaskType()) {
       return task as T;

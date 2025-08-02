@@ -1,38 +1,59 @@
-import { BaseService } from './BaseService';
-import { EventBus } from '../core/EventBus';
-import { ServiceContainer } from '../core/ServiceContainer';
-import { VisualConfig, DATA_LAYER_LAYOUTS } from '../config/VisualConfig';
-import { EventConfig } from '../config/EventConfig';
-import { BaseLayer } from '../visual/layers/BaseLayer';
+import { BaseService } from '../BaseService';
+import { VisualConfig, DATA_LAYER_LAYOUTS } from '../../config/VisualConfig';
+import { EventConfig } from '../../config/EventConfig';
+import { BaseLayer } from '../../visual/layers/BaseLayer';
+import { LayerSettingsMemory } from '../../types';
+import { EventBus } from '../../core/EventBus';
+import { VisualManager } from '../../managers/VisualManager';
+import { RoomService } from '../room/RoomService';
+import { ConstructPlannerService } from '../construction/ConstructPlannerService';
+import { TaskStateService } from '../task/TaskStateService';
+import { LayerRegistry } from '../../visual/LayerRegistry';
+import { TransportService } from '../logistics/TransportService';
 
 /**
  * 视觉布局服务
  * 负责计算图层布局和管理图层状态。
  */
-export class VisualLayoutService extends BaseService {
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-    this.initializeMemory();
+export class VisualLayoutService extends BaseService<{ [layerName: string]: LayerSettingsMemory }, VisualManager> {
+  protected onUpdate(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
+
+  private _layerRegistry: LayerRegistry;
+
+  public get roomService(): RoomService {
+    return this.manager.roomManager.roomService;
+  }
+
+  public get constructPlannerService(): ConstructPlannerService {
+    return this.manager.constructionManager.constructPlannerService;
+  }
+
+  public get taskStateService(): TaskStateService {
+    return this.manager.taskManager.taskStateService;
+  }
+
+  public get transportService(): TransportService {
+    return this.manager.logisticsManager.transportService;
+  }
+
+  public get layerRegistry(): LayerRegistry {
+    return this._layerRegistry;
+  }
+
+  constructor(eventBus: EventBus, manager: VisualManager, memory: any) {
+    super(eventBus, manager, memory, 'layerSettings');
+    this._layerRegistry = new LayerRegistry(this);
   }
 
   /**
    * 初始化内存，确保所有图层都有默认的启用/禁用设置
    */
-  private initializeMemory(): void {
-    if (!Memory.visuals) {
-      Memory.visuals = {
-        cache: null,
-        lastUpdateTime: 0,
-        layerSettings: {}
-      };
-    }
-    if (!Memory.visuals.layerSettings) {
-      Memory.visuals.layerSettings = {};
-    }
+  protected onInitialize(): void {
     for (const layerName in VisualConfig.LAYER_DEFAULTS) {
-      if (Memory.visuals.layerSettings[layerName] === undefined) {
-        Memory.visuals.layerSettings[layerName] =
-          VisualConfig.LAYER_DEFAULTS[layerName as keyof typeof VisualConfig.LAYER_DEFAULTS];
+      if (!this.memory[layerName]) {
+        this.memory[layerName] = VisualConfig.LAYER_DEFAULTS[layerName as keyof typeof VisualConfig.LAYER_DEFAULTS] as LayerSettingsMemory;
       }
     }
   }
@@ -41,15 +62,15 @@ export class VisualLayoutService extends BaseService {
    * 检查某个图层是否已启用
    */
   public isLayerEnabled(layerName: string): boolean {
-    return Memory.visuals?.layerSettings[layerName]?.enabled ?? false;
+    return this.memory[layerName]?.enabled ?? false;
   }
 
   /**
    * 设置图层的启用/禁用状态 (用于控制台指令)
    */
   public setLayerEnabled(layerName: string, enabled: boolean): boolean {
-    if (Memory.visuals?.layerSettings[layerName]) {
-      Memory.visuals.layerSettings[layerName].enabled = enabled;
+    if (this.memory[layerName]) {
+      this.memory[layerName].enabled = enabled;
       this.emit(EventConfig.EVENTS.LAYER_TOGGLED, { layerName, enabled });
       console.log(`[VisualLayoutService] 图层 '${layerName}' 已设置为 ${enabled ? '启用' : '禁用'}.`);
       return true;

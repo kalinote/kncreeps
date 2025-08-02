@@ -1,3 +1,4 @@
+import { VisualLayoutService } from 'services/visual/VisualLayoutService';
 import { EventBus } from '../core/EventBus';
 import { ServiceContainer } from '../core/ServiceContainer';
 import { BaseLayer } from './layers/BaseLayer';
@@ -6,6 +7,7 @@ import { GlobalInfoLayer } from './layers/GlobalInfoLayer';
 import { RoomInfoLayer } from './layers/RoomInfoLayer';
 import { TaskAssignmentLayer } from './layers/TaskAssignmentLayer';
 import { TaskTrackLayer } from './layers/TaskTrackLayer';
+import { TransportNetworkLayer } from './layers/TransportNetworkLayer';
 
 /**
  * 图层注册表
@@ -14,19 +16,20 @@ import { TaskTrackLayer } from './layers/TaskTrackLayer';
 export class LayerRegistry {
   private layers: Map<string, BaseLayer> = new Map();
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    this.registerLayers(eventBus, serviceContainer);
+  constructor(service: VisualLayoutService) {
+    this.registerLayers(service);
   }
 
   /**
    * 注册所有的图层实例
    */
-  private registerLayers(eventBus: EventBus, serviceContainer: ServiceContainer): void {
-    this.register(new GlobalInfoLayer(eventBus, serviceContainer));
-    this.register(new RoomInfoLayer(eventBus, serviceContainer));
-    this.register(new TaskTrackLayer(eventBus, serviceContainer));
-    this.register(new ConstructionPlannerLayer(eventBus, serviceContainer));
-    this.register(new TaskAssignmentLayer(eventBus, serviceContainer));
+  private registerLayers(service: VisualLayoutService): void {
+    this.register(new GlobalInfoLayer(service));
+    this.register(new RoomInfoLayer(service));
+    this.register(new TaskTrackLayer(service));
+    this.register(new ConstructionPlannerLayer(service));
+    this.register(new TaskAssignmentLayer(service));
+    this.register(new TransportNetworkLayer(service));
   }
 
   /**

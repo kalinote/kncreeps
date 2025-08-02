@@ -2,67 +2,51 @@ import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { ServiceContainer } from "../core/ServiceContainer";
-import { StatsService } from "../services/StatsService";
+import { StatsManagerMemory } from "../types";
+import { GlobalStatsService } from "../services/stats/GlobalStatsService";
+import { RoomStatsService } from "../services/stats/RoomStatsService";
+import { PerformanceStatsService } from "../services/stats/PerformanceStatsService";
 
 /**
  * 统计管理器 - 协调全局统计信息的收集流程
  */
-export class StatsManager extends BaseManager {
-  private statsService: StatsService;
+export class StatsManager extends BaseManager<StatsManagerMemory> {
+  protected onCleanup(): void {}
+  protected onReset(): void {}
+
+  public get globalStatsService(): GlobalStatsService {
+    return this.services.get("globalStatsService") as GlobalStatsService;
+  }
+  public get roomStatsService(): RoomStatsService {
+    return this.services.get("roomStatsService") as RoomStatsService;
+  }
+  public get performanceStatsService(): PerformanceStatsService {
+    return this.services.get("performanceStatsService") as PerformanceStatsService;
+  }
 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-    this.statsService = this.serviceContainer.get<StatsService>('statsService');
+    super(eventBus, serviceContainer, "statsManager");
     this.updateInterval = GameConfig.MANAGER_CONFIGS.STATS_MANAGER.UPDATE_INTERVAL;
 
+    this.registerServices("globalStatsService", new GlobalStatsService(this.eventBus, this, this.memory));
+    this.registerServices("roomStatsService", new RoomStatsService(this.eventBus, this, this.memory));
+    this.registerServices("performanceStatsService", new PerformanceStatsService(this.eventBus, this, this.memory));
   }
 
   /**
    * 初始化统计内存
    */
-  private initializeStatsMemory(): void {
-    if (!Memory.stats) {
-      Memory.stats = {
-        lastUpdate: Game.time,
-        globalStats: {
-          totalCreeps: 0,
-          totalRooms: 0,
-          totalEnergy: 0,
-          totalEnergyCapacity: 0,
-          totalTasks: 0,
-          completedTasks: 0,
-          failedTasks: 0
-        },
-        roomStats: {},
-        performanceHistory: []
-      };
+  protected onInitialize(): void {
+    if (!this.memory.initAt) {
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
     }
   }
 
   /**
    * 更新统计管理器，驱动统计服务
    */
-  public update(): void {
-    if (!this.shouldUpdate()) return;
-
-    this.safeExecute(() => {
-      // TODO 初始化统计内存
-      this.initializeStatsMemory();
-      this.statsService.run();
-    }, 'StatsManager.update');
-
-    this.updateCompleted();
-  }
-
-  /**
-   * 重置钩子，可在需要时清理内存
-   */
-  protected onReset(): void {
-    // console.log("[StatsManager] Resetting state.");
-  }
-
-  /**
-   * 此管理器不再直接监听业务事件，相关逻辑已移至StatsService
-   */
-  protected setupEventListeners(): void {}
+  protected onUpdate(): void {}
 }

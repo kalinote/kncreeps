@@ -1,53 +1,58 @@
-// 任务类型枚举
-export enum TaskType {
-  HARVEST = 'harvest',
-  TRANSPORT = 'transport',
-  BUILD = 'build',
-  REPAIR = 'repair',
-  UPGRADE = 'upgrade',
-  ATTACK = 'attack'
+import { TaskExecutionService } from "../services/task/TaskExecutionService";
+import { UnifiedMemoryCycleStructureMemory } from "./core";
+import { TaskStateMachine } from "../task/fsm/StateMachine";
+// ========================== 内存类型开始 ==========================
+
+// 任务系统内存类型
+export interface TaskManagerMemory extends UnifiedMemoryCycleStructureMemory {
+  // taskQueue: Task[];
+  // creepTasks: { [creepName: string]: string }; // creep -> taskId 映射
+  // taskAssignments: { [taskId: string]: string[] }; // taskId -> creepNames 映射
+  // completedTasks: string[]; // 已完成的任务ID列表（用于清理）
+  // stats: {
+  //   tasksCreated: number;
+  //   tasksCompleted: number;
+  //   tasksFailed: number;
+  //   averageExecutionTime: number;
+  // };
+  execution?: TaskExecutionServiceMemory;
+  generator?: TaskGeneratorServiceMemory;
+  group?: TaskGroupServiceMemory;
+  scheduler?: TaskSchedulerServiceMemory;
+  state?: TaskStateServiceMemory;
 }
 
-// 任务状态枚举
-export enum TaskStatus {
-  PENDING = 'pending',
-  ASSIGNED = 'assigned',
-  IN_PROGRESS = 'in_progress',
-  PAUSED = 'paused',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  CANCELLED = 'cancelled'
+// 任务执行服务内存类型
+export interface TaskExecutionServiceMemory extends UnifiedMemoryCycleStructureMemory {
+
 }
 
-// 任务优先级枚举
-export enum TaskPriority {
-  EMERGENCY = 100,
-  CRITICAL = 80,
-  HIGH = 60,
-  NORMAL = 40,
-  LOW = 20,
-  BACKGROUND = 10
+// 任务生成服务内存类型
+export interface TaskGeneratorServiceMemory extends UnifiedMemoryCycleStructureMemory {
+
 }
 
-// 任务分配类型枚举
-export enum TaskAssignmentType {
-  EXCLUSIVE = 'exclusive',  // 独占任务 - 只能分配给一个creep
-  SHARED = 'shared'         // 共享任务 - 可以分配给多个creep
+// 任务组服务内存类型
+export interface TaskGroupServiceMemory extends UnifiedMemoryCycleStructureMemory {
+
 }
 
-// 任务生命周期枚举
-export enum TaskLifetime {
-  ONCE = 'once',           // 一次性任务 - 有明确完成标准
-  PERSISTENT = 'persistent' // 持久性任务 - 持续存在直到对象消失
+// 任务调度服务内存类型
+export interface TaskSchedulerServiceMemory extends UnifiedMemoryCycleStructureMemory {
+
 }
 
-// 任务种类枚举
-export enum TaskKind {
-  HARVEST = 'HARVEST',
-  TRANSPORT = 'TRANSPORT',
-  BUILD = 'BUILD',
-  UPGRADE = 'UPGRADE',
-  ATTACK = 'ATTACK'
+
+// 任务状态服务内存类型
+export interface TaskStateServiceMemory extends UnifiedMemoryCycleStructureMemory {
+  taskQueue: Task[];                                      // 任务队列
+  creepTasks: { [creepName: string]: string };            // creep -> taskId 映射
+  taskAssignments: { [taskId: string]: string[] };         // taskId -> creepNames 映射
+  completedTasks: string[];                               // 已完成的任务ID列表（用于清理）
+  tasksCreated: number;                                   // 创建的任务数量
+  tasksCompleted: number;                                 // 完成的任务数量
+  tasksFailed: number;                                    // 失败的任务数量
+  averageExecutionTime: number;                           // 平均执行时间
 }
 
 // 基础任务接口
@@ -138,6 +143,64 @@ export interface AttackTask extends BaseTask {
 // 任务联合类型
 export type Task = HarvestTask | TransportTask | BuildTask | UpgradeTask | AttackTask;
 
+// ========================== 内存类型结束 ==========================
+
+// FSM 执行器类类型
+export type FSMExecutorClass = new (memory: TaskFSMMemory<any>, service: TaskExecutionService, creep: Creep) => TaskStateMachine<any>;
+
+// 任务类型枚举
+export enum TaskType {
+  HARVEST = 'harvest',
+  TRANSPORT = 'transport',
+  BUILD = 'build',
+  REPAIR = 'repair',
+  UPGRADE = 'upgrade',
+  ATTACK = 'attack'
+}
+
+// 任务状态枚举
+export enum TaskStatus {
+  PENDING = 'pending',
+  ASSIGNED = 'assigned',
+  IN_PROGRESS = 'in_progress',
+  PAUSED = 'paused',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled'
+}
+
+// 任务优先级枚举
+export enum TaskPriority {
+  EMERGENCY = 100,
+  CRITICAL = 80,
+  HIGH = 60,
+  NORMAL = 40,
+  LOW = 20,
+  BACKGROUND = 10
+}
+
+// 任务分配类型枚举
+export enum TaskAssignmentType {
+  EXCLUSIVE = 'exclusive',  // 独占任务 - 只能分配给一个creep
+  SHARED = 'shared'         // 共享任务 - 可以分配给多个creep
+}
+
+// 任务生命周期枚举
+export enum TaskLifetime {
+  ONCE = 'once',           // 一次性任务 - 有明确完成标准
+  PERSISTENT = 'persistent' // 持久性任务 - 持续存在直到对象消失
+}
+
+// 任务种类枚举
+export enum TaskKind {
+  HARVEST = 'HARVEST',
+  TRANSPORT = 'TRANSPORT',
+  BUILD = 'BUILD',
+  UPGRADE = 'UPGRADE',
+  ATTACK = 'ATTACK'
+}
+
+
 // 任务结果类型
 export interface TaskResult {
   success: boolean;
@@ -160,20 +223,7 @@ export interface TaskExecutor {
   getRequiredCapabilities(): CapabilityRequirement[];
 }
 
-// 任务系统内存类型
-export interface TaskSystemMemory {
-  taskQueue: Task[];
-  creepTasks: { [creepName: string]: string }; // creep -> taskId 映射
-  taskAssignments: { [taskId: string]: string[] }; // taskId -> creepNames 映射
-  completedTasks: string[]; // 已完成的任务ID列表（用于清理）
-  lastCleanup: number;
-  stats: {
-    tasksCreated: number;
-    tasksCompleted: number;
-    tasksFailed: number;
-    averageExecutionTime: number;
-  };
-}
+
 
 // FSM相关类型
 export interface TaskFSMMemory<TState extends string = string> {

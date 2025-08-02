@@ -1,5 +1,6 @@
-import { EventBus } from '../../core/EventBus';
-import { ServiceContainer } from '../../core/ServiceContainer';
+import { RoomService } from 'services/room/RoomService';
+import { ConstructPlannerService } from 'services/construction/ConstructPlannerService';
+import { VisualLayoutService } from '../../services/visual/VisualLayoutService';
 import { ChartBuffer, LayerType } from '../../types'; // 从全局类型文件导入
 
 /**
@@ -10,14 +11,12 @@ export abstract class BaseLayer {
   protected abstract title: string;
   public abstract layerType: LayerType;
   public priority: number = 99;
-  protected eventBus: EventBus;
-  protected serviceContainer: ServiceContainer;
+  protected service: VisualLayoutService;
   protected buffer: ChartBuffer = [];
   protected textStyle: TextStyle = {};
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    this.eventBus = eventBus;
-    this.serviceContainer = serviceContainer;
+  constructor(service: VisualLayoutService) {
+    this.service = service;
   }
 
   /**
@@ -141,6 +140,9 @@ export abstract class BaseLayer {
     return this.priority;
   }
 
+  /**
+   * 绘制文本行，用于数据类图层
+   */
   protected drawTextLine(visual: RoomVisual, text: string, x: number, y: number, style: TextStyle): void {
     // 因为screeps的visual.text接口没办法处理\n换行和\t制表符，所以需要自己处理
     const lines = text.split('\n');
@@ -150,9 +152,97 @@ export abstract class BaseLayer {
     }
   }
 
+  /**
+   * 绘制进度条，用于数据类图层
+   */
   protected drawProgressBar(visual: RoomVisual, progress: number, total: number, label: string, width: number, x: number, y: number, style: TextStyle): void {
     visual.rect(x, y - 0.675 /* 矩形的坐标点是顶部，所以需要减去高度，这里的高度是试出来的，后续可能需要严格计算 */, width, 0.8);
     visual.rect(x, y - 0.675, width * (progress / total), 0.8);
     visual.text(`${label}(${progress}/${total})`, x + width + 0.5 /* 进度条和lebel之间的间隔 */, y, style);
+  }
+
+  /**
+   * 绘制指示器，用于地图类图层
+   */
+  protected drawIndicator(visual: RoomVisual, x: number, y: number, color: string, radius: number): void {
+    // 定义不同形态的数组，包含旋转角度（弧度）和缩放比例
+    const sharps = [
+      { rotation: 0, scale: 1.0 },
+      { rotation: Math.PI / 8, scale: 1.1 },
+      { rotation: Math.PI / 4, scale: 1.2 },
+      { rotation: 3 * Math.PI / 8, scale: 1.1 },
+      { rotation: Math.PI / 2, scale: 1.0 },
+      { rotation: 5 * Math.PI / 8, scale: 0.9 },
+      { rotation: 3 * Math.PI / 4, scale: 0.8 },
+      { rotation: 7 * Math.PI / 8, scale: 0.9 },
+      { rotation: Math.PI, scale: 1.0 },
+      { rotation: 9 * Math.PI / 8, scale: 1.1 },
+      { rotation: 5 * Math.PI / 4, scale: 1.2 },
+      { rotation: 11 * Math.PI / 8, scale: 1.1 },
+      { rotation: 3 * Math.PI / 2, scale: 1.0 },
+      { rotation: 13 * Math.PI / 8, scale: 0.9 },
+      { rotation: 7 * Math.PI / 4, scale: 0.8 },
+      { rotation: 15 * Math.PI / 8, scale: 0.9 }
+    ];
+
+    // 使用Game.time控制动画，每4个tick切换一次形态
+    const currentSharpIndex = Game.time % sharps.length;
+    const currentSharp = sharps[currentSharpIndex];
+
+    // 应用缩放
+    const scaledRadius = radius * currentSharp.scale;
+
+    // 定义菱形的四个顶点（相对于中心点）
+    const basePoints = [
+      { x: 0, y: -scaledRadius },      // 上顶点
+      { x: scaledRadius, y: 0 },       // 右顶点
+      { x: 0, y: scaledRadius },       // 下顶点
+      { x: -scaledRadius, y: 0 }       // 左顶点
+    ];
+
+    // 应用旋转变换并转换为绝对坐标
+    const rotatedPoints = basePoints.map(point => {
+      const cos = Math.cos(currentSharp.rotation);
+      const sin = Math.sin(currentSharp.rotation);
+
+      return [
+        x + (point.x * cos - point.y * sin),
+        y + (point.x * sin + point.y * cos)
+      ] as [number, number];
+    });
+
+    // 绘制菱形
+    visual.poly(rotatedPoints, {
+      fill: color,
+      opacity: 0.6,
+      stroke: color,
+      strokeWidth: 0.1
+    });
+
+    // 可选：绘制内部小菱形增加水晶效果
+    const innerRadius = scaledRadius * 0.4;
+    const innerPoints = [
+      { x: 0, y: -innerRadius },
+      { x: innerRadius, y: 0 },
+      { x: 0, y: innerRadius },
+      { x: -innerRadius, y: 0 }
+    ];
+
+    const rotatedInnerPoints = innerPoints.map(point => {
+      const cos = Math.cos(currentSharp.rotation + Math.PI / 4); // 内部菱形旋转45度
+      const sin = Math.sin(currentSharp.rotation + Math.PI / 4);
+
+      return [
+        x + (point.x * cos - point.y * sin),
+        y + (point.x * sin + point.y * cos)
+      ] as [number, number];
+    });
+
+    visual.poly(rotatedInnerPoints, {
+      fill: 'transparent',
+      stroke: color,
+      strokeWidth: 0.05,
+      opacity: 0.8
+    });
   }
 }

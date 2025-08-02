@@ -1,3 +1,46 @@
+import { UnifiedMemoryCycleStructureMemory } from "./core";
+// ========================== 内存类型开始 ==========================
+
+// 后勤内存类型
+export interface LogisticsMemory extends UnifiedMemoryCycleStructureMemory {
+  // 运输网络
+  transportNetworkService?: { [roomName: string]: TransportNetworkServiceMemory };
+}
+
+// 运输网络内存
+export interface TransportNetworkServiceMemory {
+  providers: { [id: string]: ProviderInfo };
+  consumers: { [id: string]: ConsumerInfo };
+  lastUpdated: number;
+}
+
+// 资源协调管理内存
+export interface CoordinationManagerMemory extends UnifiedMemoryCycleStructureMemory {
+  roomPriorities: { [roomName: string]: number };
+  resourceAllocation: { [roomName: string]: ResourceAllocationMemory };
+  crossRoomTasks: CrossRoomTaskMemory[];
+}
+
+// 跨房间任务类型
+export interface CrossRoomTaskMemory {
+  id: string;
+  type: string;
+  sourceRoom: string;
+  targetRoom: string;
+  priority: number;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  createdAt: number;
+}
+
+// 资源分配类型
+export interface ResourceAllocationMemory {
+  energy: number;
+  creeps: { [role: string]: number };
+  priority: number;
+}
+
+// ========================== 内存类型结束 ==========================
+
 /**
  * 能量源类型
  */
@@ -63,17 +106,4 @@ export interface ConsumerInfo {
   priority?: number; // 动态计算的优先级
 }
 
-// 运输网络内存
-export interface TransportNetworkMemory {
-  providers: { [id: string]: ProviderInfo };
-  consumers: { [id: string]: ConsumerInfo };
-  lastUpdated: number;
-}
 
-// 后勤内存类型
-export interface LogisticsMemory {
-  transportNetwork?: TransportNetworkMemory;
-  // 未来可扩展其他后勤子系统
-  // market?: MarketMemory;
-  // labManagement?: LabManagementMemory;
-}

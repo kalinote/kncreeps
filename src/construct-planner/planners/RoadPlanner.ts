@@ -1,4 +1,4 @@
-import { BuildingPlan, ConstructionStatus, RoadConstructionStatus, RoadPlanInfo, RoadSegment, StructurePosition } from "../../types";
+import { BuildingPlanMemory, ConstructionStatus, RoadConstructionStatus, RoadPlanInfo, RoadSegment, StructurePosition } from "../../types";
 import { BasePlanner } from "./BasePlanner";
 
 /**
@@ -14,7 +14,7 @@ export class RoadPlanner extends BasePlanner {
    * @param room 需要规划的房间
    * @returns 返回所有道路的位置坐标
    */
-  public plan(room: Room): BuildingPlan[] {
+  public plan(room: Room): BuildingPlanMemory[] {
     const from = room.find(FIND_MY_SPAWNS)[0];
     if (!from) {
       console.log(`[RoadPlanner] 房间 ${room.name} 中没有找到 Spawn，无法规划道路。`);
@@ -163,11 +163,12 @@ export class RoadPlanner extends BasePlanner {
    * 获取道路规划信息
    */
   public getRoadPlanInfo(room: Room): RoadPlanInfo | null {
-    if (!Memory.constructPlanner?.layouts?.[room.name]?.buildings?.road) {
+    const layout = this.service.getLayout(room.name);
+    if (!layout || !layout.buildings.road) {
       return null;
     }
 
-    const roadPositions = Memory.constructPlanner.layouts[room.name].buildings.road;
+    const roadPositions = layout.buildings.road;
     const segments = this.buildRoadSegments(room, roadPositions);
 
     // 更新所有段的状态
@@ -183,7 +184,7 @@ export class RoadPlanner extends BasePlanner {
       segments,
       totalPositions,
       completedPositions,
-      lastUpdated: Memory.constructPlanner.layouts[room.name].lastUpdated
+      lastUpdated: layout.lastUpdated
     };
   }
 

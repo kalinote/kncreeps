@@ -1,13 +1,16 @@
 import { EventBus } from "../core/EventBus";
-import { GameConfig } from "../config/GameConfig";
 import { ServiceContainer } from "../core/ServiceContainer";
+import { BaseService } from "../services/BaseService";
+import { ConstructPlannerService } from "services/construction/ConstructPlannerService";
 
 /**
  * 基础管理器类 - 所有管理器的基类
  */
-export abstract class BaseManager {
+export abstract class BaseManager<TMemory = any> {
   protected eventBus: EventBus;
+  protected services: Map<string, BaseService> = new Map();
   protected serviceContainer: ServiceContainer;
+  protected readonly memoryKey?: string;
   protected isManagerActive: boolean = true;
   protected hasErrors: boolean = false;
   protected lastUpdateTick: number = 0;
@@ -15,9 +18,23 @@ export abstract class BaseManager {
   protected maxErrorCount: number = 3;
   protected updateInterval: number = 0;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+  protected get memory(): TMemory {
+    if (this.memoryKey === undefined) {
+      throw new Error(`管理器 ${this.constructor.name} 没有设置memoryKey`);
+    }
+    if (!Memory[this.memoryKey]) {
+      Memory[this.memoryKey] = {};
+    }
+    return Memory[this.memoryKey] as TMemory;
+  }
+
+  constructor(eventBus: EventBus, serviceContainer: ServiceContainer, memoryKey?: string) {
     this.eventBus = eventBus;
     this.serviceContainer = serviceContainer;
+    this.memoryKey = memoryKey;
+
+    this.initializeMemory();
+    this.initialize();
     this.setupEventListeners();
   }
 
@@ -29,9 +46,66 @@ export abstract class BaseManager {
   }
 
   /**
-   * 抽象方法 - 各管理器必须实现的更新逻辑
+   * 全局更新
    */
-  public abstract update(): void;
+  public update() {
+    if (!this.shouldUpdate()) return;
+    this.onUpdate();
+    for (const service of this.services.values()) {
+      service.update();
+    }
+    this.updateCompleted();
+  }
+
+  /**
+   * 初始化方法 - 子类可以重写
+   */
+  public initialize(): void {
+    this.onInitialize();
+  }
+
+  public cleanup(): void {
+    this.onCleanup();
+    for (const service of this.services.values()) {
+      service.cleanup();
+    }
+  }
+
+  /**
+   * 重置管理器状态
+   */
+  public reset(): void {
+    this.hasErrors = false;
+    this.isManagerActive = true;
+    this.errorCount = 0;
+    this.onReset();
+    for (const service of this.services.values()) {
+      service.reset();
+    }
+  }
+
+  protected abstract onUpdate(): void;
+  protected abstract onCleanup(): void;
+  protected abstract onReset(): void;
+  protected abstract onInitialize(): void;
+
+  /**
+   * 注册服务
+   */
+  public registerServices(name: string, service: BaseService) {
+    this.services.set(name, service);
+    service.initialize();
+  }
+
+  private initializeMemory(): void {
+    if (this.memoryKey === undefined) {
+      // 如果memoryKey为undefined，则不进行初始化，部分管理器可能不需要内存
+      return;
+    }
+    if (Memory[this.memoryKey] === undefined) {
+      Memory[this.memoryKey] = {};
+    }
+  }
 
   /**
    * 检查管理器是否处于活动状态
@@ -47,15 +121,7 @@ export abstract class BaseManager {
     return this.hasErrors;
   }
 
-  /**
-   * 重置管理器状态
-   */
-  public reset(): void {
-    this.hasErrors = false;
-    this.isManagerActive = true;
-    this.errorCount = 0;
-    this.onReset();
-  }
+
 
   /**
    * 暂停管理器
@@ -128,20 +194,6 @@ export abstract class BaseManager {
   }
 
   /**
-   * 安全执行方法 - 包装可能出错的代码
-   */
-  protected safeExecute<T>(operation: () => T, operationName?: string): T | undefined {
-    try {
-      return operation();
-    } catch (error) {
-      const name = operationName || '未知操作';
-      console.log(`${this.constructor.name} - ${name} 执行失败:`, error);
-      this.setError(error);
-      return undefined;
-    }
-  }
-
-  /**
    * 发送事件
    */
   protected emit(eventType: string, data?: any): void {
@@ -197,24 +249,5 @@ export abstract class BaseManager {
     };
   }
 
-  /**
-   * 重置时调用的钩子方法
-   */
-  protected onReset(): void {
-    // 子类可以重写此方法来实现特定的重置逻辑
-  }
 
-  /**
-   * 初始化方法 - 子类可以重写
-   */
-  protected onInitialize(): void {
-    // 子类可以重写此方法来实现特定的初始化逻辑
-  }
-
-  /**
-   * 清理方法 - 子类可以重写
-   */
-  protected onCleanup(): void {
-    // 子类可以重写此方法来实现特定的清理逻辑
-  }
 }

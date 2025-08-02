@@ -9,6 +9,7 @@ export class EventConfig {
     CREEP_DIED: 'creep.died',                           // 单位死亡
     CREEP_TASK_ASSIGNED: 'creep.task.assigned',         // 单位任务分配
     CREEP_TASK_COMPLETED: 'creep.task.completed',       // 单位任务完成
+    CREEP_PRODUCTION_NEEDED: 'creep.production.needed', // 单位生产需求
 
     // Room相关事件
     ROOM_ENERGY_CHANGED: 'room.energy.changed',        // 房间能量变化

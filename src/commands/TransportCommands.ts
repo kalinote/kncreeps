@@ -150,31 +150,33 @@ export class TransportStatusCommand extends BaseCommand {
   }
 
   private checkTransportNetwork(room: Room): void {
-    this.log(`  🌐 运输网络状态:`);
-    if (room.memory.logistics?.transportNetwork) {
-      const network = room.memory.logistics.transportNetwork;
-      this.log(`    提供者: ${Object.keys(network.providers).length} 个`);
-      this.log(`    消费者: ${Object.keys(network.consumers).length} 个`);
-      this.log(`    最后更新: Tick ${network.lastUpdated}`);
+    // TODO 重构命令
+    console.log("该模块尚未重构完成");
+    // this.log(`  🌐 运输网络状态:`);
+    // if (room.memory.logistics?.transportNetwork) {
+    //   const network = room.memory.logistics.transportNetwork;
+    //   this.log(`    提供者: ${Object.keys(network.providers).length} 个`);
+    //   this.log(`    消费者: ${Object.keys(network.consumers).length} 个`);
+    //   this.log(`    最后更新: Tick ${network.lastUpdated}`);
 
-      // 显示具体的提供者和消费者
-      for (const [id, provider] of Object.entries(network.providers)) {
-        const obj = Game.getObjectById(id as Id<AnyStructure | Resource>);
-        if (obj) {
-          const amount = obj instanceof Resource ? obj.amount : (obj as any).store?.getUsedCapacity(provider.resourceType) || 0;
-          this.log(`      提供者 ${id}: ${provider.type} - ${provider.resourceType} x${amount}`);
-        }
-      }
+    //   // 显示具体的提供者和消费者
+    //   for (const [id, provider] of Object.entries(network.providers)) {
+    //     const obj = Game.getObjectById(id as Id<AnyStructure | Resource>);
+    //     if (obj) {
+    //       const amount = obj instanceof Resource ? obj.amount : (obj as any).store?.getUsedCapacity(provider.resourceType) || 0;
+    //       this.log(`      提供者 ${id}: ${provider.type} - ${provider.resourceType} x${amount}`);
+    //     }
+    //   }
 
-      for (const [id, consumer] of Object.entries(network.consumers)) {
-        const obj = Game.getObjectById(id as Id<AnyStructure>);
-        if (obj) {
-          const needs = (obj as any).store?.getFreeCapacity(consumer.resourceType) || 0;
-          this.log(`      消费者 ${id}: ${consumer.type} - 需要 ${consumer.resourceType} x${needs}`);
-        }
-      }
-    } else {
-      this.log(`    运输网络未初始化`);
-    }
+    //   for (const [id, consumer] of Object.entries(network.consumers)) {
+    //     const obj = Game.getObjectById(id as Id<AnyStructure>);
+    //     if (obj) {
+    //       const needs = (obj as any).store?.getFreeCapacity(consumer.resourceType) || 0;
+    //       this.log(`      消费者 ${id}: ${consumer.type} - 需要 ${consumer.resourceType} x${needs}`);
+    //     }
+    //   }
+    // } else {
+    //   this.log(`    运输网络未初始化`);
+    // }
   }
 }

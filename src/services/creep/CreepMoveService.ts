@@ -1,15 +1,15 @@
-import { EventBus } from "core/EventBus";
-import { BaseService } from "./BaseService";
-import { ServiceContainer } from "core/ServiceContainer";
+import { BaseService } from "../BaseService";
 
 /**
  * Creep移动缓存服务
  */
 export class CreepMoveService extends BaseService {
   // TODO: 后续增加缓存功能和动态避障逻辑
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-  }
+
+  protected onInitialize(): void {}
+  protected onUpdate(): void {}
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   /**
    * 移动creep到目标位置

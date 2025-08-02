@@ -1,32 +1,30 @@
-import { BaseService } from "./BaseService";
-import { TaskStateService } from "./TaskStateService";
-import { Task, TaskType, TaskAssignmentType, TaskPriority, TaskStatus } from "../types";
-import { TaskExecutorRegistry } from "../task/TaskExecutorRegistry";
-import { EventBus } from "../core/EventBus";
-import { PriorityCalculator } from "../utils/PriorityCalculator";
-import { TaskManager } from "../managers/TaskManager";
+import { BaseService } from "../BaseService";
+import { Task, TaskType, TaskAssignmentType, TaskStatus, TaskSchedulerServiceMemory, TaskManagerMemory } from "../../types";
+import { PriorityCalculator } from "../../utils/PriorityCalculator";
+import { TaskManager } from "../../managers/TaskManager";
+import { EventBus } from "../../core/EventBus";
 
 /**
  * 任务调度器服务 - 负责任务分配和调度
  * 采用统一的动态优先级模型，取代了旧的"独占-共享"两段式调度。
  */
-export class TaskSchedulerService extends BaseService {
-  private executorRegistry: TaskExecutorRegistry;
-  private taskStateService: TaskStateService;
-  private taskManager: TaskManager;
-
-  constructor(eventBus: EventBus, serviceContainer: any) {
-    super(eventBus, serviceContainer);
-    this.executorRegistry = new TaskExecutorRegistry();
-    this.taskStateService = this.serviceContainer.get<TaskStateService>('taskStateService');
-    this.taskManager = this.serviceContainer.get<TaskManager>('taskManager');
+export class TaskSchedulerService extends BaseService<TaskSchedulerServiceMemory, TaskManager> {
+  protected onCleanup(): void {}
+  protected onReset(): void {}
+  constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
+    super(eventBus, manager, memory, 'scheduler');
   }
 
-  /**
-   * 为所有可用 creep 分配最合适的任务。
-   * 采用基于动态优先级的统一调度模型。
-   */
-  public update(): void {
+  protected onInitialize(): void {
+    if (!this.memory.initAt) {
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+    }
+  }
+
+  protected onUpdate(): void {
     const availableCreeps = this.getAvailableCreeps();
     if (availableCreeps.length === 0) {
       return;
@@ -74,7 +72,7 @@ export class TaskSchedulerService extends BaseService {
 
       // 执行分配，并从可用creep池中移除已分配的creep
       for (const creep of assignedCreeps) {
-        if (this.taskStateService.assignTask(task.id, creep.name)) {
+        if (this.manager.taskStateService.assignTask(task.id, creep.name)) {
           const index = availableCreeps.findIndex(c => c.id === creep.id);
           if (index > -1) {
             availableCreeps.splice(index, 1);
@@ -91,7 +89,7 @@ export class TaskSchedulerService extends BaseService {
    * 2. 处于 PENDING, ASSIGNED, IN_PROGRESS 状态且未达到分配上限的共享任务
    */
   private getAllAssignableTasks(): Task[] {
-    const allTasks = this.taskStateService.getActiveTasks();
+    const allTasks = this.manager.taskStateService.getActiveTasks();
 
     return allTasks.filter(task => {
       const canAssignMore = task.assignedCreeps.length < task.maxAssignees;
@@ -121,43 +119,22 @@ export class TaskSchedulerService extends BaseService {
    * 找到最适合任务的多个creep
    */
   private findBestCreepsForTask(task: Task, creeps: Creep[], count: number): Creep[] {
-    // 检查是否使用 FSM 执行器
-    // FIXME 这是一个临时解决方案，用于任务执行器重构的过度方案，完成任务执行器重构后删除
-    if (this.taskManager.isFSMTask(task.type) && task.fsm) {
-      // 对于FSM任务，我们不需要创建执行器实例，只需要检查基本能力
-      // 计算所有creep的评分
-      const creepScores = creeps
-        .filter(creep => this.canExecuteFSMTask(creep, task))
-        .map(creep => ({
-          creep,
-          score: this.calculateCreepScore(creep, task, null) // FSM执行器不需要用于评分
-        }))
-        .sort((a, b) => b.score - a.score);
+    // 计算所有creep的评分
+    const creepScores = creeps
+      .filter(creep => this.canExecuteFSMTask(creep, task))
+      .map(creep => ({
+        creep,
+        score: this.calculateCreepScore(creep, task, null) // FSM执行器不需要用于评分
+      }))
+      .sort((a, b) => b.score - a.score);
 
-      // 返回评分最高的creep
-      return creepScores.slice(0, count).map(item => item.creep);
-    } else {
-      // 使用传统执行器
-      const executor = this.executorRegistry.getExecutor(task.type);
-      if (!executor) return [];
-
-      // 计算所有creep的评分
-      const creepScores = creeps
-        .filter(creep => executor.canExecute(creep, task))
-        .map(creep => ({
-          creep,
-          score: this.calculateCreepScore(creep, task, executor)
-        }))
-        .sort((a, b) => b.score - a.score);
-
-      // 返回评分最高的creep
-      return creepScores.slice(0, count).map(item => item.creep);
-    }
+    // 返回评分最高的creep
+    return creepScores.slice(0, count).map(item => item.creep);
   }
 
     /**
    * 检查creep是否能执行FSM任务
-   * // FIXME 这是一个临时解决方案，用于任务执行器重构的过度方案，完成任务执行器重构后删除
+   * // TODO 这个函数需要进一步优化
    */
   private canExecuteFSMTask(creep: Creep, task: Task): boolean {
     // 对于FSM执行器，我们主要检查creep的基本能力
@@ -196,7 +173,7 @@ export class TaskSchedulerService extends BaseService {
       const creep = Game.creeps[name];
       if (creep.spawning) continue;
       // TODO 计入共享任务的状态为FINISHED的creep，该creep任务已完成
-      const currentTask = this.taskStateService.getCreepTask(name);
+      const currentTask = this.manager.taskStateService.getCreepTask(name);
       if (!currentTask) {
         available.push(creep);
       }
@@ -250,5 +227,16 @@ export class TaskSchedulerService extends BaseService {
       return new RoomPosition(pos.x, pos.y, pos.roomName);
     }
     return null;
+  }
+
+  /**
+   * 获取待分配的任务 - 包含需要生产creep的任务
+   */
+  public getPendingTasks(): Task[] {
+    return this.manager.taskStateService.getPendingTasks()
+  }
+
+  public getPendingTasksByRoom(roomName: string): Task[] {
+    return this.manager.taskStateService.getPendingTasks().filter(task => task.roomName === roomName);
   }
 }

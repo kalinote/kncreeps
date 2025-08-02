@@ -1,9 +1,8 @@
 import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
-import { ServiceContainer } from '../../core/ServiceContainer';
-import { EventBus } from '../../core/EventBus';
-import { ConstructPlannerService } from '../../services/ConstructPlannerService';
 import { ConstructionStatus, LayerType } from '../../types';
+import { VisualLayoutService } from '../../services/visual/VisualLayoutService';
+import { ConstructPlannerService } from '../../services/construction/ConstructPlannerService';
 
 /**
  * 道路规划图层
@@ -12,11 +11,13 @@ export class ConstructionPlannerLayer extends BaseLayer {
   protected name: string = "ConstructionPlannerLayer";
   protected title: string = "建筑规划";
   public layerType: LayerType = LayerType.MAP;
-  private constructPlannerService: ConstructPlannerService;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-    this.constructPlannerService = this.serviceContainer.get<ConstructPlannerService>('constructPlannerService');
+  protected get constructPlannerService(): ConstructPlannerService {
+    return this.service.constructPlannerService;
+  }
+
+  constructor(service: VisualLayoutService) {
+    super(service);
     this.priority = VisualConfig.LAYER_DEFAULTS.ConstructionPlannerLayer.priority;
   }
 
@@ -29,13 +30,9 @@ export class ConstructionPlannerLayer extends BaseLayer {
       return;
     }
 
-    // 获取所有我的房间
-    const myRooms = Object.values(Game.rooms).filter(room => room.controller?.my);
 
-    for (const room of myRooms) {
-      this.renderRoomRoadPlan(room);
-      this.renderRoomContainerPlan(room);
-    }
+    this.renderRoomRoadPlan(room);
+    this.renderRoomContainerPlan(room);
   }
 
   /**

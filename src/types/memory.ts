@@ -1,44 +1,59 @@
 // 导入其他模块的类型
 import {
-  SystemMemory,
-  StatsMemory,
-  CoordinationMemory,
-  EventBusMemory
+  EventBusMemory,
+  UnifiedMemoryCycleStructureMemory
 } from './core';
 import {
-  CreepState,
-  IntelligenceMemory,
-  CreepProductionMemory
+  CreepManagerMemory
 } from './creep';
-import { TaskSystemMemory } from './task';
-import { VisualsMemory } from './visual';
-import { ConstructionPlannerMemory } from './construction';
+import { TaskManagerMemory } from './task';
+import { VisualManagerMemory } from './visual';
+import { ConstructionManagerMemory } from './construction';
 import { LogisticsMemory } from './logistics';
+import { RoomManagerMemory } from './room';
+import { StatsManagerMemory } from './stats';
 
 // 扩展全局Memory接口
 declare global {
   interface Memory {
-    uuid: number;
-    log: any;
     // 系统相关的内存扩展
-    rooms: { [roomName: string]: RoomMemory };
-    creepProduction: CreepProductionMemory;
-    intelligence: IntelligenceMemory;
-    creepStates: { [creepName: string]: CreepState };
+    // 精简内存，没有用到的字段不要实际添加，如果有后续可能有用的字段，可以先注释
+    // uuid: number;
+    // log: any;
+    [key: string]: any;
+
+    // creep管理系统
+    creepManager?: CreepManagerMemory;
+
+    // 建筑规划系统
+    constructionManager?: ConstructionManagerMemory;
+
+    // 后勤管理系统
+    logisticsManager?: LogisticsMemory;
+
+    // 协调管理系统
+    coordinationManager?: ConstructionManagerMemory;
+
+    // 可视化系统
+    visualManager?: VisualManagerMemory;
+
+    // 房间管理系统
+    roomManager?: RoomManagerMemory;
+
+    // 全局统计系统
+    statsManager?: StatsManagerMemory;
+
+    // 任务管理系统
+    taskManager?: TaskManagerMemory;
 
     eventBus: EventBusMemory;
-    tasks?: TaskSystemMemory;
+
     gameEngine?: {
       initialized: boolean;
       lastTick: number;
       version?: string;
       startTime?: number;
     };
-    system?: SystemMemory;
-    stats?: StatsMemory;
-    coordination?: CoordinationMemory;
-    visuals?: VisualsMemory;
-    constructPlanner?: ConstructionPlannerMemory;
   }
 
   // 扩展CreepMemory接口
@@ -58,26 +73,6 @@ declare global {
     canBeInterrupted?: boolean; // 是否可以被中断，用于防止运输任务中途被打断
     // 采集位置分配
     assignedHarvestPos?: { x: number; y: number; roomName: string }; // 分配给creep的采集位置
-  }
-
-  // 扩展RoomMemory接口
-  interface RoomMemory {
-    energyAvailable: number;
-    energyCapacity: number;
-    controllerLevel: number;
-    activeConstructionStrategy?: string | null;
-    planningAttemptedAt?: number;
-    needsAttention: boolean;
-    lastEnemyActivity?: number; // 最近敌人活动时间
-    // 统一后的新字段
-    creepCounts: { [role: string]: number };
-    threatLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
-    lastUpdated: number;
-    logistics?: LogisticsMemory;
-    bootstrapStatus: {
-      // 后面把各服务的初始化信息全部放到这里
-      logistics: boolean;
-    }
   }
 
   // 扩展全局对象

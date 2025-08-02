@@ -1,48 +1,77 @@
 import { EventBus } from "../core/EventBus";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { BaseManager } from "../managers/BaseManager";
 
 /**
  * 基础服务类 - 所有业务服务的基类
  */
-export abstract class BaseService {
+export abstract class BaseService<TMemory = any, TManager = BaseManager> {
   protected eventBus: EventBus;
-  protected serviceContainer: ServiceContainer;
+  protected manager: TManager;
+  protected readonly memoryKey?: string;
   protected hasErrors: boolean = false;
   protected errorCount: number = 0;
   protected maxErrorCount: number = 5; // 服务可以容忍更多错误
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
+  // 添加getter
+  protected get memory(): TMemory {
+    if (this.memoryKey === undefined) {
+      throw new Error(`服务 ${this.constructor.name} 没有设置memoryKey`);
+    }
+
+    // 从manager的memory中获取
+    const managerMemory = (this.manager as any).memory;
+    if (!managerMemory[this.memoryKey]) {
+      managerMemory[this.memoryKey] = {};
+    }
+    return managerMemory[this.memoryKey] as TMemory;
+  }
+
+  constructor(eventBus: EventBus, manager: TManager, memory: any, memoryKey?: string) {
     this.eventBus = eventBus;
-    this.serviceContainer = serviceContainer;
+    this.manager = manager;
+    this.memoryKey = memoryKey;
+    this.initializeMemory(memory);
     this.setupEventListeners();
   }
 
-  /**
-   * 初始化服务
-   */
+  // 对外服务
   public initialize(): void {
-    // 子类可重写
+    this.onInitialize();
   }
 
-  /**
-   * 更新服务
-   */
   public update(): void {
-    // 子类可重写
+    this.onUpdate();
   }
 
-  /**
-   * 清理服务
-   */
   public cleanup(): void {
-    // 子类可重写
+    this.onCleanup();
   }
+
+  public reset(): void {
+    this.onReset();
+  }
+
+  // 对内服务
+  protected abstract onInitialize(): void;
+  protected abstract onUpdate(): void;
+  protected abstract onCleanup(): void;
+  protected abstract onReset(): void;
 
   /**
    * 设置事件监听器
    */
   protected setupEventListeners(): void {
     // 子类可重写
+  }
+
+  private initializeMemory(memory: any): void {
+    if (this.memoryKey === undefined) {
+      // 如果memoryKey为undefined，则不进行初始化，部分服务可能不需要内存
+      return;
+    }
+    if (memory[this.memoryKey] === undefined) {
+      memory[this.memoryKey] = {};
+    }
   }
 
   /**
@@ -70,20 +99,6 @@ export abstract class BaseService {
 
     if (this.hasErrors) {
       console.log(`服务 ${this.constructor.name} 因重复错误已被标记为不健康`);
-    }
-  }
-
-  /**
-   * 安全执行方法 - 包装可能出错的代码
-   */
-  protected safeExecute<T>(operation: () => T, operationName?: string): T | undefined {
-    try {
-      return operation();
-    } catch (error: any) {
-      const name = operationName || '未知操作';
-      console.log(`${this.constructor.name} - ${name} 执行失败:`, error.stack || error);
-      this.setError(error);
-      return undefined;
     }
   }
 }

@@ -1,6 +1,7 @@
 import { LayerType } from '../../types';
 import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
+import { VisualLayoutService } from 'services/visual/VisualLayoutService';
 
 /**
  * 全局信息图层
@@ -11,8 +12,8 @@ export class GlobalInfoLayer extends BaseLayer {
   protected title: string = "全局信息";
   public layerType: LayerType = LayerType.DATA;
 
-  constructor(eventBus: any, serviceContainer: any) {
-    super(eventBus, serviceContainer);
+  constructor(service: VisualLayoutService) {
+    super(service);
     this.textStyle = VisualConfig.STYLES.GLOBAL_INFO_STYLE;
   }
 

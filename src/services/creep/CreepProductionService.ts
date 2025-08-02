@@ -1,22 +1,39 @@
-import { EventBus } from "../core/EventBus";
-import { GameConfig } from "../config/GameConfig";
-import { TaskRoleMapping } from "../config/TaskConfig";
-import { BodyBuilder } from "../utils/BodyBuilder";
-import { ProductionNeed, Task, TaskType, TaskStatus, TaskAssignmentType } from "../types";
-import { BaseService } from "./BaseService";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { GameConfig } from "../../config/GameConfig";
+import { TaskRoleMapping } from "../../config/TaskConfig";
+import { BodyBuilder } from "../../utils/BodyBuilder";
+import { ProductionNeed, Task, TaskType, TaskStatus, CreepProductionServiceMemory } from "../../types";
+import { BaseService } from "../BaseService";
+import { CreepManager } from "../../managers/CreepManager";
+import { SafeMemoryAccess } from "../../utils/Decorators";
+import { EventBus } from "../../core/EventBus";
 
 /**
- * Creep生产服务 - 基于任务需求的生产系统
+ * Creep生产服务
  */
-export class CreepProductionService extends BaseService {
-  private lastProductionCheck: number = 0;
-  private lastTaskAnalysis: number = 0;
-
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-    this.setupEventListeners();
+export class CreepProductionService extends BaseService<CreepProductionServiceMemory, CreepManager> {
+  constructor(eventBus: EventBus, manager: CreepManager, memory: any) {
+    super(eventBus, manager, memory, 'creepProduction');
   }
+
+  protected onInitialize(): void {
+    if (!this.memory.initAt) {
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+      this.memory.queue = [];
+      this.memory.lastProduction = Game.time;
+      this.memory.energyBudget = 0;
+    }
+  }
+
+  protected onUpdate(): void {
+    this.assessProductionNeeds();
+    this.executeProduction();
+  }
+
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   /**
    * 设置事件监听器
@@ -36,6 +53,20 @@ export class CreepProductionService extends BaseService {
     this.eventBus.on(GameConfig.EVENTS.TASK_FAILED, (task: Task) => {
       this.updateProductionDemands();
     });
+
+    // 监听生产需求事件
+    this.eventBus.on(GameConfig.EVENTS.CREEP_PRODUCTION_NEEDED, (data: any) => {
+      this.addProductionNeed(
+        data.roomName,
+        data.role,
+        data.priority,
+        data.availableEnergy,
+        data.energyBudget,
+        data.taskType,
+        data.taskCount,
+        data.reason
+      );
+    });
   }
 
   /**
@@ -50,7 +81,7 @@ export class CreepProductionService extends BaseService {
    */
   public assessProductionNeeds(): void {
     // 使用配置的生产检查频率
-    if (Game.time - this.lastProductionCheck < GameConfig.UPDATE_FREQUENCIES.CREEP_PRODUCTION) {
+    if (Game.time - this.memory.lastProduction < GameConfig.UPDATE_FREQUENCIES.CREEP_PRODUCTION) {
       return;
     }
 
@@ -60,7 +91,7 @@ export class CreepProductionService extends BaseService {
     // 移除已完成的需求或不再需要的需求
     this.removeCompletedNeeds();
 
-    this.lastProductionCheck = Game.time;
+    this.memory.lastProduction = Game.time;
 
     // 检查是否需要处理开局生产
     for (const roomName in Game.rooms) {
@@ -157,7 +188,7 @@ export class CreepProductionService extends BaseService {
    */
   private updateProductionDemands(): void {
     // 获取所有待分配的任务
-    const pendingTasks = this.getPendingTasks();
+    const pendingTasks = this.manager.taskManager.taskSchedulerService.getPendingTasks();
 
     // 按房间分组任务
     const tasksByRoom = this.groupTasksByRoom(pendingTasks);
@@ -433,31 +464,9 @@ export class CreepProductionService extends BaseService {
   }
 
   /**
-   * 获取待分配的任务 - 包含需要生产creep的任务
-   */
-  private getPendingTasks(): Task[] {
-    if (!Memory.tasks) return [];
-
-    return Memory.tasks.taskQueue.filter(task => {
-      // 对于transport任务，需要特殊处理
-      if (task.type === TaskType.TRANSPORT) {
-        // transport任务是EXCLUSIVE类型，一旦分配就变为IN_PROGRESS
-        // 但如果地面上还有更多资源，可能需要更多transporter
-        // 所以transport任务只要是活跃状态就计入需求
-        return task.status === TaskStatus.PENDING ||
-          task.status === TaskStatus.ASSIGNED ||
-          task.status === TaskStatus.IN_PROGRESS;
-      }
-
-      // 其他任务类型只考虑PENDING状态
-      return task.status === TaskStatus.PENDING;
-    });
-  }
-
-  /**
    * 添加生产需求
    */
-  public addProductionNeed(
+  private addProductionNeed(
     roomName: string,
     role: string,
     priority: number,
@@ -637,31 +646,17 @@ export class CreepProductionService extends BaseService {
   }
 
   /**
-   * 获取生产队列（从Memory中获取）
+   * 获取生产队列
    */
   private get productionQueue(): ProductionNeed[] {
-    if (!Memory.creepProduction) {
-      Memory.creepProduction = {
-        queue: [],
-        lastProduction: Game.time,
-        energyBudget: 0
-      };
-    }
-    return Memory.creepProduction.queue;
+    return this.memory.queue;
   }
 
   /**
    * 设置生产队列（保存到Memory中）
    */
   private set productionQueue(queue: ProductionNeed[]) {
-    if (!Memory.creepProduction) {
-      Memory.creepProduction = {
-        queue: [],
-        lastProduction: Game.time,
-        energyBudget: 0
-      };
-    }
-    Memory.creepProduction.queue = queue;
+    this.memory.queue = queue;
   }
 
   /**
@@ -669,15 +664,6 @@ export class CreepProductionService extends BaseService {
    */
   public getProductionQueue(): ProductionNeed[] {
     return [...this.productionQueue];
-  }
-
-  /**
-   * 重置时的清理工作
-   */
-  public onReset(): void {
-    this.productionQueue = [];
-    this.lastProductionCheck = 0;
-    this.lastTaskAnalysis = 0;
   }
 
   /**
@@ -795,11 +781,10 @@ export class CreepProductionService extends BaseService {
   /**
    * 获取正在执行特定任务类型的指定角色creep数量
    */
+  @SafeMemoryAccess()
   private getCreepsAssignedToTaskType(roomName: string, role: string, taskType: TaskType): number {
-    if (!Memory.tasks || !Memory.tasks.creepTasks) return 0;
-
     let count = 0;
-    for (const creepName in Memory.tasks.creepTasks) {
+    for (const creepName in this.manager.taskManager.taskStateService.getTasks()) {
       const creep = Game.creeps[creepName];
       if (!creep) continue;
 
@@ -808,8 +793,7 @@ export class CreepProductionService extends BaseService {
       if (creepRoom !== roomName || creep.memory.role !== role) continue;
 
       // 检查任务类型
-      const taskId = Memory.tasks.creepTasks[creepName];
-      const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+      const task = this.manager.taskManager.taskStateService.getTaskByCreepName(creepName);
       if (task && task.type === taskType) {
         count++;
       }
@@ -832,7 +816,7 @@ export class CreepProductionService extends BaseService {
       if (creepRoom !== roomName || creep.memory.role !== role) continue;
 
       // 检查是否有任务分配
-      const hasTask = Memory.tasks && Memory.tasks.creepTasks && Memory.tasks.creepTasks[creepName];
+      const hasTask = this.manager.taskManager.taskStateService.getTaskIdByCreepName(creepName);
       if (!hasTask) {
         count++;
       }
@@ -855,10 +839,10 @@ export class CreepProductionService extends BaseService {
       if (!Game.rooms[room] || !Game.rooms[room].controller?.my) continue;
 
       console.log(`🏢 房间: ${room} (RCL ${Game.rooms[room].controller?.level || 1})`);
-      const tasks = this.getPendingTasks().filter(task => task.roomName === room);
+      const tasks = this.manager.taskManager.taskSchedulerService.getPendingTasksByRoom(room);
 
       console.log(`  📋 获取pending任务:`);
-      console.log(`    总任务数: ${Memory.tasks?.taskQueue.length || 0}, pending任务数: ${tasks.length}`);
+      console.log(`    总任务数: ${this.manager.taskManager.taskStateService.getTasks().length}, pending任务数: ${tasks.length}`);
 
       if (tasks.length > 0) {
         const tasksByType = this.groupTasksByType(tasks);

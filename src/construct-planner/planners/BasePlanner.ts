@@ -1,10 +1,17 @@
-import { BuildingPlan, RoomLayout } from "../../types";
+import { ConstructPlannerService } from '../../services/construction/ConstructPlannerService';
+import { BuildingPlanMemory } from '../../types';
 
 /**
  * 规划器的基类
  * 定义了所有具体规划器必须遵循的接口。
  */
 export abstract class BasePlanner {
+  protected service: ConstructPlannerService;
+
+  constructor(service: ConstructPlannerService) {
+    this.service = service;
+  }
+
   /**
    * 规划器的唯一名称
    */
@@ -21,7 +28,7 @@ export abstract class BasePlanner {
    * @param room 需要规划的房间对象
    * @returns 返回一个包含所有建筑位置的数组
    */
-  public abstract plan(room: Room): BuildingPlan[];
+  public abstract plan(room: Room): BuildingPlanMemory[];
 
   /**
    * 将路径点转换为标准的位置格式

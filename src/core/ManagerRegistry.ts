@@ -1,6 +1,5 @@
 import { BaseManager } from "../managers/BaseManager";
 import { EventBus } from "./EventBus";
-import { GameConfig } from "../config/GameConfig";
 
 /**
  * 管理器注册表 - 管理Manager间的交互，避免直接依赖

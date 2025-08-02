@@ -1,22 +1,28 @@
-import { EventBus } from "../core/EventBus";
-import { GameConfig } from "../config/GameConfig";
-import { CreepState } from "../types";
-import { CreepProductionService } from "./CreepProductionService";
-import { BaseService } from "./BaseService";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { EventBus } from "../../core/EventBus";
+import { GameConfig } from "../../config/GameConfig";
+import { CreepLifecycleServiceMemory } from "../../types";
+import { BaseService } from "../BaseService";
+import { CreepManager } from "../../managers/CreepManager";
 
 /**
  * Creep生命周期服务 - 处理所有Creep的生命周期管理
  * 从CreepManager中提取出来，保持原有逻辑不变
  */
-export class CreepLifecycleService extends BaseService {
-  private productionService: CreepProductionService;
+export class CreepLifecycleService extends BaseService<{ [creepName: string]: CreepLifecycleServiceMemory }> {
   private previousCreepNames: Set<string> = new Set();
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-    this.productionService = this.serviceContainer.get('creepProductionService');
+  constructor(eventBus: EventBus, manager: CreepManager, memory: any) {
+    super(eventBus, manager, memory, 'creepStates');
   }
+
+  protected onInitialize(): void {}
+
+  protected onUpdate(): void {
+    this.updateCreepStates();
+  }
+
+  protected onCleanup(): void {}
+  protected onReset(): void {}
 
   /**
    * 发送事件到事件总线
@@ -35,40 +41,25 @@ export class CreepLifecycleService extends BaseService {
   }
 
   /**
-   * 初始化creepStates内存
+   * 获取creepStates
    */
-  public initializeCreepStatesMemory(): void {
-    if (!Memory.creepStates) {
-      Memory.creepStates = {};
-    }
-  }
-
-  /**
-   * 获取creepStates（从Memory中获取）
-   */
-  private get creepStates(): { [creepName: string]: CreepState } {
-    if (!Memory.creepStates) {
-      Memory.creepStates = {};
-    }
-    return Memory.creepStates;
+  private get creepStates(): { [creepName: string]: CreepLifecycleServiceMemory } {
+    return this.memory;
   }
 
   /**
    * 设置单个creep状态
    */
-  private setCreepState(creepName: string, state: CreepState): void {
-    if (!Memory.creepStates) {
-      Memory.creepStates = {};
-    }
-    Memory.creepStates[creepName] = state;
+  private setCreepState(creepName: string, state: CreepLifecycleServiceMemory): void {
+    this.memory[creepName] = state;
   }
 
   /**
    * 删除creep状态
    */
   private deleteCreepState(creepName: string): void {
-    if (Memory.creepStates && Memory.creepStates[creepName]) {
-      delete Memory.creepStates[creepName];
+    if (this.memory && this.memory[creepName]) {
+      delete this.memory[creepName];
     }
   }
 
@@ -144,7 +135,7 @@ export class CreepLifecycleService extends BaseService {
       phase = 'aging';
     }
 
-    const state: CreepState = {
+    const state: CreepLifecycleServiceMemory = {
       name: creep.name,
       phase,
       ticksToLive,
@@ -155,17 +146,18 @@ export class CreepLifecycleService extends BaseService {
     this.setCreepState(creep.name, state);
 
     // 检查是否需要替换 - 委托给生产服务
+    // TODO 检查是否有现成可替换creep，如果有则直接替换而不是请求生产
     if (state.needsReplacement) {
-      this.productionService.addProductionNeed(
-        creep.room.name,
-        creep.memory.role,
-        GameConfig.PRIORITIES.HIGH,
-        creep.room.energyAvailable,
-        undefined,
-        undefined,
-        undefined,
-        `Auto replacement: ${creep.name}`
-      );
+      this.emit(GameConfig.EVENTS.CREEP_PRODUCTION_NEEDED, {
+        roomName: creep.room.name,
+        role: creep.memory.role,
+        priority: GameConfig.PRIORITIES.HIGH,
+        availableEnergy: creep.room.energyAvailable,
+        energyBudget: undefined,
+        taskType: undefined,
+        taskCount: undefined,
+        reason: `creep ${creep.name} 生命周期结束，需要替换`
+      });
     }
   }
 
@@ -222,7 +214,17 @@ export class CreepLifecycleService extends BaseService {
       if (room && room.controller?.my) {
         const availableEnergy = room.energyAvailable;
         // 委托给生产服务
-        this.productionService.addProductionNeed(roomName, role, GameConfig.PRIORITIES.HIGH, availableEnergy);
+        // TODO 检查是否有现成可替换creep，如果有则直接替换而不是请求生产
+        this.emit(GameConfig.EVENTS.CREEP_PRODUCTION_NEEDED, {
+          roomName,
+          role,
+          priority: GameConfig.PRIORITIES.HIGH,
+          availableEnergy,
+          energyBudget: undefined,
+          taskType: undefined,
+          taskCount: undefined,
+          reason: `creep ${creepName} 死亡，需要替换`
+        });
       }
     }
   }
@@ -290,14 +292,14 @@ export class CreepLifecycleService extends BaseService {
   /**
    * 获取指定creep的状态
    */
-  public getCreepState(creepName: string): CreepState | undefined {
+  public getCreepState(creepName: string): CreepLifecycleServiceMemory | undefined {
     return this.creepStates[creepName];
   }
 
   /**
    * 获取所有creep状态
    */
-  public getAllCreepStates(): { [creepName: string]: CreepState } {
+  public getAllCreepStates(): { [creepName: string]: CreepLifecycleServiceMemory } {
     return { ...this.creepStates };
   }
 
@@ -375,18 +377,5 @@ export class CreepLifecycleService extends BaseService {
     stats.efficiency.total = totalEfficiency;
 
     return stats;
-  }
-
-  /**
-   * 重置时的清理工作
-   */
-  public onReset(): void {
-    // 清理内存
-    Memory.creepStates = {};
-    if (Memory.creeps) {
-      for (const name in Memory.creeps) {
-        delete Memory.creeps[name];
-      }
-    }
   }
 }

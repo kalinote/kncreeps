@@ -20,19 +20,9 @@ export class CommandManager extends BaseManager {
     this.setupGlobalObjects();
   }
 
-  /**
-   * 更新方法 - 被 GameEngine 调用
-   */
-  public update(): void {
-    if (!this.shouldUpdate()) return;
-
-    this.safeExecute(() => {
-      // 命令管理器不需要定期更新，但可以在这里添加一些维护逻辑
-      // 比如清理过期的命令缓存等
-    }, 'CommandManager.update');
-
-    this.updateCompleted();
-  }
+  protected onUpdate(): void {}
+  protected onInitialize(): void {}
+  protected onCleanup(): void {}
 
   /**
    * 设置全局对象

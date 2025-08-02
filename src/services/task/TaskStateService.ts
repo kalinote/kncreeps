@@ -1,43 +1,39 @@
-import { EventBus } from "../core/EventBus";
-import { GameConfig } from "../config/GameConfig";
+import { SafeMemoryAccess } from "../../utils/Decorators";
+import { GameConfig } from "../../config/GameConfig";
 import {
   Task, TaskType, TaskStatus, TaskAssignmentType, TaskLifetime, TaskFSMMemory,
-  TaskKind, HarvestState, TransportState, BuildState, UpgradeState, AttackState
-} from "../types";
-import { BaseService } from "./BaseService";
-import { ServiceContainer } from "core/ServiceContainer";
+  TaskKind, HarvestState, TransportState, BuildState, UpgradeState, AttackState,
+  TaskStateServiceMemory, TaskManagerMemory
+} from "../../types";
+import { BaseService } from "../BaseService";
+import { EventBus } from "../../core/EventBus";
+import { TaskManager } from "../../managers/TaskManager";
 
 /**
  * 任务状态服务 - 管理任务的状态和生命周期
  */
-export class TaskStateService extends BaseService {
+export class TaskStateService extends BaseService<TaskStateServiceMemory> {
+  protected onUpdate(): void {}
+  protected onReset(): void {}
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+  constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
+    super(eventBus, manager, memory, 'state');
   }
 
-  public initialize(): void {
-    this.initializeMemory();
-  }
-
-  /**
-   * 初始化内存结构
-   */
-  private initializeMemory(): void {
-    if (!Memory.tasks) {
-      Memory.tasks = {
-        taskQueue: [],
-        creepTasks: {},
-        taskAssignments: {},
-        completedTasks: [],
-        lastCleanup: 0,
-        stats: {
-          tasksCreated: 0,
-          tasksCompleted: 0,
-          tasksFailed: 0,
-          averageExecutionTime: 0
-        }
-      };
+  protected onInitialize(): void {
+    if (!this.memory.initAt) {
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+      this.memory.taskQueue = [];
+      this.memory.creepTasks = {};
+      this.memory.taskAssignments = {};
+      this.memory.completedTasks = [];
+      this.memory.tasksCreated = 0;
+      this.memory.tasksCompleted = 0;
+      this.memory.tasksFailed = 0;
+      this.memory.averageExecutionTime = 0;
     }
   }
 
@@ -86,10 +82,8 @@ export class TaskStateService extends BaseService {
       fsm: this.initializeTaskFSMMemory(task.type)
     } as Task;
 
-    if (Memory.tasks) {
-      Memory.tasks.taskQueue.push(newTask);
-      Memory.tasks.stats.tasksCreated++;
-    }
+    this.memory.taskQueue.push(newTask);
+    this.memory.tasksCreated++;
 
     this.emit(GameConfig.EVENTS.TASK_CREATED, { taskId });
     return taskId;
@@ -99,16 +93,15 @@ export class TaskStateService extends BaseService {
    * 获取待分配的任务
    */
   public getPendingTasks(): Task[] {
-    if (!Memory.tasks) return [];
-    return Memory.tasks.taskQueue.filter(task => task.status === TaskStatus.PENDING);
+    return this.memory.taskQueue.filter(task => task.status === TaskStatus.PENDING);
   }
 
   /**
    * 获取活跃的任务（包括待分配、已分配、进行中的任务）
    */
+  @SafeMemoryAccess()
   public getActiveTasks(): Task[] {
-    if (!Memory.tasks) return [];
-    return Memory.tasks.taskQueue.filter(task =>
+    return this.memory.taskQueue.filter(task =>
       task.status === TaskStatus.PENDING ||
       task.status === TaskStatus.ASSIGNED ||
       task.status === TaskStatus.IN_PROGRESS
@@ -118,10 +111,9 @@ export class TaskStateService extends BaseService {
   /**
    * 分配任务给creep
    */
+  @SafeMemoryAccess()
   public assignTask(taskId: string, creepName: string): boolean {
-    if (!Memory.tasks) return false;
-
-    const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+    const task = this.memory.taskQueue.find(t => t.id === taskId);
     if (!task) return false;
 
     // 对于共享任务，允许在PENDING、ASSIGNED、IN_PROGRESS状态下继续分配
@@ -154,15 +146,11 @@ export class TaskStateService extends BaseService {
     task.updatedAt = Game.time;
 
     // 更新映射关系
-    if (Memory.tasks.creepTasks) {
-      Memory.tasks.creepTasks[creepName] = taskId;
+    this.memory.creepTasks[creepName] = taskId;
+    if (!this.memory.taskAssignments[taskId]) {
+      this.memory.taskAssignments[taskId] = [];
     }
-    if (Memory.tasks.taskAssignments) {
-      if (!Memory.tasks.taskAssignments[taskId]) {
-        Memory.tasks.taskAssignments[taskId] = [];
-      }
-      Memory.tasks.taskAssignments[taskId].push(creepName);
-    }
+    this.memory.taskAssignments[taskId].push(creepName);
 
     return true;
   }
@@ -171,12 +159,10 @@ export class TaskStateService extends BaseService {
    * 从任务中移除creep分配
    */
   public unassignCreep(creepName: string): boolean {
-    if (!Memory.tasks) return false;
-
-    const taskId = Memory.tasks.creepTasks[creepName];
+    const taskId = this.memory.creepTasks[creepName];
     if (!taskId) return false;
 
-    const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+    const task = this.memory.taskQueue.find(t => t.id === taskId);
     if (!task) return false;
 
     // 从任务的分配列表中移除
@@ -191,11 +177,11 @@ export class TaskStateService extends BaseService {
     }
 
     // 清理映射关系
-    delete Memory.tasks.creepTasks[creepName];
-    if (Memory.tasks.taskAssignments && Memory.tasks.taskAssignments[taskId]) {
-      const assignIndex = Memory.tasks.taskAssignments[taskId].indexOf(creepName);
+    delete this.memory.creepTasks[creepName];
+    if (this.memory.taskAssignments[taskId]) {
+      const assignIndex = this.memory.taskAssignments[taskId].indexOf(creepName);
       if (assignIndex > -1) {
-        Memory.tasks.taskAssignments[taskId].splice(assignIndex, 1);
+        this.memory.taskAssignments[taskId].splice(assignIndex, 1);
       }
     }
 
@@ -206,22 +192,20 @@ export class TaskStateService extends BaseService {
    * 获取creep当前的任务
    */
   public getCreepTask(creepName: string): Task | null {
-    if (!Memory.tasks || !Memory.tasks.creepTasks || !Memory.tasks.creepTasks[creepName]) {
+    const taskId = this.memory.creepTasks[creepName];
+    if (!taskId) {
       return null;
     }
 
-    const taskId = Memory.tasks.creepTasks[creepName];
-    // TODO 不应该计入共享任务的状态为FINISHED的creep，该creep任务已完成
-    return Memory.tasks.taskQueue.find(t => t.id === taskId) || null;
+    return this.memory.taskQueue.find(t => t.id === taskId) || null;
   }
 
   /**
    * 更新任务状态
    */
+  @SafeMemoryAccess()
   public updateTaskStatus(taskId: string, status: TaskStatus): void {
-    if (!Memory.tasks) return;
-
-    const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+    const task = this.memory.taskQueue.find(t => t.id === taskId);
     if (!task) return;
 
     task.status = status;
@@ -236,61 +220,60 @@ export class TaskStateService extends BaseService {
 
       // 清理所有分配的creep
       for (const creepName of task.assignedCreeps) {
-        if (Memory.tasks.creepTasks[creepName]) {
-          delete Memory.tasks.creepTasks[creepName];
+        if (this.memory.creepTasks[creepName]) {
+          delete this.memory.creepTasks[creepName];
         }
       }
 
       // 清理任务分配映射
-      if (Memory.tasks.taskAssignments[taskId]) {
-        delete Memory.tasks.taskAssignments[taskId];
+      if (this.memory.taskAssignments[taskId]) {
+        delete this.memory.taskAssignments[taskId];
       }
 
       if (status === TaskStatus.COMPLETED) {
-        Memory.tasks.stats.tasksCompleted++;
+        this.memory.tasksCompleted++;
       } else {
-        Memory.tasks.stats.tasksFailed++;
+        this.memory.tasksFailed++;
       }
 
-      Memory.tasks.completedTasks.push(taskId);
+      this.memory.completedTasks.push(taskId);
     }
   }
 
   /**
    * 清理过期的和已完成的任务
    */
-  public cleanup(): void {
-    if (!Memory.tasks) return;
-
-    const cleanupInterval = 50;
-    if (Game.time - Memory.tasks.lastCleanup < cleanupInterval) {
+  @SafeMemoryAccess()
+  protected onCleanup(): void {
+    // TODO 后续使用配置文件设置，或者使用非固定时间的更好方法
+    const cleanupInterval = 10;
+    if (Game.time - this.memory.lastCleanup < cleanupInterval) {
       return;
     }
 
     // 清理已完成的任务
-    const completedTaskIds = Memory.tasks.completedTasks;
+    const completedTaskIds = this.memory.completedTasks;
     if (completedTaskIds.length > 0) {
-      Memory.tasks.taskQueue = Memory.tasks.taskQueue.filter(
+      this.memory.taskQueue = this.memory.taskQueue.filter(
         task => !completedTaskIds.includes(task.id)
       );
-      Memory.tasks.completedTasks = [];
+      this.memory.completedTasks = [];
     }
 
     this.cleanupDeadCreepTasks();
     this.cleanupExpiredTasks();
 
-    Memory.tasks.lastCleanup = Game.time;
+    this.memory.lastCleanup = Game.time;
   }
 
+  @SafeMemoryAccess()
   private cleanupDeadCreepTasks(): void {
-    if (!Memory.tasks || !Memory.tasks.creepTasks) return;
-
-    for (const creepName in Memory.tasks.creepTasks) {
+    for (const creepName in this.memory.creepTasks) {
       if (!Game.creeps[creepName]) {
-        const taskId = Memory.tasks.creepTasks[creepName];
-        delete Memory.tasks.creepTasks[creepName];
+        const taskId = this.memory.creepTasks[creepName];
+        delete this.memory.creepTasks[creepName];
 
-        const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+        const task = this.memory.taskQueue.find(t => t.id === taskId);
         if (task && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.FAILED) {
           // 从任务的分配列表中移除死亡的creep
           const index = task.assignedCreeps.indexOf(creepName);
@@ -304,10 +287,10 @@ export class TaskStateService extends BaseService {
           }
 
           // 清理任务分配映射
-          if (Memory.tasks.taskAssignments && Memory.tasks.taskAssignments[taskId]) {
-            const assignIndex = Memory.tasks.taskAssignments[taskId].indexOf(creepName);
+          if (this.memory.taskAssignments[taskId]) {
+            const assignIndex = this.memory.taskAssignments[taskId].indexOf(creepName);
             if (assignIndex > -1) {
-              Memory.tasks.taskAssignments[taskId].splice(assignIndex, 1);
+              this.memory.taskAssignments[taskId].splice(assignIndex, 1);
             }
           }
         }
@@ -315,10 +298,10 @@ export class TaskStateService extends BaseService {
     }
   }
 
+  @SafeMemoryAccess()
   private cleanupExpiredTasks(): void {
-    if (!Memory.tasks) return;
     const expiryTime = 1500;
-    Memory.tasks.taskQueue = Memory.tasks.taskQueue.filter(task =>
+    this.memory.taskQueue = this.memory.taskQueue.filter(task =>
       task.status === TaskStatus.COMPLETED ||
       task.status === TaskStatus.FAILED ||
       (Game.time - task.createdAt < expiryTime)
@@ -329,24 +312,14 @@ export class TaskStateService extends BaseService {
     return `task_${Game.time}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  public getStats(): any {
-    if (!Memory.tasks) return {};
-    return {
-      totalTasks: Memory.tasks.taskQueue.length,
-      pendingTasks: this.getPendingTasks().length,
-      activeTasks: this.getActiveTasks().length,
-      ...Memory.tasks.stats
-    };
-  }
-
   protected setupEventListeners(): void {
     this.on(GameConfig.EVENTS.CREEP_DIED, (data: any) => {
       const { creepName } = data;
-      if (Memory.tasks && Memory.tasks.creepTasks[creepName]) {
-        const taskId = Memory.tasks.creepTasks[creepName];
-        delete Memory.tasks.creepTasks[creepName];
+      if (this.memory.creepTasks[creepName]) {
+        const taskId = this.memory.creepTasks[creepName];
+        delete this.memory.creepTasks[creepName];
 
-        const task = Memory.tasks.taskQueue.find(t => t.id === taskId);
+        const task = this.memory.taskQueue.find(t => t.id === taskId);
         if (task && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.FAILED) {
           // 从任务的分配列表中移除死亡的creep
           const index = task.assignedCreeps.indexOf(creepName);
@@ -360,10 +333,10 @@ export class TaskStateService extends BaseService {
           }
 
           // 清理任务分配映射
-          if (Memory.tasks.taskAssignments && Memory.tasks.taskAssignments[taskId]) {
-            const assignIndex = Memory.tasks.taskAssignments[taskId].indexOf(creepName);
+          if (this.memory.taskAssignments[taskId]) {
+            const assignIndex = this.memory.taskAssignments[taskId].indexOf(creepName);
             if (assignIndex > -1) {
-              Memory.tasks.taskAssignments[taskId].splice(assignIndex, 1);
+              this.memory.taskAssignments[taskId].splice(assignIndex, 1);
             }
           }
         }
@@ -374,9 +347,9 @@ export class TaskStateService extends BaseService {
   /**
    * 获取指定房间任务信息
    */
+  @SafeMemoryAccess()
   public getTasksByRoom(roomName: string): Task[] {
-    if (!Memory.tasks) return [];
-    return Memory.tasks.taskQueue.filter(task => task.roomName === roomName);
+    return this.memory.taskQueue.filter(task => task.roomName === roomName);
   }
 
   /**
@@ -433,4 +406,25 @@ export class TaskStateService extends BaseService {
         throw new Error(`未知的任务类型: ${taskType}`);
     }
   }
+
+  public getTaskIdByCreepName(creepName: string): string | null {
+    return this.memory.creepTasks[creepName] || null;
+  }
+
+  public getTaskById(taskId: string): Task | null {
+    return this.memory.taskQueue.find(t => t.id === taskId) || null;
+  }
+
+  public getTaskByCreepName(creepName: string): Task | null {
+    const taskId = this.memory.creepTasks[creepName];
+    if (!taskId) {
+      return null;
+    }
+    return this.memory.taskQueue.find(t => t.id === taskId) || null;
+  }
+
+  public getTasks(status?: TaskStatus): Task[] {
+    return this.memory.taskQueue.filter(t => status ? t.status === status : true);
+  }
+
 }

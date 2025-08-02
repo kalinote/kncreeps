@@ -1,9 +1,8 @@
 import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
-import { ServiceContainer } from '../../core/ServiceContainer';
-import { EventBus } from '../../core/EventBus';
 import { LayerType, Task, TaskType } from '../../types';
-import { TaskStateService } from '../../services/TaskStateService';
+import { TaskStateService } from '../../services/task/TaskStateService';
+import { VisualLayoutService } from 'services/visual/VisualLayoutService';
 
 /**
  * 任务追踪图层
@@ -12,11 +11,13 @@ export class TaskTrackLayer extends BaseLayer {
   protected name: string = "TaskTrackLayer";
   protected title: string = "任务追踪";
   public layerType: LayerType = LayerType.MAP;
-  private taskStateService: TaskStateService;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
-    this.taskStateService = this.serviceContainer.get<TaskStateService>('taskStateService');
+  protected get taskStateService(): TaskStateService {
+    return this.service.taskStateService;
+  }
+
+  constructor(service: VisualLayoutService) {
+    super(service);
     this.priority = VisualConfig.LAYER_DEFAULTS.TaskTrackLayer.priority;
   }
 

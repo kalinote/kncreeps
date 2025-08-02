@@ -1,15 +1,16 @@
 import { TaskStateMachine } from "../fsm/StateMachine";
 import { TaskFSMMemory, TransportState, TransportTask, TaskKind, TaskType } from "../../types";
-import { CreepMoveService } from "../../services/CreepMoveService";
+import { CreepMoveService } from "../../services/creep/CreepMoveService";
 import { ServiceContainer } from "../../core/ServiceContainer";
 import { TaskManager } from "managers/TaskManager";
+import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 /**
  * 运输任务 FSM 执行器
  */
 export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
-  constructor(taskMemory: TaskFSMMemory<TransportState>, creep: Creep, serviceContainer: ServiceContainer) {
-    super(taskMemory, creep, serviceContainer);
+  constructor(taskMemory: TaskFSMMemory<TransportState>, service: TaskExecutionService, creep: Creep) {
+    super(taskMemory, service, creep);
   }
 
   protected getFinishedState(): TransportState {
@@ -124,7 +125,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
           return this.switchState(TransportState.PICKUP, '拾取失败');
         } else {
           // 不在拾取范围内，移动到目标位置
-          this.moveService.moveTo(creep, targetPos);
+          this.service.moveService.moveTo(creep, targetPos);
           return this.switchState(TransportState.PICKUP, '移动到目标位置');
         }
       } else {
@@ -156,7 +157,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
         } else {
           // 附近没有可拾取的资源，移动到目标位置附近寻找
           if (creep.pos.getRangeTo(targetPos) > 2) {
-            this.moveService.moveTo(creep, targetPos);
+            this.service.moveService.moveTo(creep, targetPos);
             return this.switchState(TransportState.PICKUP, '移动到目标位置');
           } else {
             return this.switchState(TransportState.FINISHED, '完成');
@@ -217,7 +218,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
 
       // 移动到指定建筑
       if (creep.pos.getRangeTo(target.pos) > 1) {
-        this.moveService.moveTo(creep, target.pos);
+        this.service.moveService.moveTo(creep, target.pos);
       } else {
         const result = this.transferResource(creep, target, resourceType);
         // console.log(`[TransportFSMExecutor] result: ${JSON.stringify(result)}`);
@@ -243,7 +244,7 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
       }
 
       // 移动到目标位置
-      this.moveService.moveTo(creep, targetPos);
+      this.service.moveService.moveTo(creep, targetPos);
       return this.switchState(TransportState.DELIVER, '移动到目标位置');
     }
 

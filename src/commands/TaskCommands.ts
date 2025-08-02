@@ -1,5 +1,5 @@
 import { Task } from "../types";
-import { TaskStateService } from "../services/TaskStateService";
+import { TaskStateService } from "../services/task/TaskStateService";
 import { BaseCommand, CommandArgs, CommandResult } from "./BaseCommand";
 import { PriorityCalculator } from "../utils/PriorityCalculator";
 

@@ -151,6 +151,10 @@ export const VisualConfig = {
     ['ConstructionPlannerLayer']: {
       enabled: true,
       priority: 55
+    },
+    ['TransportNetworkLayer']: {
+      enabled: true,
+      priority: 60
     }
   }
 };
@@ -189,6 +193,11 @@ export const DATA_LAYER_LAYOUTS: { [layerName: string]: any } = {
   TaskAssignmentLayer: {
     anchor: ANCHORS.TOP_LEFT,
     order: 3,
+    padding: { x: 0.5, y: 0.5 }
+  },
+  TransportNetworkLayer: {
+    anchor: ANCHORS.TOP_LEFT,
+    order: 4,
     padding: { x: 0.5, y: 0.5 }
   }
 };
