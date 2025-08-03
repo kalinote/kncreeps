@@ -3,9 +3,10 @@ import { EventBus } from "../core/EventBus";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { ConstructionManagerMemory } from "../types";
 import { EventConfig } from "../config/EventConfig";
-import { ConstructPlannerService } from "../services/construction/ConstructPlannerService";
+import { ConstructPlannerLayoutService } from "../services/construction/ConstructPlannerLayoutService";
 import { TransportService } from "../services/logistics/TransportService";
 import { LogisticsManager } from "./LogisticsManager";
+import { ConstructPlannerStrategyService } from "services/construction/ConstructPlannerStrategyService";
 
 /**
  * 建筑管理器
@@ -14,8 +15,12 @@ import { LogisticsManager } from "./LogisticsManager";
 export class ConstructionManager extends BaseManager<ConstructionManagerMemory> {
   protected onUpdate(): void {}
 
-  public get constructPlannerService(): ConstructPlannerService {
-    return this.services.get('constructPlannerService') as ConstructPlannerService;
+  public get constructPlannerLayoutService(): ConstructPlannerLayoutService {
+    return this.services.get('constructPlannerLayoutService') as ConstructPlannerLayoutService;
+  }
+
+  public get constructPlannerStrategyService(): ConstructPlannerStrategyService {
+    return this.services.get('constructPlannerStrategyService') as ConstructPlannerStrategyService;
   }
 
   public get transportService(): TransportService {
@@ -25,7 +30,8 @@ export class ConstructionManager extends BaseManager<ConstructionManagerMemory> 
   constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
     super(eventBus, serviceContainer, "constructionManager");
 
-    this.registerServices('constructPlannerService', new ConstructPlannerService(this.eventBus, this, this.memory));
+    this.registerServices('constructPlannerLayoutService', new ConstructPlannerLayoutService(this.eventBus, this, this.memory));
+    this.registerServices('constructPlannerStrategyService', new ConstructPlannerStrategyService(this.eventBus, this, this.memory));
   }
 
   /**

@@ -3,27 +3,49 @@ import { UnifiedMemoryCycleStructureMemory } from "./core";
 
 export interface ConstructionManagerMemory extends UnifiedMemoryCycleStructureMemory {
   layouts: {
-    [roomName: string]: RoomLayoutMemory;
+    [roomName: string]: ConstructServiceMemory;
   };
+  strategy: ConstructPlannerStrategyServiceMemory;
 }
 
 // 房间布局蓝图
-export interface RoomLayoutMemory {
-  version: number;
-  lastUpdated: number;
-  status: 'planning' | 'done';
-  nextPlannerIndex: number;
+export interface ConstructServiceMemory extends UnifiedMemoryCycleStructureMemory {
+  version: number;                  // 版本号
   buildings: {
-    [plannerName: string]: BuildingPlanMemory[];
-  };
+    [structureType in BuildableStructureConstant]?: BuildingPlanMemory[];
+  };  // 建筑队列
 }
 
 // 建造建筑规划
 export interface BuildingPlanMemory {
   pos: { x: number; y: number; roomName: string };
+  version: number;
   structureType: BuildableStructureConstant;
   logisticsRole: LogisticsRole;
   resourceType?: ResourceConstant;
+}
+
+export interface ConstructPlannerStrategyServiceMemory extends UnifiedMemoryCycleStructureMemory {
+  planningQueue: PlanningTaskMemory[];    // 全局规划任务队列
+  strategy: {         // 用于房间策略存储状态，暂定方案
+    [roomName: string]: any;
+  };
+}
+
+// 规划任务队列中的一项
+export interface PlanningTaskMemory {
+  plannerName: string;
+  context: PlanningContextMemory;
+}
+
+// 规划任务上下文
+export interface PlanningContextMemory {
+  roomName: string;
+  trigger: 'initial' | 'event'; // 触发类型
+  event?: {
+    type: string; // 如 GameConfig.EVENTS.ROOM_CONTROLLER_LEVEL_CHANGED
+    data: any;
+  };
 }
 
 // ========================== 内存类型结束 ==========================
@@ -60,7 +82,7 @@ export interface RoadPlanInfo {
   segments: RoadSegment[];
   totalPositions: number;
   completedPositions: number;
-  lastUpdated: number;
+  lastUpdate: number;
 }
 
 // 道路建造状态

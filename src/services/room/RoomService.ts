@@ -25,6 +25,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
       if (room.controller?.my) {
         this.initializeRoomMemory(roomName);
         this.initializeRoomLogistics(room);
+        this.emit(GameConfig.EVENTS.ROOM_INITIALIZED, { roomName });
       }
     }
   }
@@ -94,6 +95,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
         console.log(`[RoomService] 发现新房间 ${roomName}`);
         this.initializeRoomMemory(roomName);
         this.initializeRoomLogistics(room);
+        this.emit(GameConfig.EVENTS.ROOM_INITIALIZED, { roomName });
       }
     }
   }
@@ -153,22 +155,6 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
     }
     return counts;
   }
-
-  /**
-   * 计算威胁等级
-   */
-  private calculateThreatLevel(hostiles: Creep[]): "low" | "medium" | "high" | "critical" {
-    let attackParts = 0;
-    hostiles.forEach(c => {
-      attackParts += c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK);
-    });
-
-    if (attackParts > 20) return "critical";
-    if (attackParts > 10) return "high";
-    if (attackParts > 0) return "medium";
-    return "low";
-  }
-
 
   public getCreepsInRoom(roomName: string): Creep[] {
     return _.filter(Game.creeps, c => c.pos.roomName === roomName);

@@ -6,7 +6,7 @@ import { LayerSettingsMemory } from '../../types';
 import { EventBus } from '../../core/EventBus';
 import { VisualManager } from '../../managers/VisualManager';
 import { RoomService } from '../room/RoomService';
-import { ConstructPlannerService } from '../construction/ConstructPlannerService';
+import { ConstructPlannerLayoutService } from '../construction/ConstructPlannerLayoutService';
 import { TaskStateService } from '../task/TaskStateService';
 import { LayerRegistry } from '../../visual/LayerRegistry';
 import { TransportService } from '../logistics/TransportService';
@@ -26,8 +26,8 @@ export class VisualLayoutService extends BaseService<{ [layerName: string]: Laye
     return this.manager.roomManager.roomService;
   }
 
-  public get constructPlannerService(): ConstructPlannerService {
-    return this.manager.constructionManager.constructPlannerService;
+  public get constructPlannerLayoutService(): ConstructPlannerLayoutService {
+    return this.manager.constructionManager.constructPlannerLayoutService;
   }
 
   public get taskStateService(): TaskStateService {

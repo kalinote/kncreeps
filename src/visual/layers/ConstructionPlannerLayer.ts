@@ -2,7 +2,7 @@ import { BaseLayer } from './BaseLayer';
 import { VisualConfig } from '../../config/VisualConfig';
 import { ConstructionStatus, LayerType } from '../../types';
 import { VisualLayoutService } from '../../services/visual/VisualLayoutService';
-import { ConstructPlannerService } from '../../services/construction/ConstructPlannerService';
+import { ConstructPlannerLayoutService } from '../../services/construction/ConstructPlannerLayoutService';
 
 /**
  * 道路规划图层
@@ -12,8 +12,8 @@ export class ConstructionPlannerLayer extends BaseLayer {
   protected title: string = "建筑规划";
   public layerType: LayerType = LayerType.MAP;
 
-  protected get constructPlannerService(): ConstructPlannerService {
-    return this.service.constructPlannerService;
+  protected get constructPlannerLayoutService(): ConstructPlannerLayoutService {
+    return this.service.constructPlannerLayoutService;
   }
 
   constructor(service: VisualLayoutService) {
@@ -25,7 +25,7 @@ export class ConstructionPlannerLayer extends BaseLayer {
    * 渲染建筑规划
    */
   public render(room: Room): void {
-    if (!this.constructPlannerService) {
+    if (!this.constructPlannerLayoutService) {
       console.log('[ConstructionPlannerLayer] 未找到 ConstructPlannerService');
       return;
     }
@@ -39,7 +39,7 @@ export class ConstructionPlannerLayer extends BaseLayer {
    * 渲染单个房间的道路规划
    */
   private renderRoomRoadPlan(room: Room): void {
-    const planInfo = this.constructPlannerService.getRoadPlanInfo(room);
+    const planInfo = this.constructPlannerLayoutService.getRoadPlanInfo(room);
     if (!planInfo || planInfo.segments.length === 0) {
       return;
     }
@@ -92,7 +92,7 @@ export class ConstructionPlannerLayer extends BaseLayer {
    * 渲染单个房间的container规划
    */
   private renderRoomContainerPlan(room: Room): void {
-    const planInfo = this.constructPlannerService.getContainerPlanInfo(room);
+    const planInfo = this.constructPlannerLayoutService.getContainerPlanInfo(room);
     if (!planInfo || planInfo.length === 0) {
       return;
     }

@@ -18,7 +18,7 @@ export const ConstructionConfig = {
     'road',
     // 'tower',
     // ...
-  ],
+  ] as BuildableStructureConstant[],
 
   /**
    * 定义【建造工地】的战略优先级顺序
@@ -30,7 +30,7 @@ export const ConstructionConfig = {
     'extension',
     'container',
     'road'
-  ],
+  ] as BuildableStructureConstant[],
 
   /**
    * 定义建筑之间的依赖关系

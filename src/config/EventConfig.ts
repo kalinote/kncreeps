@@ -12,6 +12,9 @@ export class EventConfig {
     CREEP_PRODUCTION_NEEDED: 'creep.production.needed', // 单位生产需求
 
     // Room相关事件
+    ROOM_INITIALIZED: 'room.initialized',               // 房间初始化完成
+    ROOM_CONTROLLER_OCCUPIED: 'room.controller.occupied', // 房间控制器被占领
+    ROOM_CONTROLLER_UNOCCUPIED: 'room.controller.unoccupied', // 房间控制器被释放
     ROOM_ENERGY_CHANGED: 'room.energy.changed',        // 房间能量变化
     ROOM_UNDER_ATTACK: 'room.under.attack',             // 房间受到攻击
     ROOM_THREAT_CLEARED: 'room.threat.cleared',         // 房间威胁清除

@@ -1,7 +1,7 @@
 import { EventBus } from "../core/EventBus";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { BaseService } from "../services/BaseService";
-import { ConstructPlannerService } from "services/construction/ConstructPlannerService";
+import { ConstructPlannerLayoutService } from "services/construction/ConstructPlannerLayoutService";
 
 /**
  * 基础管理器类 - 所有管理器的基类

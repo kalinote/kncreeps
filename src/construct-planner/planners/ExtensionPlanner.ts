@@ -1,13 +1,14 @@
-import { BuildingPlanMemory } from "types";
+import { BuildingPlanMemory, PlanningContextMemory } from "types";
 import { BasePlanner } from "./BasePlanner";
 
+// TODO 该模块尚未完成
 export class ExtensionPlanner extends BasePlanner {
   public name: string = 'extension';
   public structureType: BuildableStructureConstant = STRUCTURE_EXTENSION;
 
   private static readonly EXTENSION_LIMITS = CONTROLLER_STRUCTURES["extension"];
 
-  public plan(room: Room): BuildingPlanMemory[] {
+  public plan(room: Room, context: PlanningContextMemory): BuildingPlanMemory[] {
     if (!room.controller) {
       return [];
     }

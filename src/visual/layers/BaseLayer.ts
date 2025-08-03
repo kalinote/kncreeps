@@ -1,5 +1,5 @@
 import { RoomService } from 'services/room/RoomService';
-import { ConstructPlannerService } from 'services/construction/ConstructPlannerService';
+import { ConstructPlannerLayoutService } from 'services/construction/ConstructPlannerLayoutService';
 import { VisualLayoutService } from '../../services/visual/VisualLayoutService';
 import { ChartBuffer, LayerType } from '../../types'; // 从全局类型文件导入
 
@@ -163,6 +163,7 @@ export abstract class BaseLayer {
 
   /**
    * 绘制指示器，用于地图类图层
+   * // TODO 需要进一步优化视觉效果
    */
   protected drawIndicator(visual: RoomVisual, x: number, y: number, color: string, radius: number): void {
     // 定义不同形态的数组，包含旋转角度（弧度）和缩放比例
@@ -197,7 +198,8 @@ export abstract class BaseLayer {
       { x: 0, y: -scaledRadius },      // 上顶点
       { x: scaledRadius, y: 0 },       // 右顶点
       { x: 0, y: scaledRadius },       // 下顶点
-      { x: -scaledRadius, y: 0 }       // 左顶点
+      { x: -scaledRadius, y: 0 },       // 左顶点
+      { x: 0, y: -scaledRadius },      // 闭合
     ];
 
     // 应用旋转变换并转换为绝对坐标
@@ -225,7 +227,8 @@ export abstract class BaseLayer {
       { x: 0, y: -innerRadius },
       { x: innerRadius, y: 0 },
       { x: 0, y: innerRadius },
-      { x: -innerRadius, y: 0 }
+      { x: -innerRadius, y: 0 },
+      { x: 0, y: -innerRadius }
     ];
 
     const rotatedInnerPoints = innerPoints.map(point => {

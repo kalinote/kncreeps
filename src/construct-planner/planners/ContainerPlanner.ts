@@ -1,4 +1,4 @@
-import { BuildingPlanMemory } from '../../types';
+import { BuildingPlanMemory, PlanningContextMemory } from '../../types';
 import { BasePlanner } from './BasePlanner';
 
 /**
@@ -14,7 +14,7 @@ export class ContainerPlanner extends BasePlanner {
    * @param room 需要规划的房间对象
    * @returns 返回一个包含所有容器位置的数组
    */
-  public plan(room: Room): BuildingPlanMemory[] {
+  public plan(room: Room, context: PlanningContextMemory): BuildingPlanMemory[] {
     if (!room.controller) {
       return [];
     }
@@ -34,7 +34,8 @@ export class ContainerPlanner extends BasePlanner {
           pos: { x: containerPos.x, y: containerPos.y, roomName: room.name },
           structureType: this.structureType,
           logisticsRole: 'provider',
-          resourceType: RESOURCE_ENERGY
+          resourceType: RESOURCE_ENERGY,
+          version: 1    // 暂时还没有什么作用，先写死占位
         });
       }
     }
@@ -48,7 +49,8 @@ export class ContainerPlanner extends BasePlanner {
           pos: { x: containerPos.x, y: containerPos.y, roomName: room.name },
           structureType: this.structureType,
           logisticsRole: 'provider',
-          resourceType: mineral.mineralType
+          resourceType: mineral.mineralType,
+          version: 1    // 暂时还没有什么作用，先写死占位
         });
       }
     }
@@ -60,7 +62,8 @@ export class ContainerPlanner extends BasePlanner {
         pos: { x: controllerPos.x, y: controllerPos.y, roomName: room.name },
         structureType: this.structureType,
         logisticsRole: 'consumer',
-        resourceType: RESOURCE_ENERGY
+        resourceType: RESOURCE_ENERGY,
+        version: 1    // 暂时还没有什么作用，先写死占位
       });
     }
 
