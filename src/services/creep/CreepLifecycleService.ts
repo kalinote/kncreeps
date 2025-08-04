@@ -1,21 +1,29 @@
 import { EventBus } from "../../core/EventBus";
 import { GameConfig } from "../../config/GameConfig";
-import { CreepLifecycleServiceMemory } from "../../types";
+import { CreepLifecycleMemory, CreepLifecycleServiceMemory } from "../../types";
 import { BaseService } from "../BaseService";
 import { CreepManager } from "../../managers/CreepManager";
+import { Safe } from "../../utils/Decorators";
 
 /**
  * Creep生命周期服务 - 处理所有Creep的生命周期管理
  * 从CreepManager中提取出来，保持原有逻辑不变
  */
-export class CreepLifecycleService extends BaseService<{ [creepName: string]: CreepLifecycleServiceMemory }> {
-  private previousCreepNames: Set<string> = new Set();
-
+export class CreepLifecycleService extends BaseService<CreepLifecycleServiceMemory> {
   constructor(eventBus: EventBus, manager: CreepManager, memory: any) {
-    super(eventBus, manager, memory, 'creepStates');
+    super(eventBus, manager, memory, 'creepLifecycle');
   }
 
-  protected onInitialize(): void {}
+  protected onInitialize(): void {
+    if (!this.memory.initAt) {
+      this.memory.initAt = Game.time;
+      this.memory.lastUpdate = Game.time;
+      this.memory.lastCleanup = Game.time;
+      this.memory.errorCount = 0;
+      this.memory.creepStates = {};
+      this.memory.previousCreepNames = [];
+    }
+  }
 
   protected onUpdate(): void {
     this.updateCreepStates();
@@ -43,23 +51,23 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
   /**
    * 获取creepStates
    */
-  private get creepStates(): { [creepName: string]: CreepLifecycleServiceMemory } {
-    return this.memory;
+  private get creepStates(): { [creepName: string]: CreepLifecycleMemory } {
+    return this.memory.creepStates;
   }
 
   /**
    * 设置单个creep状态
    */
-  private setCreepState(creepName: string, state: CreepLifecycleServiceMemory): void {
-    this.memory[creepName] = state;
+  private setCreepState(creepName: string, state: CreepLifecycleMemory): void {
+    this.memory.creepStates[creepName] = state;
   }
 
   /**
    * 删除creep状态
    */
   private deleteCreepState(creepName: string): void {
-    if (this.memory && this.memory[creepName]) {
-      delete this.memory[creepName];
+    if (this.memory.creepStates && this.memory.creepStates[creepName]) {
+      delete this.memory.creepStates[creepName];
     }
   }
 
@@ -68,24 +76,20 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
    * 这是系统中唯一负责检测creep死亡的模块
    * // TODO 检查一下这一块的判断逻辑是否正确
    */
+  @Safe()
   private detectAndEmitCreepDeaths(): void {
-    try {
-      const currentCreepNames = new Set(Object.keys(Game.creeps));
+    const currentCreepNames = Object.keys(Game.creeps);
 
-      // 检测死亡的creep
-      for (const creepName of this.previousCreepNames) {
-        if (!currentCreepNames.has(creepName)) {
-          this.emitCreepDeathEvent(creepName);
-        }
+    // 检测死亡的creep
+    const previousCreepNames = this.memory.previousCreepNames;
+    for (const creepName of previousCreepNames) {
+      if (!currentCreepNames.includes(creepName)) {
+        this.emitCreepDeathEvent(creepName);
       }
-
-      // 更新上一tick的creep列表
-      this.previousCreepNames = currentCreepNames;
-    } catch (error) {
-      // console.log(`[CreepLifecycleService] 死亡检测错误: ${error}`);
-      // 错误时重置状态，确保下次正常运行
-      this.previousCreepNames = new Set(Object.keys(Game.creeps));
     }
+
+    // 更新上一tick的creep列表
+    this.memory.previousCreepNames = currentCreepNames;
   }
 
   /**
@@ -135,7 +139,7 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
       phase = 'aging';
     }
 
-    const state: CreepLifecycleServiceMemory = {
+    const state: CreepLifecycleMemory = {
       name: creep.name,
       phase,
       ticksToLive,
@@ -292,14 +296,14 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
   /**
    * 获取指定creep的状态
    */
-  public getCreepState(creepName: string): CreepLifecycleServiceMemory | undefined {
+  public getCreepState(creepName: string): CreepLifecycleMemory | undefined {
     return this.creepStates[creepName];
   }
 
   /**
    * 获取所有creep状态
    */
-  public getAllCreepStates(): { [creepName: string]: CreepLifecycleServiceMemory } {
+  public getAllCreepStates(): { [creepName: string]: CreepLifecycleMemory } {
     return { ...this.creepStates };
   }
 

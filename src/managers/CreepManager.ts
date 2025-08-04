@@ -2,7 +2,7 @@
 import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
-import { ProductionNeed, CreepLifecycleServiceMemory, CreepManagerMemory } from "../types";
+import { ProductionNeed, CreepLifecycleMemory, CreepManagerMemory } from "../types";
 import { CreepProductionService } from "../services/creep/CreepProductionService";
 import { CreepLifecycleService } from "../services/creep/CreepLifecycleService";
 import { ServiceContainer } from "../core/ServiceContainer";
@@ -72,14 +72,14 @@ export class CreepManager extends BaseManager<CreepManagerMemory> {
   /**
    * 获取指定creep的状态 - 委托给生命周期服务
    */
-  public getCreepState(creepName: string): CreepLifecycleServiceMemory | undefined {
+  public getCreepState(creepName: string): CreepLifecycleMemory | undefined {
     return this.lifecycleService.getCreepState(creepName);
   }
 
   /**
    * 获取所有creep状态 - 委托给生命周期服务
    */
-  public getAllCreepStates(): { [creepName: string]: CreepLifecycleServiceMemory } {
+  public getAllCreepStates(): { [creepName: string]: CreepLifecycleMemory } {
     return this.lifecycleService.getAllCreepStates();
   }
 

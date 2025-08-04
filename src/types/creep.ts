@@ -5,7 +5,7 @@ import { TaskType } from './task';
 
 export interface CreepManagerMemory extends UnifiedMemoryCycleStructureMemory {
   creepProduction?: CreepProductionServiceMemory;
-  creepStates?: { [creepName: string]: CreepLifecycleServiceMemory };
+  creepLifecycle?: CreepLifecycleServiceMemory;
 }
 
 // Creep生产内存类型
@@ -15,8 +15,14 @@ export interface CreepProductionServiceMemory extends UnifiedMemoryCycleStructur
   energyBudget: number;
 }
 
+// Creep生命周期服务
+export interface CreepLifecycleServiceMemory extends UnifiedMemoryCycleStructureMemory {
+  creepStates: { [creepName: string]: CreepLifecycleMemory };
+  previousCreepNames: string[];
+}
+
 // Creep状态类型，针对于单个creep
-export interface CreepLifecycleServiceMemory {
+export interface CreepLifecycleMemory {
   name: string;
   phase: 'young' | 'mature' | 'aging';
   ticksToLive: number;
