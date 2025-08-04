@@ -66,6 +66,7 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
   /**
    * 检测creep死亡并触发事件
    * 这是系统中唯一负责检测creep死亡的模块
+   * // TODO 检查一下这一块的判断逻辑是否正确
    */
   private detectAndEmitCreepDeaths(): void {
     try {
@@ -102,7 +103,6 @@ export class CreepLifecycleService extends BaseService<{ [creepName: string]: Cr
 
     // 触发死亡事件
     this.emit(GameConfig.EVENTS.CREEP_DIED, deathData);
-    // console.log(`💀 [CreepLifecycleService] 检测到creep死亡: ${creepName} (${creepMemory.role})`);
   }
 
   /**

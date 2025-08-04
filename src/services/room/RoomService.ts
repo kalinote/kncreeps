@@ -23,9 +23,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (room.controller?.my) {
-        this.initializeRoomMemory(roomName);
-        this.initializeRoomLogistics(room);
-        this.emit(GameConfig.EVENTS.ROOM_INITIALIZED, { roomName });
+        this.initializeRoom(roomName);
       }
     }
   }
@@ -33,7 +31,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
   /**
    * 初始化指定房间的内存
    */
-  private initializeRoomMemory(roomName: string): void {
+  private initializeRoom(roomName: string): void {
     if (!this.memory[roomName] || !this.memory[roomName].initAt) {
       const room = Game.rooms[roomName];
       this.memory[roomName] = {} as RoomAnalysisMemory;
@@ -45,6 +43,10 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
       this.memory[roomName].energyCapacity = room?.energyCapacityAvailable || 0;
       this.memory[roomName].controllerLevel = room?.controller?.level || 0;
       this.memory[roomName].creepCounts = {};
+
+      this.initializeRoomLogistics(room);
+
+      this.emit(GameConfig.EVENTS.ROOM_INITIALIZED, { roomName });
     }
   }
 
@@ -93,9 +95,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
       const room = Game.rooms[roomName];
       if (room.controller?.my && !this.memory[roomName]) {
         console.log(`[RoomService] 发现新房间 ${roomName}`);
-        this.initializeRoomMemory(roomName);
-        this.initializeRoomLogistics(room);
-        this.emit(GameConfig.EVENTS.ROOM_INITIALIZED, { roomName });
+        this.initializeRoom(roomName);
       }
     }
   }

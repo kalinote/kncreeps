@@ -23,7 +23,7 @@ export class ConstructPlannerStrategyService extends BaseService<ConstructPlanne
     // 本来所有事件监听器都应该在setupEventListeners中设置，但是由于setupEventListeners会在super的constructor中调用
     // 而调用时this._strategyRegistry还没有实例化，所以这里需要手动设置
     const allEvents = this._strategyRegistry.getAllSubscribedEvents();
-    console.log(`[StrategyService] allEvents: ${allEvents}`);
+    // console.log(`[StrategyService] allEvents: ${allEvents}`);
     for (const eventType of allEvents) {
       this.on(eventType, (data: any) => this.handleGenericEvent(eventType, data));
     }

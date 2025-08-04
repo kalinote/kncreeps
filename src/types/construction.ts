@@ -41,7 +41,7 @@ export interface PlanningTaskMemory {
 // 规划任务上下文
 export interface PlanningContextMemory {
   roomName: string;
-  trigger: 'initial' | 'event'; // 触发类型
+  trigger: 'manual' | 'event'; // 触发类型
   event?: {
     type: string; // 如 GameConfig.EVENTS.ROOM_CONTROLLER_LEVEL_CHANGED
     data: any;

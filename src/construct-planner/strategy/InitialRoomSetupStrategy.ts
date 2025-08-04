@@ -17,18 +17,26 @@ export class InitialRoomSetupStrategy extends BaseStrategy {
 
       // 创建一个任务列表，包含多个规划任务
       const tasks: PlanningTaskMemory[] = [
-        // 任务一：规划道路
         {
-          plannerName: 'road', // 指定 RoadPlanner
+          plannerName: 'extension',
           context: {
             roomName: roomName,
             trigger: 'event',
             event: { type: eventType, data: eventData }
           }
         },
-        // 任务二：规划矿点Container
+        // 规划Container
         {
-          plannerName: 'container', // 指定 ContainerPlanner
+          plannerName: 'container',
+          context: {
+            roomName: roomName,
+            trigger: 'event',
+            event: { type: eventType, data: eventData }
+          }
+        },
+        // 规划道路
+        {
+          plannerName: 'road',
           context: {
             roomName: roomName,
             trigger: 'event',
@@ -36,7 +44,6 @@ export class InitialRoomSetupStrategy extends BaseStrategy {
           }
         }
       ];
-
       return tasks;
     }
 

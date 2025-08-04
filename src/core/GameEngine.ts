@@ -280,28 +280,10 @@ export class GameEngine {
 
   /**
    * 通过事件处理creep死亡
+   * // TODO 增加任务调度
    */
   private handleCreepDeath(data: any): void {
     console.log(`💀 [GameEngine] Creep死亡事件: ${data.creepName} (${data.role})`);
-
-    // 触发紧急生产检查
-    this.handleEmergencyProduction(data);
-  }
-
-  /**
-   * 处理紧急生产需求
-   */
-  private handleEmergencyProduction(data: any): void {
-    const { role, roomName } = data;
-
-    // 如果是重要角色，立即请求替换
-    if (role === GameConfig.ROLES.WORKER || role === GameConfig.ROLES.TRANSPORTER) {
-      const room = Game.rooms[roomName];
-      if (room && room.controller?.my) {
-        console.log(`🚨 [GameEngine] 紧急生产需求: ${role} in ${roomName}`);
-        // 这里可以触发紧急生产逻辑
-      }
-    }
   }
 
   private handleRoomUnderAttack(data: any): void {

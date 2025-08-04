@@ -42,7 +42,7 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
 
   private initializeRoomMemory(roomName: string): void {
     if (!this.memory[roomName]) {
-      console.log(`[ConstructPlannerService] 初始化房间 ${roomName} 内存`);
+      // console.log(`[ConstructPlannerService] 初始化房间 ${roomName} 内存`);
       this.memory[roomName] = {} as ConstructServiceMemory;
       this.memory[roomName].initAt = Game.time;
       this.memory[roomName].lastUpdate = Game.time;
@@ -54,30 +54,20 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
   }
 
   protected onUpdate(): void {
-    // 1. 执行规划任务
     const queue = this.manager.constructPlannerStrategyService.getPlanningQueue();
     if (queue.length > 0) {
-      const task = queue.shift()!; // 取出任务
+      const task = queue.shift()!;
       this.executePlanningTask(task);
-      // 每个tick只执行一个规划任务，以分散CPU，所以这里可以 return
-      // 如果不return，则会继续执行建造流程，取决于你的CPU预算
     }
 
-    // 2. 执行建造流程 (可以设置节流阀)
-    // 使用一个较低的更新频率来减少CPU消耗
-    if (Game.time % 5 === 0) { // 你可以根据需要调整频率
-      for (const roomName in this.memory) {
-        const room = Game.rooms[roomName];
-        if (room?.controller?.my) {
-          this.runBuilder(room);
-        }
+    for (const roomName in this.memory) {
+      const room = Game.rooms[roomName];
+      if (room?.controller?.my) {
+        this.runBuilder(room);
       }
     }
 
-    // 3. 状态更新 (可以保留，但建议也使用节流阀)
-    if (Game.time % 20 === 0) { // 状态更新不需要太频繁
-      this.updateConstructionStatus();
-    }
+    this.updateConstructionStatus();
   }
 
 
@@ -86,6 +76,7 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
    * @param room 房间对象
    */
   private executePlanningTask(task: PlanningTaskMemory): void {
+    // console.log(`[LayoutService] 在 tick ${Game.time} 执行规划: Planner [${task.plannerName}] for room ${task.context.roomName}`);
     const planner = this._plannerRegistry.getPlanner(task.plannerName);
     const room = Game.rooms[task.context.roomName];
     if (!planner || !room) {
@@ -138,6 +129,7 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
    * @returns 是否成功创建了工地
    */
   private tryBuild(room: Room, layout: ConstructServiceMemory, priorityList: BuildableStructureConstant[]): boolean {
+    console.log(`[Builder] 在房间 ${room.name} 尝试建造: ${priorityList}`);
     for (const structureType of priorityList) {
       const buildingPlans = layout.buildings[structureType] || [];
 
