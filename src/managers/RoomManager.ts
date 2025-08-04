@@ -3,8 +3,8 @@ import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
 import { ServiceContainer } from "../core/ServiceContainer";
 import { RoomService } from "../services/room/RoomService";
-import { RoomManagerMemory } from "../types";
 import { LogisticsManager } from "./LogisticsManager";
+import { RoomManagerMemory } from "../types";
 
 /**
  * 房间管理器 - 协调房间相关的服务和操作

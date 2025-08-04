@@ -15,7 +15,8 @@ export class MapSpatialAnalyzer {
   // 50x50的房间，每个格子用一个数字表示，0表示可达，1表示不可达(包括不可通过建筑和障碍物、地形等)
   public static analyze(
     roomName: string,
-    weights = { area: 0.5, openness: 0.4, centrality: 0.1 }
+    weights = { area: 0.5, openness: 0.4, centrality: 0.1 },
+
   ): { bestLocation: CandidateSpace | null; candidates: CandidateSpace[]; distGrid: Grid; labeledGrid: Grid } {
     const terrain = new Room.Terrain(roomName);
     const raw = terrain.getRawBuffer();

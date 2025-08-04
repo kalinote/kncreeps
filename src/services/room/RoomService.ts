@@ -2,8 +2,9 @@ import { BaseService } from "../BaseService";
 import { EventBus } from "../../core/EventBus";
 import { GameConfig } from "../../config/GameConfig";
 import { Safe } from "../../utils/Decorators";
-import { RoomAnalysisMemory, RoomManagerMemory } from "../../types";
+import { RoomAnalysisMemory, RoomAreasMemory, RoomManagerMemory } from "../../types";
 import { RoomManager } from "../../managers/RoomManager";
+import { MapSpatialAnalyzer } from "../../utils/MapSpatialAnalyzer";
 
 /**
  * 房间服务 - 提供房间状态分析、威胁检测和信息管理
@@ -43,8 +44,10 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
       this.memory[roomName].energyCapacity = room?.energyCapacityAvailable || 0;
       this.memory[roomName].controllerLevel = room?.controller?.level || 0;
       this.memory[roomName].creepCounts = {};
+      this.memory[roomName].areas = [];
 
       this.initializeRoomLogistics(room);
+      this.analyzeRoomMapSpatial(room);
 
       this.emit(GameConfig.EVENTS.ROOM_INITIALIZED, { roomName });
     }
@@ -60,7 +63,11 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
   }
 
   @Safe()
-  public initializeRoomLogistics(room: Room): void {
+  private initializeRoomLogistics(room: Room): void {
+    if (room.controller?.my) {
+      return;
+    }
+
     console.log(`[RoomService] 为房间 ${room.name} 分析基础物流网络...`);
 
     let registeredCount = 0;
@@ -85,6 +92,24 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
     }
 
     console.log(`[RoomService] 房间 ${room.name} 物流网络初始化完成，注册了 ${registeredCount} 个物流角色。`);
+  }
+
+  private analyzeRoomMapSpatial(room: Room): void {
+    if (!room.controller?.my) {
+      return;
+    }
+
+    const { candidates } = MapSpatialAnalyzer.analyze(room.name);
+    console.log(`[RoomService] 房间 ${room.name} 空间分析完成: ${JSON.stringify(candidates)}`);
+    for (const candidate of candidates) {
+      this.memory[room.name].areas.push({
+        coord: candidate.coord,
+        openness: candidate.openness,
+        area: candidate.area,
+        centrality: candidate.centrality,
+        score: candidate.score
+      } as RoomAreasMemory);
+    }
   }
 
   /**

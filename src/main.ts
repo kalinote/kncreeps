@@ -14,31 +14,4 @@ console.log(`游戏引擎已创建 - Tick: ${Game.time}`);
 export const loop = ErrorMapper.wrapLoop(async () => {
   // 运行游戏引擎
   gameEngine.run();
-
-  // // 仅测试
-  // for (let roomName of Object.keys(Game.rooms)) {
-  //   const { bestLocation, candidates } = MapSpatialAnalyzer.analyze(roomName);
-  //   if (bestLocation) {
-  //     const visual = new RoomVisual(roomName);
-  //     console.log("找到的最佳位置信息:");
-  //     console.log(`- 坐标: { x: ${bestLocation.coord.x}, y: ${bestLocation.coord.y} }`);
-  //     console.log(`- 最终得分: ${bestLocation.score.toFixed(3)}`);
-  //     console.log(`  - 开阔度 (距离值): ${bestLocation.openness.toFixed(2)}`);
-  //     console.log(`  - 估算面积: ${bestLocation.area}`);
-  //     console.log(`  - 中心性 (0-1): ${bestLocation.centrality.toFixed(2)}`);
-
-  //     console.log("\n所有候选空间 (按得分排序):");
-  //     candidates.forEach((cand, i) => {
-  //       console.log(`${i + 1}. 中心点坐标: (${cand.coord.x},${cand.coord.y}), 得分: ${cand.score.toFixed(2)}, 估算面积: ${cand.area}, 开阔度: ${cand.openness.toFixed(2)}`);
-  //       visual.circle(cand.coord.x, cand.coord.y, {
-  //         fill: i === 0 ? "red" : "blue",
-  //         radius: 0.5
-  //       });
-  //       visual.text(i === 0 ? "最佳位置" : `候选坐标[${i + 1}]`, cand.coord.x, cand.coord.y + 1);
-  //     });
-
-  //   } else {
-  //     console.log("在地图上未找到有效位置。");
-  //   }
-  // }
 });
