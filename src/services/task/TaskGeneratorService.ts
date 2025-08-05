@@ -106,7 +106,7 @@ export class TaskGeneratorService extends BaseService<TaskGeneratorServiceMemory
       if (!hasExistingTask) {
         // 使用从TransportService生成的信息来创建任务
         this.manager.taskStateService.createTask(taskRequest);
-        console.log(`[TaskGenerator] 创建运输任务: 从 ${taskRequest.params.sourceId || (taskRequest.params.sourcePos?.x + ',' + taskRequest.params.sourcePos?.y)} 到 ${taskRequest.params.targetId}，运输 ${taskRequest.params.amount} ${taskRequest.params.resourceType}`);
+        // console.log(`[TaskGenerator] 创建运输任务: 从 ${taskRequest.params.sourceId || (taskRequest.params.sourcePos?.x + ',' + taskRequest.params.sourcePos?.y)} 到 ${taskRequest.params.targetId}，运输 ${taskRequest.params.amount} ${taskRequest.params.resourceType}`);
       }
     }
   }

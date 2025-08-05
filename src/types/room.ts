@@ -13,6 +13,15 @@ export interface RoomAnalysisMemory extends UnifiedMemoryCycleStructureMemory {
   controllerLevel: number;    // 房间控制等级
   creepCounts: { [role: string]: number }; // 房间内各角色数量
   areas: RoomAreasMemory[];
+  constructionSites: { [id: string]: ConstructionSiteMemory }; // 建筑工地表
+}
+
+export interface ConstructionSiteMemory {
+  id: string;
+  pos: { x: number, y: number, roomName: string };
+  structureType: BuildableStructureConstant;
+  progress: number;
+  progressTotal: number;
 }
 
 export interface RoomAreasMemory extends UnifiedMemoryCycleStructureMemory {

@@ -1,6 +1,7 @@
 import { BaseService } from "../BaseService";
 import { EventBus } from "../../core/EventBus";
 import { GameConfig } from "../../config/GameConfig";
+import { EventConfig } from "../../config/EventConfig";
 import { Safe } from "../../utils/Decorators";
 import { RoomAnalysisMemory, RoomAreasMemory, RoomManagerMemory } from "../../types";
 import { RoomManager } from "../../managers/RoomManager";
@@ -45,6 +46,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
       this.memory[roomName].controllerLevel = room?.controller?.level || 0;
       this.memory[roomName].creepCounts = {};
       this.memory[roomName].areas = [];
+      this.memory[roomName].constructionSites = {};
 
       this.initializeRoomLogistics(room);
       this.analyzeRoomMapSpatial(room);
@@ -60,6 +62,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
   protected onUpdate(): void {
     this.scanRooms();
     this.updateRoomStates();
+    this.monitorConstructionSites();
   }
 
   @Safe()
@@ -184,5 +187,61 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
 
   public getCreepsInRoom(roomName: string): Creep[] {
     return _.filter(Game.creeps, c => c.pos.roomName === roomName);
+  }
+
+  /**
+   * 监控建筑工地状态，检测建筑完成
+   */
+  private monitorConstructionSites(): void {
+    for (const roomName in this.memory) {
+      const room = Game.rooms[roomName];
+      if (!room) continue;
+
+      const currentSites = room.find(FIND_CONSTRUCTION_SITES);
+      const memorySites = this.memory[roomName].constructionSites || {};
+
+      // 更新当前工地状态
+      for (const site of currentSites) {
+        const siteId = site.id;
+        const existingSite = memorySites[siteId];
+
+        if (!existingSite) {
+          // 新工地，添加到内存
+          memorySites[siteId] = {
+            id: siteId,
+            pos: { x: site.pos.x, y: site.pos.y, roomName: site.pos.roomName },
+            structureType: site.structureType,
+            progress: site.progress,
+            progressTotal: site.progressTotal
+          };
+        } else {
+          // 更新现有工地进度
+          existingSite.progress = site.progress;
+          existingSite.progressTotal = site.progressTotal;
+        }
+      }
+
+      // 检查已完成的建筑
+      for (const siteId in memorySites) {
+        const siteMemory = memorySites[siteId];
+        const currentSite = Game.getObjectById(siteId as Id<ConstructionSite>);
+
+        if (!currentSite) {
+          // 工地不存在了，说明建筑已完成
+          const completedStructure = room.lookForAt('structure', siteMemory.pos.x, siteMemory.pos.y)[0];
+          if (completedStructure) {
+            this.emit(EventConfig.EVENTS.CONSTRUCTION_COMPLETED, {
+              // Memory不能保存RoomPosition对象，所以需要保存坐标和房间名
+              pos: { x: siteMemory.pos.x, y: siteMemory.pos.y, roomName: siteMemory.pos.roomName },
+              structureType: siteMemory.structureType,
+              orgId: siteId
+            });
+          }
+
+          // 从内存中移除
+          delete memorySites[siteId];
+        }
+      }
+    }
   }
 }

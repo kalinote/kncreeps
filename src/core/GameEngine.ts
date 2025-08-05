@@ -47,7 +47,7 @@ export class GameEngine {
       this.setupEventListeners();
 
       this.isInitialized = true;
-      console.log(`游戏引擎初始化完成 - Tick: ${Game.time}`);
+      // console.log(`游戏引擎初始化完成 - Tick: ${Game.time}`);
     } catch (error) {
       console.log('游戏引擎初始化失败:', error);
       this.handleInitializationError(error);
@@ -283,7 +283,7 @@ export class GameEngine {
    * // TODO 增加任务调度
    */
   private handleCreepDeath(data: any): void {
-    console.log(`💀 [GameEngine] Creep死亡事件: ${data.creepName} (${data.role})`);
+    // console.log(`💀 [GameEngine] Creep死亡事件: ${data.creepName} (${data.role})`);
   }
 
   private handleRoomUnderAttack(data: any): void {

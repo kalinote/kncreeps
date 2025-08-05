@@ -85,7 +85,7 @@ export class ManagerContainer {
    */
   private registerSingleton(name: string, factory: () => any): void {
     this.services.set(name, factory);
-    console.log(`[ManagerContainer] 注册单例服务: ${name}`);
+    // console.log(`[ManagerContainer] 注册单例服务: ${name}`);
   }
 
   /**
@@ -145,7 +145,7 @@ export class ManagerContainer {
       this.get(serviceName);
     }
 
-    console.log('ManagerContainer: 核心服务已初始化');
+    // console.log('[ManagerContainer] 核心服务已初始化');
     this.isInitialized = true;
   }
 
@@ -161,7 +161,7 @@ export class ManagerContainer {
       managerRegistry.register(name, manager);
     }
 
-    console.log('ManagerContainer: 管理器已初始化');
+    // console.log('[ManagerContainer] 管理器已初始化');
   }
 
   /**
@@ -201,7 +201,7 @@ export class ManagerContainer {
 
     this.singletons.clear();
     this.isInitialized = false;
-    console.log('ManagerContainer: 所有服务已重置');
+    console.log('[ManagerContainer] 所有服务已重置');
   }
 
   /**

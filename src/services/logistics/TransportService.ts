@@ -20,6 +20,8 @@ import {
 import { Safe, SafeMemoryAccess } from '../../utils/Decorators';
 import { LogisticsManager } from "../../managers/LogisticsManager";
 import { EventConfig } from "../../config/EventConfig";
+import { ConstructPlannerLayoutService } from "../construction/ConstructPlannerLayoutService";
+import { ConstructionManager } from "../../managers/ConstructionManager";
 
 // 临时定义，后续可以移到Config文件中
 const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
@@ -40,9 +42,13 @@ const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
  * 运输服务
  * 负责维护运输网络，并根据供需生成运输任务。
  */
-export class TransportService extends BaseService<{ [roomName: string]: TransportNetworkServiceMemory }> {
+export class TransportService extends BaseService<{ [roomName: string]: TransportNetworkServiceMemory }, LogisticsManager> {
   protected onCleanup(): void {}
   protected onReset(): void {}
+
+  public get constructPlannerLayoutService(): ConstructPlannerLayoutService {
+    return this.manager.constructionManager.constructPlannerLayoutService;
+  }
 
   constructor(eventBus: EventBus, manager: LogisticsManager, memory: any) {
     super(eventBus, manager, memory, 'transportNetworkService');
@@ -70,6 +76,9 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
   protected setupEventListeners(): void {
     this.on(EventConfig.EVENTS.CONSTRUCTION_PLAN_UPDATED, (data: any) => {
       this.handleConstructionPlanUpdated(data);
+    });
+    this.on(EventConfig.EVENTS.CONSTRUCTION_COMPLETED, (data: any) => {
+      this.handleConstructionCompleted(data);
     });
   }
 
@@ -163,6 +172,60 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
   }
 
   /**
+   * 处理建造完成事件
+   */
+  private handleConstructionCompleted(data: { pos: { x: number, y: number, roomName: string }, structureType: BuildableStructureConstant, orgId: Id<AnyStructure> }): void {
+    const { pos, structureType, orgId } = data;
+    const roomPos = new RoomPosition(pos.x, pos.y, pos.roomName);
+
+    const structure = roomPos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === structureType);
+    if (!structure) {
+      console.log(`[TransportService] 警告：收到建筑完成事件，但无法通过位置找到建筑: ${roomPos.x},${roomPos.y},${pos.roomName}`);
+      return;
+    }
+
+    // 获取建筑计划信息
+    const plan = this.constructPlannerLayoutService.getBuildingPlanMemory(roomPos, structureType);
+    if (!plan) return;
+
+    const network = this.memory[roomPos.roomName];
+    if (!network) return;
+
+    const newId = structure.id;
+    const oldId = orgId;
+
+    // 将原id的数据移动到新id，并删除原id
+    if (plan.logisticsRole === 'provider') {
+      // 处理提供者数据迁移
+      if (network.providers[oldId]) {
+        // 复制数据到新id
+        network.providers[newId] = {
+          ...network.providers[oldId],
+          id: newId // 更新id字段
+        };
+        // 删除原id的数据
+        delete network.providers[oldId];
+        console.log(`[TransportService] 提供者数据已从 ${oldId} 迁移到 ${newId}`);
+      }
+    } else if (plan.logisticsRole === 'consumer') {
+      // 处理消费者数据迁移
+      if (network.consumers[oldId]) {
+        // 复制数据到新id
+        network.consumers[newId] = {
+          ...network.consumers[oldId],
+          id: newId // 更新id字段
+        };
+        // 删除原id的数据
+        delete network.consumers[oldId];
+        console.log(`[TransportService] 消费者数据已从 ${oldId} 迁移到 ${newId}`);
+      }
+    }
+
+    // 更新最后更新时间
+    network.lastUpdated = Game.time;
+  }
+
+  /**
    * 外部调用接口：设置 Provider
    */
   public setProvider(target: Providers, roomName: string, resourceType: ResourceConstant, status: ProviderStatus): void {
@@ -198,38 +261,6 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
     const network = this.memory[roomName];
     if (!network) return;
     delete network.consumers[target.id];
-  }
-
-  /**
-   * 外部调用接口：更新 Provider 状态
-   */
-  public updateProviderStatus(target: Providers, roomName: string, resourceType?: ResourceConstant, status?: ProviderStatus): void {
-    const network = this.memory[roomName];
-    if (!network) return;
-    const info = network.providers[target.id];
-    if (!info) return;
-
-    if (status) {
-      info.status = status;
-    }
-
-    if (resourceType) {
-      info.resourceType = resourceType;
-    }
-  }
-
-  /**
-   * 外部调用接口：更新 Consumer 状态
-   */
-  public updateConsumerStatus(target: Consumers, roomName: string, resourceType?: ResourceConstant): void {
-    const network = this.memory[roomName];
-    if (!network) return;
-    const info = network.consumers[target.id];
-    if (!info) return;
-
-    if (resourceType) {
-      info.resourceType = resourceType;
-    }
   }
 
   /**

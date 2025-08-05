@@ -202,7 +202,7 @@ export class CreepLifecycleService extends BaseService<CreepLifecycleServiceMemo
     const role = data.role;
     const roomName = data.roomName;
 
-    console.log(`💀 [CreepLifecycleService] Creep ${creepName} (${role}) 死亡，房间: ${roomName}`);
+    // console.log(`💀 [CreepLifecycleService] Creep ${creepName} (${role}) 死亡，房间: ${roomName}`);
 
     // 清理状态
     this.deleteCreepState(creepName);

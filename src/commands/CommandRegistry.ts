@@ -37,7 +37,7 @@ export class CommandRegistry {
     // 注册可视化相关命令
     this.register(new VisualCommand(this.managerContainer));
 
-    console.log(`[CommandRegistry] 已注册 ${this.commands.size} 个命令`);
+    // console.log(`[CommandRegistry] 已注册 ${this.commands.size} 个命令`);
   }
 
   /**

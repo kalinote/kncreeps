@@ -168,7 +168,7 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
             resourceType: plan.resourceType || RESOURCE_ENERGY
           });
 
-          return true; // 成功创建一个工地后立即返回
+          return true;
         }
       }
     }
@@ -301,6 +301,14 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
     if (!layout) return [];
 
     return layout.buildings.extension || [];
+  }
+
+  public getBuildingPlanMemory(pos: RoomPosition, structureType: BuildableStructureConstant): BuildingPlanMemory | null {
+    const layout = this.getLayout(pos.roomName);
+    if (!layout) return null;
+
+    const buildingPlans = layout.buildings[structureType] || [];
+    return buildingPlans.find(p => p.pos.x === pos.x && p.pos.y === pos.y) || null;
   }
 
   public getLayout(roomName: string): ConstructServiceMemory | null {
