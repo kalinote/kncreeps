@@ -160,6 +160,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
         previousLevel,
         currentLevel
       });
+      this.memory[roomName].controllerLevel = currentLevel;
     }
 
     this.memory[roomName].energyAvailable = room.energyAvailable;
