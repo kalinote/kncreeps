@@ -51,6 +51,14 @@ export class RoomInfoLayer extends BaseLayer {
       },
     });
     this.buffer.push({
+      type: 'lineChart',
+      data: {
+        xAxis: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
+        datas: [1, 1, 3, 4, 3, 4, 7, 8, 6, 9],
+        title: '折线图测试',
+      },
+    });
+    this.buffer.push({
       type: 'text',
       data: {
         text: `Creeps: ${myCreeps}`,

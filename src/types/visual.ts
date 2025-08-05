@@ -56,7 +56,8 @@ export interface LineChartBufferItem {
   data: {
     xAxis: any[];
     datas: any[];
-    label: string;
+    title: string;
+    height?: number;
     width?: number;
   };
   offset?: {
