@@ -1,6 +1,6 @@
 import { BaseService } from "../BaseService";
 import { EventBus } from "../../core/EventBus";
-import { ServiceContainer } from "../../core/ServiceContainer";
+import { ManagerContainer } from "../../core/ManagerContainer";
 import { GameConfig } from "../../config/GameConfig";
 import { Safe } from "../../utils/Decorators";
 import { GlobalStatsServiceMemory } from "../../types";

@@ -1,6 +1,6 @@
 import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 import { ConstructionManagerMemory } from "../types";
 import { EventConfig } from "../config/EventConfig";
 import { ConstructPlannerLayoutService } from "../services/construction/ConstructPlannerLayoutService";
@@ -24,11 +24,11 @@ export class ConstructionManager extends BaseManager<ConstructionManagerMemory> 
   }
 
   public get transportService(): TransportService {
-    return this.serviceContainer.get<LogisticsManager>("logisticsManager").transportService;
+    return this.managerContainer.get<LogisticsManager>("logisticsManager").transportService;
   }
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer, "constructionManager");
+  constructor(eventBus: EventBus, managerContainer: ManagerContainer) {
+    super(eventBus, managerContainer, "constructionManager");
 
     this.registerServices('constructPlannerLayoutService', new ConstructPlannerLayoutService(this.eventBus, this, this.memory));
     this.registerServices('constructPlannerStrategyService', new ConstructPlannerStrategyService(this.eventBus, this, this.memory));

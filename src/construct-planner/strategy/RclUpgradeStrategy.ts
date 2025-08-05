@@ -24,29 +24,29 @@ export class RclUpgradeStrategy extends BaseStrategy {
         }
       });
 
-      // 2. 当RCL达到3级时，额外触发 Tower 规划
-      if (newLevel === 3) {
-        tasks.push({
-          plannerName: 'tower', // 假设有一个 TowerPlanner
-          context: {
-            roomName: roomName,
-            trigger: 'event',
-            event: { type: eventType, data: eventData }
-          }
-        });
-      }
+      // // 2. 当RCL达到3级时，额外触发 Tower 规划
+      // if (newLevel === 3) {
+      //   tasks.push({
+      //     plannerName: 'tower', // 假设有一个 TowerPlanner
+      //     context: {
+      //       roomName: roomName,
+      //       trigger: 'event',
+      //       event: { type: eventType, data: eventData }
+      //     }
+      //   });
+      // }
 
-      // 3. 当RCL达到4级时，额外触发 Storage 规划
-      if (newLevel === 4) {
-        tasks.push({
-          plannerName: 'storage', // 假设有一个 StoragePlanner
-          context: {
-            roomName: roomName,
-            trigger: 'event',
-            event: { type: eventType, data: eventData }
-          }
-        });
-      }
+      // // 3. 当RCL达到4级时，额外触发 Storage 规划
+      // if (newLevel === 4) {
+      //   tasks.push({
+      //     plannerName: 'storage', // 假设有一个 StoragePlanner
+      //     context: {
+      //       roomName: roomName,
+      //       trigger: 'event',
+      //       event: { type: eventType, data: eventData }
+      //     }
+      //   });
+      // }
 
       return tasks;
     }

@@ -64,7 +64,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
 
   @Safe()
   private initializeRoomLogistics(room: Room): void {
-    if (room.controller?.my) {
+    if (!room.controller?.my) {
       return;
     }
 
@@ -100,7 +100,7 @@ export class RoomService extends BaseService<{ [roomName: string]: RoomAnalysisM
     }
 
     const { candidates } = MapSpatialAnalyzer.analyze(room.name);
-    console.log(`[RoomService] 房间 ${room.name} 空间分析完成: ${JSON.stringify(candidates)}`);
+    // console.log(`[RoomService] 房间 ${room.name} 空间分析完成: ${JSON.stringify(candidates)}`);
     for (const candidate of candidates) {
       this.memory[room.name].areas.push({
         coord: candidate.coord,

@@ -1,6 +1,6 @@
 import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 import { BaseCommand, CommandArgs, CommandResult } from "../commands/BaseCommand";
 import { CommandRegistry } from "../commands/CommandRegistry";
 import { GameConfig } from "../config/GameConfig";
@@ -13,10 +13,10 @@ export class CommandManager extends BaseManager {
   private globalDebugObject: any;
   private globalVisualObject: any;
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer);
+  constructor(eventBus: EventBus, managerContainer: ManagerContainer) {
+    super(eventBus, managerContainer);
     this.updateInterval = GameConfig.MANAGER_CONFIGS.COMMAND_MANAGER?.UPDATE_INTERVAL || 0;
-    this.commandRegistry = new CommandRegistry(serviceContainer);
+    this.commandRegistry = new CommandRegistry(managerContainer);
     this.setupGlobalObjects();
   }
 
@@ -174,8 +174,8 @@ export class CommandManager extends BaseManager {
   /**
    * 获取服务容器
    */
-  public getServiceContainer(): ServiceContainer {
-    return this.serviceContainer;
+  public getManagerContainer(): ManagerContainer {
+    return this.managerContainer;
   }
 
   /**
@@ -183,7 +183,7 @@ export class CommandManager extends BaseManager {
    */
   protected onReset(): void {
     // 重新创建CommandRegistry
-    this.commandRegistry = new CommandRegistry(this.serviceContainer);
+    this.commandRegistry = new CommandRegistry(this.managerContainer);
     this.setupGlobalObjects();
   }
 

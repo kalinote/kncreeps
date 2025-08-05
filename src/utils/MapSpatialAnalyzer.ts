@@ -16,7 +16,6 @@ export class MapSpatialAnalyzer {
   public static analyze(
     roomName: string,
     weights = { area: 0.5, openness: 0.4, centrality: 0.1 },
-
   ): { bestLocation: CandidateSpace | null; candidates: CandidateSpace[]; distGrid: Grid; labeledGrid: Grid } {
     const terrain = new Room.Terrain(roomName);
     const raw = terrain.getRawBuffer();
@@ -26,34 +25,8 @@ export class MapSpatialAnalyzer {
     const height = matrix.length;
     const width = matrix[0].length;
 
-    const visual = new RoomVisual(roomName);
-    for (let y = 0; y < 50; y++) {
-      for (let x = 0; x < 50; x++) {
-        if (matrix[y][x]) {
-          visual.rect(x - 0.5, y - 0.5, 1, 1, { fill: '#ff0000' });
-        }
-      }
-    }
-
-
     // 计算距离矩阵
     const distGrid = MapSpatialAnalyzer.distanceTransform(matrix);
-
-    // 绘制距离矩阵可视化
-    let maxDist = 0;
-    for (let y = 0; y < 50; y++) {
-      for (let x = 0; x < 50; x++) {
-        maxDist = Math.max(maxDist, distGrid[y][x]);
-      }
-    }
-    for (let y = 0; y < 50; y++) {
-      for (let x = 0; x < 50; x++) {
-        const distValue = distGrid[y][x];
-        const normalizedValue = maxDist > 0 ? distValue / maxDist : 0;
-        const color = `rgb(${Math.floor(normalizedValue * 255)}, ${Math.floor(normalizedValue * 255)}, ${Math.floor(normalizedValue * 255)})`;
-        visual.rect(x - 0.5, y - 0.5, 1, 1, { fill: color});
-      }
-    }
 
     // 寻找局部最大值
     const peaks = MapSpatialAnalyzer.findLocalMaxima(distGrid);
@@ -74,51 +47,6 @@ export class MapSpatialAnalyzer {
 
     // 分水岭算法分割空间
     const labeledGrid = MapSpatialAnalyzer.watershedSegmentation(distGrid, peaks);
-
-    // 绘制分水岭分割结果可视化
-    let maxLabel = 0;
-    for (let y = 0; y < 50; y++) {
-      for (let x = 0; x < 50; x++) {
-        maxLabel = Math.max(maxLabel, labeledGrid[y][x]);
-      }
-    }
-    if (maxLabel > 0) {
-      // 生成高对比度的颜色数组，避开红色、绿色、黑色、白色
-      const colors = [
-        '#0000FF', // 蓝色
-        '#FF00FF', // 洋红色
-        '#00FFFF', // 青色
-        '#FFA500', // 橙色
-        '#800080', // 紫色
-        '#008080', // 深青色
-        '#FFC0CB', // 粉色
-        '#A52A2A', // 棕色
-        '#808000', // 橄榄色
-        '#4B0082', // 靛蓝色
-        '#FF1493', // 深粉色
-        '#00CED1', // 深青色
-        '#FF4500', // 橙红色
-        '#9370DB', // 中等紫色
-        '#20B2AA', // 浅海绿色
-        '#FF69B4', // 热粉色
-        '#4682B4', // 钢蓝色
-        '#DDA0DD', // 梅红色
-        '#F0E68C', // 卡其色
-        '#98FB98'  // 浅绿色
-      ];
-
-      for (let y = 0; y < 50; y++) {
-        for (let x = 0; x < 50; x++) {
-          const label = labeledGrid[y][x];
-          if (label > 0) {
-            const colorIndex = (label - 1) % colors.length;
-            visual.rect(x - 0.5, y - 0.5, 1, 1, {
-              fill: colors[colorIndex]
-            });
-          }
-        }
-      }
-    }
 
     // 计算属性和评分
     const spaceStats: { [label: number]: { area: number; peak: Point; peakValue: number } } = {};
@@ -194,7 +122,43 @@ export class MapSpatialAnalyzer {
     };
   }
 
-  private static getMatrix(raw: { number: number }): Grid {
+  public static analyzeLabeledGrid(
+    roomName: string
+  ): Grid {
+    const terrain = new Room.Terrain(roomName);
+    const raw = terrain.getRawBuffer();
+
+    // 获取二值矩阵
+    const matrix = MapSpatialAnalyzer.getBinaryMatrix(raw);
+    const height = matrix.length;
+    const width = matrix[0].length;
+
+    // 计算距离矩阵
+    const distGrid = MapSpatialAnalyzer.distanceTransform(matrix);
+
+    // 寻找局部最大值
+    const peaks = MapSpatialAnalyzer.findLocalMaxima(distGrid);
+    if (peaks.length === 0) {
+      let maxVal = -1;
+      let maxCoord: Point = { x: 0, y: 0 };
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (distGrid[y][x] > maxVal) {
+            maxVal = distGrid[y][x];
+            maxCoord = { x, y };
+          }
+        }
+      }
+      if (maxVal > 0) {
+        peaks.push(maxCoord);
+      }
+    }
+
+    // 分水岭算法分割空间
+    return MapSpatialAnalyzer.watershedSegmentation(distGrid, peaks);
+  }
+
+  public static getMatrix(raw: { number: number }): Grid {
     const matrix: Grid = [];
     for (let y = 0; y < 50; y++) {
       matrix[y] = Array.prototype.slice.call(raw, y * 50, (y + 1) * 50);
@@ -202,7 +166,7 @@ export class MapSpatialAnalyzer {
     return matrix;
   }
 
-  private static getBinaryMatrix(raw: { number: number }): Grid {
+  public static getBinaryMatrix(raw: { number: number }): Grid {
     const matrix: Grid = [];
     for (let y = 0; y < 50; y++) {
       matrix[y] = Array.prototype.slice.call(raw, y * 50, (y + 1) * 50).map(num => ((num & TERRAIN_MASK_WALL) || (num & TERRAIN_MASK_LAVA)) ? 1 : 0);

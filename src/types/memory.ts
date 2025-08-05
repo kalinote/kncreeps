@@ -80,7 +80,7 @@ declare global {
     interface Global {
       log: any;
       gameEngine?: any; // 避免循环引用，使用any类型
-      serviceContainer?: any; // 服务容器引用
+      managerContainer?: any; // 服务容器引用
       taskDebug?: any; // 添加任务调试工具
       production?: { // 生产调试工具
         plan: (roomName?: string) => void;

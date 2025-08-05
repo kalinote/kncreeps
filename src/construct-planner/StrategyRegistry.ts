@@ -23,7 +23,7 @@ export class StrategyRegistry {
   private registerStrategies(): void {
     // 在这里注册你所有的策略
     this.register(new InitialRoomSetupStrategy(this.service));
-    // this.register(new RclUpgradeStrategy(this.service));
+    this.register(new RclUpgradeStrategy(this.service));
   }
 
   private register(strategy: BaseStrategy): void {

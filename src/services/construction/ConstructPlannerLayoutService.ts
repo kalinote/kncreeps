@@ -215,9 +215,6 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
    * 获取container规划信息
    */
   public getContainerPlanInfo(room: Room): BuildingPlanMemory[] {
-    const containerPlanner = this._plannerRegistry.getPlanner('container') as ContainerPlanner;
-    if (!containerPlanner) return [];
-
     const layout = this.getLayout(room.name);
     if (!layout) return [];
 
@@ -287,6 +284,16 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
         status: 'completed'
       });
     }
+  }
+
+  /**
+   * 获取extension规划信息
+   */
+  public getExtensionPlanInfo(room: Room): BuildingPlanMemory[] {
+    const layout = this.getLayout(room.name);
+    if (!layout) return [];
+
+    return layout.buildings.extension || [];
   }
 
   public getLayout(roomName: string): ConstructServiceMemory | null {

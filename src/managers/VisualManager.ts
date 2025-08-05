@@ -8,7 +8,7 @@ import { Safe, SafeMemoryAccess } from '../utils/Decorators';
 import { RoomManager } from './RoomManager';
 import { ConstructionManager } from './ConstructionManager';
 import { TaskManager } from './TaskManager';
-import { ServiceContainer } from '../core/ServiceContainer';
+import { ManagerContainer } from '../core/ManagerContainer';
 import { VisualLayoutService } from '../services/visual/VisualLayoutService';
 import { LayerRegistry } from '../visual/LayerRegistry';
 import { LogisticsManager } from './LogisticsManager';
@@ -21,19 +21,19 @@ export class VisualManager extends BaseManager<VisualManagerMemory> {
   protected onReset(): void {}
 
   public get roomManager(): RoomManager {
-    return this.serviceContainer.get<RoomManager>('roomManager');
+    return this.managerContainer.get<RoomManager>('roomManager');
   }
 
   public get constructionManager(): ConstructionManager {
-    return this.serviceContainer.get<ConstructionManager>('constructionManager');
+    return this.managerContainer.get<ConstructionManager>('constructionManager');
   }
 
   public get taskManager(): TaskManager {
-    return this.serviceContainer.get<TaskManager>('taskManager');
+    return this.managerContainer.get<TaskManager>('taskManager');
   }
 
   public get logisticsManager(): LogisticsManager {
-    return this.serviceContainer.get<LogisticsManager>('logisticsManager');
+    return this.managerContainer.get<LogisticsManager>('logisticsManager');
   }
 
   public get visualLayoutService(): VisualLayoutService {
@@ -44,8 +44,8 @@ export class VisualManager extends BaseManager<VisualManagerMemory> {
     return this.visualLayoutService.layerRegistry;
   }
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer, 'visualManager');
+  constructor(eventBus: EventBus, managerContainer: ManagerContainer) {
+    super(eventBus, managerContainer, 'visualManager');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.VISUAL_MANAGER.UPDATE_INTERVAL;
 
     this.registerServices("visualLayoutService", new VisualLayoutService(eventBus, this, this.memory));

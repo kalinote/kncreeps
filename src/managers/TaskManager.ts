@@ -3,7 +3,7 @@ import { Task, TaskType, TaskStatus, TaskManagerMemory, TaskFSMMemory, FSMExecut
 import { BaseManager } from "./BaseManager";
 import { GameConfig } from "../config/GameConfig";
 import { TaskStateMachine } from "../task/fsm/StateMachine";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 import { TaskExecutionService } from "../services/task/TaskExecutionService";
 import { TaskGeneratorService } from "../services/task/TaskGeneratorService";
 import { TaskGroupService } from "../services/task/TaskGroupService";
@@ -37,15 +37,15 @@ export class TaskManager extends BaseManager<TaskManagerMemory> {
   }
 
   public get logisticsManager(): LogisticsManager {
-    return this.serviceContainer.get("logisticsManager") as LogisticsManager;
+    return this.managerContainer.get("logisticsManager") as LogisticsManager;
   }
 
   public get creepManager(): CreepManager {
-    return this.serviceContainer.get("creepManager") as CreepManager;
+    return this.managerContainer.get("creepManager") as CreepManager;
   }
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer, 'taskManager');
+  constructor(eventBus: EventBus, managerContainer: ManagerContainer) {
+    super(eventBus, managerContainer, 'taskManager');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.TASK_MANAGER.UPDATE_INTERVAL;
 
     this.registerServices("taskExecutionService", new TaskExecutionService(this.eventBus, this, this.memory));

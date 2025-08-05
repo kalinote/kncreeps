@@ -11,7 +11,7 @@ import { ConstructionManager } from "../managers/ConstructionManager";
 import { LogisticsManager } from "../managers/LogisticsManager";
 import { CommandManager } from "../managers/CommandManager";
 
-const serviceConfig = {
+const ManagerConfig = {
   // 核心服务，需要最先初始化
   coreServices: [
     'eventBus',
@@ -34,7 +34,7 @@ const serviceConfig = {
 /**
  * 服务容器 - 管理所有服务和依赖注入
  */
-export class ServiceContainer {
+export class ManagerContainer {
   private services: Map<string, any> = new Map();
   private singletons: Map<string, any> = new Map();
   private isInitialized: boolean = false;
@@ -85,7 +85,7 @@ export class ServiceContainer {
    */
   private registerSingleton(name: string, factory: () => any): void {
     this.services.set(name, factory);
-    console.log(`[ServiceContainer] 注册单例服务: ${name}`);
+    console.log(`[ManagerContainer] 注册单例服务: ${name}`);
   }
 
   /**
@@ -140,12 +140,12 @@ export class ServiceContainer {
     }
 
     // 初始化核心服务和系统管理器
-    const coreInitQueue = [...serviceConfig.coreServices, ...serviceConfig.systemManagers];
+    const coreInitQueue = [...ManagerConfig.coreServices, ...ManagerConfig.systemManagers];
     for (const serviceName of coreInitQueue) {
       this.get(serviceName);
     }
 
-    console.log('ServiceContainer: 核心服务已初始化');
+    console.log('ManagerContainer: 核心服务已初始化');
     this.isInitialized = true;
   }
 
@@ -156,12 +156,12 @@ export class ServiceContainer {
     const managerRegistry = this.get<ManagerRegistry>('managerRegistry');
 
     // 注册所有业务管理器到注册表
-    for (const name of serviceConfig.managers) {
+    for (const name of ManagerConfig.managers) {
       const manager = this.get<BaseManager>(name);
       managerRegistry.register(name, manager);
     }
 
-    console.log('ServiceContainer: 管理器已初始化');
+    console.log('ManagerContainer: 管理器已初始化');
   }
 
   /**
@@ -171,8 +171,8 @@ export class ServiceContainer {
     const managers = new Map<string, BaseManager>();
 
     const managerNames = [
-      ...serviceConfig.systemManagers,
-      ...serviceConfig.managers
+      ...ManagerConfig.systemManagers,
+      ...ManagerConfig.managers
     ];
 
     for (const name of managerNames) {
@@ -201,7 +201,7 @@ export class ServiceContainer {
 
     this.singletons.clear();
     this.isInitialized = false;
-    console.log('ServiceContainer: 所有服务已重置');
+    console.log('ManagerContainer: 所有服务已重置');
   }
 
   /**

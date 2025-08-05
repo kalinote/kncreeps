@@ -23,8 +23,8 @@ export class CoordinationManager extends BaseManager<CoordinationManagerMemory> 
   protected onCleanup(): void {}
   protected onReset(): void {}
 
-  constructor(eventBus: EventBus, serviceContainer: any) {
-    super(eventBus, serviceContainer, 'coordinationManager');
+  constructor(eventBus: EventBus, managerContainer: any) {
+    super(eventBus, managerContainer, 'coordinationManager');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.COORDINATION_MANAGER.UPDATE_INTERVAL;
   }
 

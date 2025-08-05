@@ -1,5 +1,5 @@
 import { EventBus } from "../core/EventBus";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 import { BaseService } from "../services/BaseService";
 import { ConstructPlannerLayoutService } from "services/construction/ConstructPlannerLayoutService";
 
@@ -9,7 +9,7 @@ import { ConstructPlannerLayoutService } from "services/construction/ConstructPl
 export abstract class BaseManager<TMemory = any> {
   protected eventBus: EventBus;
   protected services: Map<string, BaseService> = new Map();
-  protected serviceContainer: ServiceContainer;
+  protected managerContainer: ManagerContainer;
   protected readonly memoryKey?: string;
   protected isManagerActive: boolean = true;
   protected hasErrors: boolean = false;
@@ -28,9 +28,9 @@ export abstract class BaseManager<TMemory = any> {
     return Memory[this.memoryKey] as TMemory;
   }
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer, memoryKey?: string) {
+  constructor(eventBus: EventBus, managerContainer: ManagerContainer, memoryKey?: string) {
     this.eventBus = eventBus;
-    this.serviceContainer = serviceContainer;
+    this.managerContainer = managerContainer;
     this.memoryKey = memoryKey;
 
     this.initializeMemory();

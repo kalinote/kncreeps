@@ -1,14 +1,14 @@
 import { EventBus } from "./EventBus";
 import { BaseManager } from "../managers/BaseManager";
 import { GameConfig } from "../config/GameConfig";
-import { ServiceContainer } from "./ServiceContainer";
+import { ManagerContainer } from "./ManagerContainer";
 
 /**
  * 游戏引擎 - 整个系统的核心控制器
- * 使用ServiceContainer进行依赖注入
+ * 使用ManagerContainer进行依赖注入
  */
 export class GameEngine {
-  private serviceContainer: ServiceContainer;
+  private managerContainer: ManagerContainer;
   private eventBus!: EventBus;
   private managers: Map<string, BaseManager> = new Map();
   private isInitialized: boolean = false;
@@ -17,7 +17,7 @@ export class GameEngine {
   private maxErrorRecoveryAttempts: number = GameConfig.SYSTEM.ERROR_RECOVERY_ATTEMPTS;
 
   constructor() {
-    this.serviceContainer = new ServiceContainer();
+    this.managerContainer = new ManagerContainer();
     this.initialize();
   }
 
@@ -31,17 +31,17 @@ export class GameEngine {
 
     try {
       // 初始化服务容器
-      this.serviceContainer.initializeCore();
+      this.managerContainer.initializeCore();
 
       // 获取核心服务
-      this.eventBus = this.serviceContainer.get('eventBus');
+      this.eventBus = this.managerContainer.get('eventBus');
 
       // 设置全局引用, 必须在初始化管理器之前
       this.setupGlobalReferences();
 
       // 初始化管理器
-      this.serviceContainer.initializeManagers();
-      this.managers = this.serviceContainer.getAllManagers();
+      this.managerContainer.initializeManagers();
+      this.managers = this.managerContainer.getAllManagers();
 
       // 设置事件监听
       this.setupEventListeners();
@@ -60,7 +60,7 @@ export class GameEngine {
   private setupGlobalReferences(): void {
     // 设置全局引用以便其他模块访问
     global.gameEngine = this;
-    (global as any).serviceContainer = this.serviceContainer;
+    (global as any).managerContainer = this.managerContainer;
   }
 
   /**
@@ -298,15 +298,15 @@ export class GameEngine {
   /**
    * 获取服务容器
    */
-  public getServiceContainer(): ServiceContainer {
-    return this.serviceContainer;
+  public getManagerContainer(): ManagerContainer {
+    return this.managerContainer;
   }
 
   /**
    * 获取特定服务
    */
   public getService<T>(name: string): T {
-    return this.serviceContainer.get<T>(name);
+    return this.managerContainer.get<T>(name);
   }
 
   /**
@@ -332,7 +332,7 @@ export class GameEngine {
     };
 
     // 添加服务容器统计
-    const serviceStats = this.serviceContainer.getServiceStats();
+    const serviceStats = this.managerContainer.getServiceStats();
 
     // 添加管理器统计
     const managerStats: any = {};

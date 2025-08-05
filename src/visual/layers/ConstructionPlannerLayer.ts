@@ -33,6 +33,7 @@ export class ConstructionPlannerLayer extends BaseLayer {
 
     this.renderRoomRoadPlan(room);
     this.renderRoomContainerPlan(room);
+    this.renderRoomExtensionPlan(room);
   }
 
   /**
@@ -157,6 +158,46 @@ export class ConstructionPlannerLayer extends BaseLayer {
           opacity: 0.9
         });
       }
+    }
+  }
+
+  /**
+   * 渲染单个房间的extension规划
+   */
+  private renderRoomExtensionPlan(room: Room): void {
+    const planInfo = this.constructPlannerLayoutService.getExtensionPlanInfo(room);
+    if (!planInfo || planInfo.length === 0) {
+      return;
+    }
+
+    const visual = new RoomVisual(room.name);
+
+    for (const plan of planInfo) {
+      const pos = new RoomPosition(plan.pos.x, plan.pos.y, plan.pos.roomName);
+
+      // 检查是否已存在该建筑，如果已存在则跳过显示
+      const existingStructure = pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTENSION);
+      if (existingStructure) {
+        continue; // 跳过已完成的扩展
+      }
+
+      // 检查是否有建造工地
+      const constructionSite = pos.lookFor(LOOK_CONSTRUCTION_SITES).find(s => s.structureType === STRUCTURE_EXTENSION);
+
+      // 根据建造状态选择颜色
+      let strokeColor = '#FFFF00'; // 黄色圆环（规划中）
+      if (constructionSite) {
+        strokeColor = '#00FF00'; // 绿色圆环（正在建造）
+      }
+
+      // 绘制扩展位置（空心圆环）
+      visual.circle(pos.x, pos.y, {
+        fill: 'transparent',
+        stroke: strokeColor,
+        strokeWidth: 0.1,
+        radius: 0.25,
+        opacity: 0.2
+      });
     }
   }
 }

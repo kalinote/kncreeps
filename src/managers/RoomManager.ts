@@ -1,7 +1,7 @@
 import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 import { RoomService } from "../services/room/RoomService";
 import { LogisticsManager } from "./LogisticsManager";
 import { RoomManagerMemory } from "../types";
@@ -15,15 +15,15 @@ export class RoomManager extends BaseManager<RoomManagerMemory> {
   }
 
   public get logisticsManager(): LogisticsManager {
-    return this.serviceContainer.get<LogisticsManager>('logisticsManager');
+    return this.managerContainer.get<LogisticsManager>('logisticsManager');
   }
 
   protected onUpdate(): void {}
   protected onCleanup(): void {}
   protected onReset(): void {}
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer, 'roomManager');
+  constructor(eventBus: EventBus, managerContainer: ManagerContainer) {
+    super(eventBus, managerContainer, 'roomManager');
     this.updateInterval = GameConfig.MANAGER_CONFIGS.ROOM_MANAGER.UPDATE_INTERVAL;
 
     this.registerServices('roomService', new RoomService(this.eventBus, this, this.memory));

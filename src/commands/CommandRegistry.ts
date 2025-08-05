@@ -1,4 +1,4 @@
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 import { BaseCommand } from "./BaseCommand";
 import { ProductionPlanCommand, ProductionQueueCommand, RefreshProductionNeedsCommand, ProductionCalculationCommand } from "./ProductionCommands";
 import { TaskStatusCommand } from "./TaskCommands";
@@ -11,10 +11,10 @@ import { VisualCommand } from "./VisualCommands";
  */
 export class CommandRegistry {
   private commands: Map<string, BaseCommand> = new Map();
-  private serviceContainer: ServiceContainer;
+  private managerContainer: ManagerContainer;
 
-  constructor(serviceContainer: ServiceContainer) {
-    this.serviceContainer = serviceContainer;
+  constructor(managerContainer: ManagerContainer) {
+    this.managerContainer = managerContainer;
     this.registerCommands();
   }
 
@@ -23,19 +23,19 @@ export class CommandRegistry {
    */
   private registerCommands(): void {
     // 注册生产相关命令
-    this.register(new ProductionPlanCommand(this.serviceContainer));
-    this.register(new ProductionQueueCommand(this.serviceContainer));
-    this.register(new RefreshProductionNeedsCommand(this.serviceContainer));
-    this.register(new ProductionCalculationCommand(this.serviceContainer));
+    this.register(new ProductionPlanCommand(this.managerContainer));
+    this.register(new ProductionQueueCommand(this.managerContainer));
+    this.register(new RefreshProductionNeedsCommand(this.managerContainer));
+    this.register(new ProductionCalculationCommand(this.managerContainer));
 
     // 注册任务相关命令
-    this.register(new TaskStatusCommand(this.serviceContainer));
+    this.register(new TaskStatusCommand(this.managerContainer));
 
     // 注册运输相关命令
-    this.register(new TransportStatusCommand(this.serviceContainer));
+    this.register(new TransportStatusCommand(this.managerContainer));
 
     // 注册可视化相关命令
-    this.register(new VisualCommand(this.serviceContainer));
+    this.register(new VisualCommand(this.managerContainer));
 
     console.log(`[CommandRegistry] 已注册 ${this.commands.size} 个命令`);
   }

@@ -1,7 +1,7 @@
 import { BaseManager } from "./BaseManager";
 import { EventBus } from "../core/EventBus";
 import { GameConfig } from "../config/GameConfig";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 import { StatsManagerMemory } from "../types";
 import { GlobalStatsService } from "../services/stats/GlobalStatsService";
 import { RoomStatsService } from "../services/stats/RoomStatsService";
@@ -24,8 +24,8 @@ export class StatsManager extends BaseManager<StatsManagerMemory> {
     return this.services.get("performanceStatsService") as PerformanceStatsService;
   }
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer, "statsManager");
+  constructor(eventBus: EventBus, managerContainer: ManagerContainer) {
+    super(eventBus, managerContainer, "statsManager");
     this.updateInterval = GameConfig.MANAGER_CONFIGS.STATS_MANAGER.UPDATE_INTERVAL;
 
     this.registerServices("globalStatsService", new GlobalStatsService(this.eventBus, this, this.memory));

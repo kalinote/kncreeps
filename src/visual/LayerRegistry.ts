@@ -1,6 +1,6 @@
 import { VisualLayoutService } from 'services/visual/VisualLayoutService';
 import { EventBus } from '../core/EventBus';
-import { ServiceContainer } from '../core/ServiceContainer';
+import { ManagerContainer } from '../core/ManagerContainer';
 import { BaseLayer } from './layers/BaseLayer';
 import { ConstructionPlannerLayer } from './layers/ConstructionPlannerLayer';
 import { GlobalInfoLayer } from './layers/GlobalInfoLayer';

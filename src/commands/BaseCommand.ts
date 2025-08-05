@@ -1,4 +1,4 @@
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 
 /**
  * 命令执行结果
@@ -20,10 +20,10 @@ export interface CommandArgs {
  * 基础命令类 - 所有调试命令的基类
  */
 export abstract class BaseCommand {
-  protected serviceContainer: ServiceContainer;
+  protected managerContainer: ManagerContainer;
 
-  constructor(serviceContainer: ServiceContainer) {
-    this.serviceContainer = serviceContainer;
+  constructor(managerContainer: ManagerContainer) {
+    this.managerContainer = managerContainer;
   }
 
   /**
@@ -50,14 +50,14 @@ export abstract class BaseCommand {
    * 获取服务
    */
   protected getService<T>(name: string): T {
-    return this.serviceContainer.get<T>(name);
+    return this.managerContainer.get<T>(name);
   }
 
   /**
    * 检查服务是否可用
    */
   protected hasService(name: string): boolean {
-    return this.serviceContainer.has(name);
+    return this.managerContainer.has(name);
   }
 
   /**

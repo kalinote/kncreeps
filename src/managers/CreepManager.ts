@@ -5,7 +5,7 @@ import { GameConfig } from "../config/GameConfig";
 import { ProductionNeed, CreepLifecycleMemory, CreepManagerMemory } from "../types";
 import { CreepProductionService } from "../services/creep/CreepProductionService";
 import { CreepLifecycleService } from "../services/creep/CreepLifecycleService";
-import { ServiceContainer } from "../core/ServiceContainer";
+import { ManagerContainer } from "../core/ManagerContainer";
 import { CreepMoveService } from "../services/creep/CreepMoveService";
 import { TaskManager } from "./TaskManager";
 
@@ -29,11 +29,11 @@ export class CreepManager extends BaseManager<CreepManagerMemory> {
   }
 
   public get taskManager(): TaskManager {
-    return this.serviceContainer.get<TaskManager>('taskManager');
+    return this.managerContainer.get<TaskManager>('taskManager');
   }
 
-  constructor(eventBus: EventBus, serviceContainer: ServiceContainer) {
-    super(eventBus, serviceContainer, 'creepManager');
+  constructor(eventBus: EventBus, managerContainer: ManagerContainer) {
+    super(eventBus, managerContainer, 'creepManager');
 
     this.updateInterval = GameConfig.MANAGER_CONFIGS.CREEP_MANAGER.UPDATE_INTERVAL;
 
