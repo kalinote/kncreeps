@@ -14,10 +14,12 @@ import {
   TaskLifetime,
   ProviderStatus,
   Providers,
-  Consumers
+  Consumers,
+  LogisticsRole
 } from '../../types';
 import { Safe, SafeMemoryAccess } from '../../utils/Decorators';
 import { LogisticsManager } from "../../managers/LogisticsManager";
+import { EventConfig } from "../../config/EventConfig";
 
 // 临时定义，后续可以移到Config文件中
 const CONSUMER_IMPORTANCE: Record<ConsumerType, number> = {
@@ -63,6 +65,12 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
         lastUpdated: Game.time
       }
     }
+  }
+
+  protected setupEventListeners(): void {
+    this.on(EventConfig.EVENTS.CONSTRUCTION_PLAN_UPDATED, (data: any) => {
+      this.handleConstructionPlanUpdated(data);
+    });
   }
 
   @Safe()
@@ -132,6 +140,26 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
     }
 
     network.lastUpdated = Game.time;
+  }
+
+  private handleConstructionPlanUpdated(data: {
+    roomName: string;
+    structureType: StructureConstant;
+    position: { x: number, y: number };
+    logisticsRole: LogisticsRole;
+    resourceType: ResourceConstant;
+  }): void {
+    const { roomName, structureType, position, logisticsRole, resourceType } = data;
+    const site = new RoomPosition(position.x, position.y, roomName).lookFor(LOOK_CONSTRUCTION_SITES).find(s => s.structureType === structureType);
+    // console.log(`[TransportService] 找到工地: ${JSON.stringify(site)}`);
+    if (!site) return;
+    if (logisticsRole === 'provider') {
+      console.log(`[TransportService] 在 [${position.x},${position.y}] 创建 ${structureType} 工地，并设置为 Provider。`);
+      this.setProvider(site, roomName, resourceType, 'underConstruction');
+    } else if (logisticsRole === 'consumer') {
+      console.log(`[TransportService] 在 [${position.x},${position.y}] 创建 ${structureType} 工地，并设置为 Consumer。`);
+      this.setConsumer(site, roomName, resourceType);
+    }
   }
 
   /**

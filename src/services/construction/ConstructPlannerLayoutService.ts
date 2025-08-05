@@ -146,19 +146,26 @@ export class ConstructPlannerLayoutService extends BaseService<{ [roomName: stri
         if (result === OK) {
           console.log(`[Builder] 在 [${pos.x},${pos.y}] 创建 ${structureType} 工地。`);
 
-          const site = pos.lookFor(LOOK_CONSTRUCTION_SITES).find(s => s.structureType === structureType);
-          if (site && plan.logisticsRole && plan.logisticsRole !== 'non_logistics_management_building') {
-            if (plan.logisticsRole === 'provider') {
-              this.transportService.setProvider(site, room.name, plan.resourceType || RESOURCE_ENERGY, 'underConstruction');
-            } else if (plan.logisticsRole === 'consumer') {
-              this.transportService.setConsumer(site, room.name, plan.resourceType || RESOURCE_ENERGY);
-            }
-          }
+          // 在设置工地后，下一个tick才能找到工地，所以这里永远不会执行，改成发起创建工地事件，由后勤系统负责响应事件并设置角色
+          // const site = pos.lookFor(LOOK_CONSTRUCTION_SITES).find(s => s.structureType === structureType);
+          // console.log(`[Builder] 找到工地: ${JSON.stringify(site)}`);
+          // console.log(`[Builder] 规划信息: ${JSON.stringify(plan)}`);
+          // if (site && plan.logisticsRole && plan.logisticsRole !== 'non_logistics_management_building') {
+          //   if (plan.logisticsRole === 'provider') {
+          //     console.log(`[Builder] 在 [${pos.x},${pos.y}] 创建 ${structureType} 工地，并设置为 Provider。`);
+          //     this.transportService.setProvider(site, room.name, plan.resourceType || RESOURCE_ENERGY, 'underConstruction');
+          //   } else if (plan.logisticsRole === 'consumer') {
+          //     console.log(`[Builder] 在 [${pos.x},${pos.y}] 创建 ${structureType} 工地，并设置为 Consumer。`);
+          //     this.transportService.setConsumer(site, room.name, plan.resourceType || RESOURCE_ENERGY);
+          //   }
+          // }
 
           this.emit(EventConfig.EVENTS.CONSTRUCTION_PLAN_UPDATED, {
             roomName: room.name,
             structureType: structureType,
-            position: { x: pos.x, y: pos.y }
+            position: { x: pos.x, y: pos.y },
+            logisticsRole: plan.logisticsRole,
+            resourceType: plan.resourceType || RESOURCE_ENERGY
           });
 
           return true; // 成功创建一个工地后立即返回
