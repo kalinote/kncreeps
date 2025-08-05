@@ -87,13 +87,7 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
     for (const sourceId of sourceIds) {
       const structure = Game.getObjectById<Structure>(sourceId as Id<Structure>);
       if (structure) {
-        const result = this.pickupResource(creep, structure, RESOURCE_ENERGY);
-        if (result.success) {
-          if (result.completed) {
-            return this.switchState(UpgradeState.UPGRADING, '获取能量成功');
-          }
-          return this.switchState(UpgradeState.GET_ENERGY, '获取能量失败');
-        }
+        return this.pickupResource(creep, structure, RESOURCE_ENERGY);
       }
     }
 
@@ -101,13 +95,7 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
     const sources = this.service.energyService.findEnergySources(creep);
     if (sources && sources.length > 0) {
       const target = sources[0].object;
-      const result = this.pickupResource(creep, target, RESOURCE_ENERGY);
-      if (result.success) {
-        if (result.completed) {
-          return this.switchState(UpgradeState.UPGRADING, '获取能量成功');
-        }
-        return this.switchState(UpgradeState.GET_ENERGY, '获取能量失败');
-      }
+      return this.pickupResource(creep, target, RESOURCE_ENERGY);
     }
 
     // 未找到能量源，任务结束
@@ -183,72 +171,69 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
   /**
    * 拾取 / 取用 / 采集资源
    */
-  private pickupResource(creep: Creep, target: Resource | Structure | Source, resourceType: ResourceConstant): { success: boolean; completed: boolean } {
+  private pickupResource(creep: Creep, target: Resource | Structure | Source, resourceType: ResourceConstant): UpgradeState {
     if (target instanceof Resource) {
-      if (target.resourceType !== resourceType) return { success: false, completed: false };
+      if (target.resourceType !== resourceType) return this.switchState(UpgradeState.GET_ENERGY, '资源类型不匹配');
       const res = creep.pickup(target);
-      return this.handlePickupResult(res);
+      switch (res) {
+        case OK:
+          return this.switchState(UpgradeState.UPGRADING, '拾取资源成功');
+        case ERR_NOT_IN_RANGE:
+          this.service.moveService.moveTo(creep, target);
+          return this.switchState(UpgradeState.GET_ENERGY, '移动到资源');
+        case ERR_FULL:
+          // 判断creep背包资源类型，如果是能源则转换成 UPGRADING 状态，否则丢弃
+          // TODO 检查这里的逻辑
+          if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
+            return this.switchState(UpgradeState.GET_ENERGY, '背包已满');
+          }
+          creep.drop(resourceType as ResourceConstant);
+          return this.switchState(UpgradeState.GET_ENERGY, '背包已满');
+        case ERR_INVALID_TARGET:
+          return this.switchState(UpgradeState.GET_ENERGY, '目标无效');
+        default:
+          return this.switchState(UpgradeState.GET_ENERGY, '拾取资源失败');
+      }
     }
 
     if (target instanceof Structure) {
-      if (!('store' in target)) return { success: false, completed: false };
+      if (!('store' in target)) return this.switchState(UpgradeState.GET_ENERGY, '目标不是存储建筑');
       const storeStruct = target as any;
-      if (storeStruct.store.getUsedCapacity(resourceType) === 0) return { success: false, completed: false };
+      if (storeStruct.store.getUsedCapacity(resourceType) === 0) return this.switchState(UpgradeState.GET_ENERGY, '存储建筑已满');
       const res = creep.withdraw(target, resourceType);
-      return this.handleWithdrawResult(res);
+      switch (res) {
+        case OK:
+          return this.switchState(UpgradeState.UPGRADING, '取用资源成功');
+        case ERR_NOT_IN_RANGE:
+          this.service.moveService.moveTo(creep, target);
+          return this.switchState(UpgradeState.GET_ENERGY, '移动到资源');
+        case ERR_NOT_ENOUGH_RESOURCES:
+          return this.switchState(UpgradeState.GET_ENERGY, '资源不足');
+        case ERR_INVALID_TARGET:
+          return this.switchState(UpgradeState.GET_ENERGY, '目标无效');
+        default:
+          return this.switchState(UpgradeState.GET_ENERGY, '取用资源失败');
+      }
     }
 
     if (target instanceof Source) {
-      if (resourceType !== RESOURCE_ENERGY) return { success: false, completed: false };
+      if (resourceType !== RESOURCE_ENERGY) return this.switchState(UpgradeState.GET_ENERGY, '资源类型不匹配');
       const res = creep.harvest(target);
-      return this.handleHarvestResult(res);
+      switch (res) {
+        case OK:
+          return this.switchState(UpgradeState.UPGRADING, '采集资源成功');
+        case ERR_NOT_IN_RANGE:
+          this.service.moveService.moveTo(creep, target);
+          return this.switchState(UpgradeState.GET_ENERGY, '移动到资源');
+        case ERR_NOT_ENOUGH_RESOURCES:
+          return this.switchState(UpgradeState.GET_ENERGY, '资源不足');
+        case ERR_BUSY:
+          return this.switchState(UpgradeState.GET_ENERGY, '采集繁忙');
+        default:
+          return this.switchState(UpgradeState.GET_ENERGY, '采集失败');
+      }
     }
 
-    return { success: false, completed: false };
-  }
-
-  private handlePickupResult(result: ScreepsReturnCode): { success: boolean; completed: boolean } {
-    switch (result) {
-      case OK:
-        return { success: true, completed: true };
-      case ERR_NOT_IN_RANGE:
-        return { success: true, completed: false };
-      case ERR_FULL:
-        return { success: true, completed: false };
-      case ERR_INVALID_TARGET:
-        return { success: false, completed: true };
-      default:
-        return { success: false, completed: false };
-    }
-  }
-
-  private handleWithdrawResult(result: ScreepsReturnCode): { success: boolean; completed: boolean } {
-    switch (result) {
-      case OK:
-        return { success: true, completed: true };
-      case ERR_NOT_IN_RANGE:
-        return { success: true, completed: false };
-      case ERR_NOT_ENOUGH_RESOURCES:
-        return { success: false, completed: false };
-      case ERR_INVALID_TARGET:
-        return { success: false, completed: true };
-      default:
-        return { success: false, completed: false };
-    }
-  }
-
-  private handleHarvestResult(result: ScreepsReturnCode): { success: boolean; completed: boolean } {
-    switch (result) {
-      case OK:
-        return { success: true, completed: true };
-      case ERR_NOT_IN_RANGE:
-        return { success: true, completed: false };
-      case ERR_NOT_ENOUGH_RESOURCES:
-        return { success: true, completed: false };
-      case ERR_BUSY:
-        return { success: true, completed: false };
-      default:
-        return { success: false, completed: false };
-    }
+    return this.switchState(UpgradeState.GET_ENERGY, '资源类型不匹配');
   }
 }

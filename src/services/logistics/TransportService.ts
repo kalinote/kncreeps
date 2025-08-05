@@ -371,6 +371,40 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
   }
 
   /**
+   * 获取距离某个坐标最近的 Provider
+   */
+  public getClosestProvider(room: Room, pos: RoomPosition | {x: number, y: number}, resourceType: ResourceConstant): ProviderInfo | null {
+    const network = this.memory[room.name];
+    if (!network) return null;
+
+    const targetPos = pos instanceof RoomPosition ? pos : new RoomPosition(pos.x, pos.y, room.name);
+
+    const availableProviders = Object.values(network.providers).filter(provider =>
+      provider.resourceType === resourceType &&
+      provider.status === 'ready'
+    );
+
+    if (availableProviders.length === 0) return null;
+    if (availableProviders.length === 1) return availableProviders[0];
+
+    const providerPositions = availableProviders.map(provider =>
+      new RoomPosition(provider.pos.x, provider.pos.y, provider.pos.roomName)
+    );
+
+    const closestPosition = targetPos.findClosestByPath(providerPositions);
+    if (!closestPosition) {
+      return null;
+    }
+
+    const closestProvider = availableProviders.find(provider =>
+      provider.pos.x === closestPosition.x &&
+      provider.pos.y === closestPosition.y
+    );
+
+    return closestProvider || null;
+  }
+
+  /**
    * 获取房间的 Consumer 列表
    */
   public getConsumers(roomName: string): ConsumerInfo[] {

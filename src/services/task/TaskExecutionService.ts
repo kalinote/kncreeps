@@ -8,6 +8,7 @@ import { FSMExecutorRegistry } from "../../task/FSMExecutorRegistry";
 import { TaskStateMachine } from "task/fsm/StateMachine";
 import { CreepMoveService } from "../creep/CreepMoveService";
 import { EnergyService } from "../logistics/EnergyService";
+import { TransportService } from "../logistics/TransportService";
 
 /**
  * 任务执行服务 - 负责驱动所有Creep执行其分配到的任务
@@ -30,6 +31,10 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
 
   public get energyService(): EnergyService {
     return this.manager.logisticsManager.energyService;
+  }
+
+  public get transportService(): TransportService {
+    return this.manager.logisticsManager.transportService;
   }
 
   protected onCleanup(): void {}
