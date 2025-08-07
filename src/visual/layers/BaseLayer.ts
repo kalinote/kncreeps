@@ -13,7 +13,7 @@ export abstract class BaseLayer {
   public priority: number = 99;
   protected service: VisualLayoutService;
   protected buffer: ChartBuffer = [];
-  protected textStyle: TextStyle = {};
+  protected textStyle: TextStyle = {};        // TODO 需要优化，默认样式需要根据图层类型进行设置
 
   constructor(service: VisualLayoutService) {
     this.service = service;
@@ -96,7 +96,8 @@ export abstract class BaseLayer {
           height += item.data.height + 1;   // 上下间距
           // TODO 计算横轴label、图例、标题的高度
           const fontSize = (item.data.width / item.data.xAxis.length) * 0.6;
-          height += fontSize;
+          height += fontSize;     // 横轴label高度
+          height += 0.8;          // 标题高度
           break;
       }
     }
@@ -178,15 +179,25 @@ export abstract class BaseLayer {
    * 绘制折线图，用于数据类图层
    */
   protected drawLineChart(visual: RoomVisual, xAxis: string[], datas: number[], label: string, height: number, width: number, x: number, y: number, style: TextStyle): void {
+    const offsetY = y + 0.8;          // 预留标题
+
+    // 标题
+    visual.text(label, x + (width / 2), y + 0.3, {
+      color: 'white',
+      align: 'center',
+      font: 0.6,
+      opacity: 0.8
+    });
+
     // 边框
     const fontSize = (width / xAxis.length) * 0.6;
     const baseX = x + fontSize;
-    visual.line(baseX, y, baseX, y + height, style);
-    visual.line(baseX, y + height, baseX + width, y + height, style);
+    visual.line(baseX, offsetY, baseX, offsetY + height);
+    visual.line(baseX, offsetY + height, baseX + width, offsetY + height);
 
     // 绘制横轴
     for (let i = 0; i < xAxis.length; i++) {
-      visual.text(xAxis[i], baseX + (i + 0.5) * width / xAxis.length, y + height + fontSize, {
+      visual.text(xAxis[i], baseX + (i + 0.5) * width / xAxis.length, offsetY + height + fontSize, {
         // TODO 优化label的样式
         color: 'white',
         align: 'center',
@@ -196,20 +207,22 @@ export abstract class BaseLayer {
     }
 
     // 绘制纵轴
-    const numberHeight = height / Math.max(...datas);
-    for (let i = 0; i < xAxis.length; i++) {
-      visual.text(datas[i].toString(), x, y + height - datas[i] * numberHeight + (fontSize / 2), {
+    const maxValue = Math.max(...datas);
+    const vFontSize = 0.6;
+    for (let i = 0; i < height + 1; i++) {
+      visual.text(((maxValue / height) * i).toFixed(1), x, offsetY + height - i + vFontSize / 2, {
         color: 'white',
         align: 'center',
-        font: fontSize,     // TODO 这里还需要优化，纵轴的字体大小应该基于纵轴长度和纵轴标签数来计算，同时不需要所有数字都显示，需要进行采样
+        font: vFontSize,
         opacity: 0.4
       });
     }
 
     // 绘制折线
     let points: [number, number][] = [];
+    const numberHeight = height / Math.max(...datas);
     for (let i = 0; i < xAxis.length; i++) {
-      points.push([baseX + (i + 0.5) * width / xAxis.length, y + height - datas[i] * numberHeight]);
+      points.push([baseX + (i + 0.5) * width / xAxis.length, offsetY + height - datas[i] * numberHeight]);
     }
     visual.poly(points, {
       fill: 'transparent',
