@@ -784,21 +784,16 @@ export class CreepProductionService extends BaseService<CreepProductionServiceMe
   @SafeMemoryAccess()
   private getCreepsAssignedToTaskType(roomName: string, role: string, taskType: TaskType): number {
     let count = 0;
-    for (const creepName in this.manager.taskManager.taskStateService.getTasks()) {
+    for (const creepName in Game.creeps) {
       const creep = Game.creeps[creepName];
-      if (!creep) continue;
-
-      // 检查房间和角色
       const creepRoom = creep.memory.room || creep.room.name;
       if (creepRoom !== roomName || creep.memory.role !== role) continue;
 
-      // 检查任务类型
       const task = this.manager.taskManager.taskStateService.getTaskByCreepName(creepName);
       if (task && task.type === taskType) {
         count++;
       }
     }
-
     return count;
   }
 
