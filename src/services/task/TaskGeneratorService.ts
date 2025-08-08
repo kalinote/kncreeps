@@ -8,8 +8,8 @@ import { SourceAnalyzer } from "../../utils/SourceAnalyzer";
  * 任务生成器服务 - 根据房间状态自动创建任务
  */
 export class TaskGeneratorService extends BaseService<TaskGeneratorServiceMemory, TaskManager> {
-  protected onCleanup(): void {}
-  protected onReset(): void {}
+  protected onCleanup(): void { }
+  protected onReset(): void { }
 
   constructor(eventBus: EventBus, manager: TaskManager, memory: TaskManagerMemory) {
     super(eventBus, manager, memory, 'generator');
@@ -97,11 +97,17 @@ export class TaskGeneratorService extends BaseService<TaskGeneratorServiceMemory
 
     for (const taskRequest of transportTaskRequests) {
       // 检查是否已经有针对这个特定供需对的任务
-      const hasExistingTask = existingTransportTasks.some(existing =>
-        existing.params.sourceId === taskRequest.params.sourceId &&
-        existing.params.targetId === taskRequest.params.targetId &&
-        existing.params.resourceType === taskRequest.params.resourceType
-      );
+      const hasExistingTask = existingTransportTasks.some(existing => {
+        const sameSrc = taskRequest.params.sourceId
+          ? existing.params.sourceId === taskRequest.params.sourceId
+          : (existing.params.sourcePos && taskRequest.params.sourcePos &&
+            existing.params.sourcePos.x === taskRequest.params.sourcePos.x &&
+            existing.params.sourcePos.y === taskRequest.params.sourcePos.y &&
+            existing.params.sourcePos.roomName === taskRequest.params.sourcePos.roomName);
+        return sameSrc &&
+          existing.params.targetId === taskRequest.params.targetId &&
+          existing.params.resourceType === taskRequest.params.resourceType;
+      });
 
       if (!hasExistingTask) {
         // 使用从TransportService生成的信息来创建任务

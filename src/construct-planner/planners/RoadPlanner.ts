@@ -23,8 +23,9 @@ export class RoadPlanner extends BasePlanner {
 
     const toSources = room.find(FIND_SOURCES);
     const toController = room.controller;
+    const toMineral = room.find(FIND_MINERALS);
 
-    const destinations = [...toSources, toController];
+    const destinations = [...toSources, toController, ...toMineral];
     const allPathPositions = new Set<string>();
 
     for (const destination of destinations) {
@@ -208,11 +209,12 @@ export class RoadPlanner extends BasePlanner {
     const segments: RoadSegment[] = [];
     const spawns = room.find(FIND_MY_SPAWNS);
     const sources = room.find(FIND_SOURCES);
+    const minerals = room.find(FIND_MINERALS);
     const controller = room.controller;
 
     if (spawns.length === 0) return segments;
 
-    const destinations = [...sources, controller].filter(Boolean);
+    const destinations = [...sources, controller, ...minerals].filter(Boolean);
     let segmentId = 0;
 
     for (const destination of destinations) {

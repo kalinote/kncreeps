@@ -87,10 +87,13 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
     for (const roomName in Game.rooms) {
       const room = Game.rooms[roomName];
       if (room.controller?.my) {
+        this.initializeRoomMemory(roomName);        // 在 initializeRoomMemory 中会检查 this.memory[roomName] 是否存在，所以不用担心重复或意外初始化
         this.updateTransportNetwork(room)
       }
     }
   }
+
+
 
   /**
    * 更新房间的运输网络内存
@@ -201,7 +204,8 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
         // 复制数据到新id
         network.providers[newId] = {
           ...network.providers[oldId],
-          id: newId // 更新id字段
+          id: newId, // 更新id字段
+          status: 'ready'
         };
         // 删除原id的数据
         delete network.providers[oldId];
