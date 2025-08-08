@@ -51,7 +51,7 @@ export class TransportService extends BaseService<{ [roomName: string]: Transpor
   }
 
   constructor(eventBus: EventBus, manager: LogisticsManager, memory: any) {
-    super(eventBus, manager, memory, 'transportNetworkService');
+    super(eventBus, manager, memory, 'transportNetwork');
   }
 
   protected onInitialize(): void {
