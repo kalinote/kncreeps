@@ -28,6 +28,9 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
       [UpgradeState.GET_ENERGY]: (creep: Creep) => {
         return this.handleGetEnergy(creep);
       },
+      [UpgradeState.WAIT_SUPPLY]: (creep: Creep) => {
+        return this.handleWaitSupply(creep);
+      },
       [UpgradeState.UPGRADING]: (creep: Creep) => {
         return this.handleUpgrading(creep);
       },
@@ -82,24 +85,76 @@ export class UpgradeFSMExecutor extends TaskStateMachine<UpgradeState> {
       return this.switchState(UpgradeState.UPGRADING, '身上已有能量，直接升级');
     }
 
-    // 先尝试从任务指定建筑获取能量
-    const sourceIds = task.params.sourceIds || [];
-    for (const sourceId of sourceIds) {
-      const structure = Game.getObjectById<Structure>(sourceId as Id<Structure>);
-      if (structure) {
-        return this.pickupResource(creep, structure, RESOURCE_ENERGY);
+    // 计算需要的能量数量
+    const need = creep.store.getFreeCapacity(RESOURCE_ENERGY);
+    if (need === 0) {
+      return this.switchState(UpgradeState.UPGRADING, '能量已满');
+    }
+
+    // 请求资源供应并转入等待状态
+    const { requestId, suggestedWait } = this.service.supplyService.request(creep, RESOURCE_ENERGY, need);
+
+    // 在 creep 状态记录中保存等待信息
+    const creepState = this.getCreepState();
+    if (!creepState.record) {
+      creepState.record = {};
+    }
+    creepState.record.supplyRequestId = requestId;
+    creepState.record.waitUntil = Game.time + suggestedWait;
+
+    return this.switchState(UpgradeState.WAIT_SUPPLY, `请求能量供应，等待 ${suggestedWait} tick`);
+  }
+
+  /**
+   * 等待资源供应状态处理器
+   */
+  private handleWaitSupply(creep: Creep): UpgradeState {
+    // 检查是否已经收到资源
+    if (this.hasResource(creep, RESOURCE_ENERGY)) {
+      // 取消请求并转入升级状态
+      this.service.supplyService.cancel(creep, RESOURCE_ENERGY);
+      return this.switchState(UpgradeState.UPGRADING, '收到能量，开始升级');
+    }
+
+    const creepState = this.getCreepState();
+    const record = creepState.record || {};
+    const waitUntil = record.waitUntil || 0;
+
+    // 检查是否超时
+    if (Game.time >= waitUntil) {
+      // 超时，尝试自取资源
+      const need = creep.store.getFreeCapacity(RESOURCE_ENERGY);
+      const selfFetchPlan = this.service.supplyService.suggestSelfFetchPlan(creep, RESOURCE_ENERGY, need);
+
+      if (selfFetchPlan) {
+        // 取消供应请求
+        this.service.supplyService.cancel(creep, RESOURCE_ENERGY);
+
+        // 执行自取计划
+        if (selfFetchPlan.sourceId) {
+          const target = Game.getObjectById(selfFetchPlan.sourceId as Id<Structure | Resource | Source>);
+          if (target) {
+            return this.pickupResource(creep, target, RESOURCE_ENERGY);
+          }
+        } else if (selfFetchPlan.sourcePos) {
+          const pos = new RoomPosition(selfFetchPlan.sourcePos.x, selfFetchPlan.sourcePos.y, selfFetchPlan.sourcePos.roomName);
+          const targets = pos.lookFor(LOOK_RESOURCES).filter(r => r.resourceType === RESOURCE_ENERGY);
+          if (targets.length > 0) {
+            return this.pickupResource(creep, targets[0], RESOURCE_ENERGY);
+          }
+        }
+
+        // 自取失败，重新请求或结束任务
+        return this.switchState(UpgradeState.GET_ENERGY, '自取资源失败，重新请求');
+      } else {
+        // 无法自取，结束任务
+        this.service.supplyService.cancel(creep, RESOURCE_ENERGY);
+        return this.switchState(UpgradeState.FINISHED, '无法获取能量，任务结束');
       }
     }
 
-    // 若未获取到能量，使用能量服务寻找最近能量源
-    const sources = this.service.energyService.findEnergySources(creep);
-    if (sources && sources.length > 0) {
-      const target = sources[0].object;
-      return this.pickupResource(creep, target, RESOURCE_ENERGY);
-    }
-
-    // 未找到能量源，任务结束
-    return this.switchState(UpgradeState.FINISHED, '未找到能量源');
+    // 继续等待
+    return this.switchState(UpgradeState.WAIT_SUPPLY, `继续等待能量供应，剩余 ${waitUntil - Game.time} tick`);
   }
 
   /**

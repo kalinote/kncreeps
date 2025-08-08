@@ -9,6 +9,7 @@ import { TaskStateMachine } from "task/fsm/StateMachine";
 import { CreepMoveService } from "../creep/CreepMoveService";
 import { EnergyService } from "../logistics/EnergyService";
 import { TransportService } from "../logistics/TransportService";
+import { SupplyService } from "../logistics/SupplyService";
 
 /**
  * 任务执行服务 - 负责驱动所有Creep执行其分配到的任务
@@ -35,6 +36,10 @@ export class TaskExecutionService extends BaseService<TaskExecutionServiceMemory
 
   public get transportService(): TransportService {
     return this.manager.logisticsManager.transportService;
+  }
+
+  public get supplyService(): SupplyService {
+    return this.manager.logisticsManager.supplyService;
   }
 
   protected onCleanup(): void {}
