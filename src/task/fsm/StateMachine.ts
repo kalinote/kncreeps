@@ -1,5 +1,5 @@
 import { TaskManager } from "../../managers/TaskManager";
-import { TaskFSMMemory, StateHandlers, CreepFSMState, Task, TaskType } from "../../types";
+import { TaskFSMMemory, StateHandlers, FSMContext, Task, TaskType } from "../../types";
 import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 /**
@@ -8,7 +8,7 @@ import { TaskExecutionService } from "services/task/TaskExecutionService";
  */
 export abstract class TaskStateMachine<TState extends string> {
   protected taskMemory: TaskFSMMemory<TState>;
-  protected creepState: CreepFSMState<TState>;
+  protected context: FSMContext<TState>;
   protected creep: Creep;
   protected service: TaskExecutionService;
 
@@ -18,14 +18,14 @@ export abstract class TaskStateMachine<TState extends string> {
     this.creep = creep;
 
     // 获取或初始化该creep的执行状态
-    if (!taskMemory.creepStates[creep.name]) {
-      taskMemory.creepStates[creep.name] = {
+    if (!taskMemory.context[creep.name]) {
+      taskMemory.context[creep.name] = {
         currentState: this.getInitialState(),
         interruptible: true,
         record: {}
       };
     }
-    this.creepState = taskMemory.creepStates[creep.name];
+    this.context = taskMemory.context[creep.name];
   }
 
   /**
@@ -35,7 +35,7 @@ export abstract class TaskStateMachine<TState extends string> {
   public tick(): void {
     // console.log(`[TaskStateMachine] creep: ${this.creep.name} 当前执行状态机: ${this.creepState.currentState}`);
     const handlers = this.handlers();
-    const currentState = this.creepState.currentState;
+    const currentState = this.context.currentState;
     const handler = handlers[currentState];
 
     if (!handler) {
@@ -47,7 +47,7 @@ export abstract class TaskStateMachine<TState extends string> {
 
     // 如果处理器返回了新状态，则进行状态转换
     if (nextState && nextState !== currentState) {
-      this.creepState.currentState = nextState;
+      this.context.currentState = nextState;
       // console.log(`[TaskStateMachine] creep: ${this.creep.name} 状态转换: ${currentState} -> ${nextState}`);
     }
   }
@@ -56,14 +56,14 @@ export abstract class TaskStateMachine<TState extends string> {
    * 获取当前状态
    */
   public getCurrentState(): TState {
-    return this.creepState.currentState;
+    return this.context.currentState;
   }
 
   /**
    * 设置当前状态
    */
   public setCurrentState(state: TState): void {
-    this.creepState.currentState = state;
+    this.context.currentState = state;
   }
 
   /**
@@ -76,22 +76,30 @@ export abstract class TaskStateMachine<TState extends string> {
   /**
    * 获取该creep的执行状态
    */
-  public getCreepState(): CreepFSMState<TState> {
-    return this.creepState;
+  public getCreepContext(): FSMContext<TState> {
+    return this.context;
+  }
+
+  public setCreepContexts(context: FSMContext<TState>): void {
+    this.context = context;
+  }
+
+  public setCreepContext(key: string, value: any): void {
+    this.context[key] = value;
   }
 
   /**
    * 检查该creep的任务是否完成
    */
   public isFinished(): boolean {
-    return this.creepState.currentState === this.getFinishedState();
+    return this.context.currentState === this.getFinishedState();
   }
 
   /**
    * 检查任务是否整体完成（所有creep都完成）
    */
   public isTaskFinished(): boolean {
-    const allCreepStates = Object.values(this.taskMemory.creepStates);
+    const allCreepStates = Object.values(this.taskMemory.context);
     return allCreepStates.every(state => state.currentState === this.getFinishedState());
   }
 
@@ -99,14 +107,14 @@ export abstract class TaskStateMachine<TState extends string> {
    * 检查该creep是否可中断
    */
   public isInterruptible(): boolean {
-    return this.creepState.interruptible;
+    return this.context.interruptible;
   }
 
   /**
    * 设置该creep的中断标记
    */
   public setInterruptible(interruptible: boolean): void {
-    this.creepState.interruptible = interruptible;
+    this.context.interruptible = interruptible;
   }
 
   /**
@@ -167,7 +175,7 @@ export abstract class TaskStateMachine<TState extends string> {
    * 获取creep的状态转换记录
    */
   protected getRecord(): Record<string, any> | undefined {
-    return this.creepState.record;
+    return this.context.record;
   }
 
   /**
@@ -175,14 +183,14 @@ export abstract class TaskStateMachine<TState extends string> {
    */
   protected setRecord(record: Record<string, any>): void {
     if (!record.lastState) {
-      record.lastState = this.creepState.currentState;
+      record.lastState = this.context.currentState;
     }
-    this.creepState.record = record;
+    this.context.record = record;
   }
 
   protected switchState(nextState: TState, reason: string): TState {
     this.setRecord({
-      lastState: this.creepState.currentState,
+      lastState: this.context.currentState,
       reason: reason
     });
     return nextState;

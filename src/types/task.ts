@@ -230,10 +230,11 @@ export interface TaskFSMMemory<TState extends string = string> {
   kind: TaskKind;                    // 任务大类
   taskState: TState;                 // 任务状态
   groupId?: string;                  // 协同组ID
-  creepStates: { [creepName: string]: CreepFSMState<TState> }; // creep -> state 映射
+  context: { [creepName: string]: FSMContext<TState> }; // creep -> state 映射
 }
 
-export interface CreepFSMState<TState extends string = string> {
+export interface FSMContext<TState extends string = string> {
+  [key: string]: any;
   interruptible: boolean;            // 可中断标记
   currentState: TState;              // 该creep的当前执行状态
   record?: Record<string, any>;       // 记录该creep的状态转换记录

@@ -80,12 +80,8 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
     const { requestId, suggestedWait } = this.service.supplyService.request(creep, RESOURCE_ENERGY, need);
 
     // 在 creep 状态记录中保存等待信息
-    const creepState = this.getCreepState();
-    if (!creepState.record) {
-      creepState.record = {};
-    }
-    creepState.record.supplyRequestId = requestId;
-    creepState.record.waitUntil = Game.time + suggestedWait;
+    this.setCreepContext('supplyRequestId', requestId);
+    this.setCreepContext('waitUntil', Game.time + suggestedWait);
 
     return this.switchState(BuildState.WAIT_SUPPLY, `请求能量供应，等待 ${suggestedWait} tick`);
   }
@@ -101,9 +97,7 @@ export class BuildFSMExecutor extends TaskStateMachine<BuildState> {
       return this.switchState(BuildState.BUILDING, '收到能量，开始建造');
     }
 
-    const creepState = this.getCreepState();
-    const record = creepState.record || {};
-    const waitUntil = record.waitUntil || 0;
+    const waitUntil = this.getCreepContext().waitUntil || 0;
 
     // 检查是否超时
     if (Game.time >= waitUntil) {

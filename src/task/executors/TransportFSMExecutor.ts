@@ -1,8 +1,5 @@
 import { TaskStateMachine } from "../fsm/StateMachine";
 import { TaskFSMMemory, TransportState, TransportTask, TaskKind, TaskType } from "../../types";
-import { CreepMoveService } from "../../services/creep/CreepMoveService";
-import { ManagerContainer } from "../../core/ManagerContainer";
-import { TaskManager } from "managers/TaskManager";
 import { TaskExecutionService } from "services/task/TaskExecutionService";
 
 /**

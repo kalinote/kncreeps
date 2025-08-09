@@ -363,7 +363,7 @@ export class TaskStateService extends BaseService<TaskStateServiceMemory> {
       kind,
       taskState: initialState,
       groupId: undefined,
-      creepStates: {}
+      context: {}
     };
   }
 
