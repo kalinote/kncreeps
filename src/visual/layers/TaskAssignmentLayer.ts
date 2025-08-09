@@ -1,4 +1,4 @@
-import { LayerType, TaskAssignmentType } from "../../types";
+import { LayerType, Task, TaskAssignmentType, TaskType } from "../../types";
 import { BaseLayer } from "./BaseLayer";
 import { VisualConfig } from "../../config/VisualConfig";
 import { TaskStateService } from "../../services/task/TaskStateService";
@@ -29,14 +29,47 @@ export class TaskAssignmentLayer extends BaseLayer {
         text: `${room.name} 总计 ${tasks.length} 个任务`,
       },
     });
+
+    // 按照类型分类任务
+    const taskTypes: { [key in TaskType]?: Task[] } = {};
     for (const task of tasks) {
-      this.buffer.push({
-        type: 'text',
-        data: {
-          // TODO 这里每次都会再计算一次动态优先级，后续可以考虑一次计算后缓存起来
-          text: `[${task.type.substring(0, 2).toUpperCase()}]${task.id.split('_')[2].substring(0, 4)}(BP:${task.basePriority},EP:${PriorityCalculator.calculate(task, Game.time).toFixed(2)}): ${task.status}(${task.assignmentType}${task.assignmentType === TaskAssignmentType.SHARED ? (',' + task.assignedCreeps.length + "/"  + task.maxAssignees) : ''})`,
-        },
-      });
+      if (!taskTypes[task.type]) {
+        taskTypes[task.type] = [];
+      }
+      taskTypes[task.type]!.push(task);
+    }
+
+    // 遍历每种任务类型
+    for (const taskType in taskTypes) {
+      const tasksOfType = taskTypes[taskType as TaskType]!;
+      const taskTypeShort = taskType.substring(0, 2).toUpperCase();
+
+      if (tasksOfType.length > 5) {
+        for (let i = 0; i < 5; i++) {
+          const task = tasksOfType[i];
+          this.buffer.push({
+            type: 'text',
+            data: {
+              text: `[${taskTypeShort}]${task.id.split('_')[2].substring(0, 4)}(BP:${task.basePriority},EP:${PriorityCalculator.calculate(task, Game.time).toFixed(2)}): ${task.status}(${task.assignmentType}${task.assignmentType === TaskAssignmentType.SHARED ? (',' + task.assignedCreeps.length + "/" + task.maxAssignees) : ''})`,
+            },
+          });
+        }
+        this.buffer.push({
+          type: 'text',
+          data: {
+            text: `  ...以及其他${tasksOfType.length - 5}个[${taskTypeShort}]任务`,
+          },
+        });
+      } else {
+        for (const task of tasksOfType) {
+          this.buffer.push({
+            type: 'text',
+            data: {
+              text: `[${taskTypeShort}]${task.id.split('_')[2].substring(0, 4)}(BP:${task.basePriority},EP:${PriorityCalculator.calculate(task, Game.time).toFixed(2)}): ${task.status}(${task.assignmentType}${task.assignmentType === TaskAssignmentType.SHARED ? (',' + task.assignedCreeps.length + "/" + task.maxAssignees) : ''})`,
+            },
+          });
+        }
+      }
     }
   }
 }

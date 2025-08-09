@@ -5,6 +5,7 @@ import { TransportService } from '../services/logistics/TransportService';
 import { LogisticsMemory } from '../types';
 import { EnergyService } from '../services/logistics/EnergyService';
 import { ConstructionManager } from './ConstructionManager';
+import { SupplyService } from '../services/logistics/SupplyService';
 
 /**
  * 后勤管理器
@@ -26,10 +27,15 @@ export class LogisticsManager extends BaseManager<LogisticsMemory> {
     return this.managerContainer.get<ConstructionManager>("constructionManager");
   }
 
+  public get supplyService(): SupplyService {
+    return this.services.get('supplyService') as SupplyService;
+  }
+
   constructor(eventBus: EventBus, managerContainer: ManagerContainer) {
     super(eventBus, managerContainer, 'logisticsManager');
     this.registerServices('transportService', new TransportService(this.eventBus, this, this.memory));
     this.registerServices('energyService', new EnergyService(this.eventBus, this, this.memory));
+    this.registerServices('supplyService', new SupplyService(this.eventBus, this, this.memory));
   }
 
   protected onInitialize(): void {

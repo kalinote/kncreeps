@@ -262,6 +262,7 @@ export enum TransportState {
 export enum BuildState {
   INIT = 'INIT',
   GET_ENERGY = 'GET_ENERGY',
+  WAIT_SUPPLY = 'WAIT_SUPPLY',  // 等待资源供应
   BUILDING = 'BUILDING',
   FINISHED = 'FINISHED'
 }
@@ -269,6 +270,7 @@ export enum BuildState {
 export enum UpgradeState {
   INIT = 'INIT',
   GET_ENERGY = 'GET_ENERGY',
+  WAIT_SUPPLY = 'WAIT_SUPPLY',  // 等待资源供应
   UPGRADING = 'UPGRADING',
   FINISHED = 'FINISHED'
 }

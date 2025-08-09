@@ -4,7 +4,9 @@ import { UnifiedMemoryCycleStructureMemory } from "./core";
 // 后勤内存类型
 export interface LogisticsMemory extends UnifiedMemoryCycleStructureMemory {
   // 运输网络
-  transportNetworkService?: { [roomName: string]: TransportNetworkServiceMemory };
+  transportNetwork?: { [roomName: string]: TransportNetworkServiceMemory };
+  // 资源供应请求
+  supply?: SupplyRequestServiceMemory;
 }
 
 // 运输网络内存
@@ -37,6 +39,23 @@ export interface ResourceAllocationMemory {
   energy: number;
   creeps: { [role: string]: number };
   priority: number;
+}
+
+// 资源供应服务
+export interface SupplyRequestServiceMemory extends UnifiedMemoryCycleStructureMemory {
+  requests: { [roomName: string]: SupplyRequestMemory[] };
+}
+
+// 资源供应请求
+export interface SupplyRequestMemory {
+  id: string;
+  creepName: string;
+  roomName: string;
+  resourceType: ResourceConstant;
+  amount?: number;
+  createdAt: number;
+  suggestedWait: number;
+  expiresAt?: number;
 }
 
 // ========================== 内存类型结束 ==========================

@@ -88,11 +88,23 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
 
     const params = task.params;
 
-    // 优先从指定建筑拾取
+    // 优先从指定源对象拾取（Structure、Tombstone、Ruin 等）
     if (params.sourceId) {
-      const source = Game.getObjectById<Structure>(params.sourceId as Id<Structure>);
+      // 尝试作为 Structure 获取
+      let source: Structure | Tombstone | Ruin | null = Game.getObjectById<Structure>(params.sourceId as Id<Structure>);
+
+      // 如果不是 Structure，尝试作为 Tombstone 获取
       if (!source) {
-        return this.switchState(TransportState.FINISHED, '未找到源建筑');
+        source = Game.getObjectById<Tombstone>(params.sourceId as Id<Tombstone>);
+      }
+
+      // 如果不是 Tombstone，尝试作为 Ruin 获取
+      if (!source) {
+        source = Game.getObjectById<Ruin>(params.sourceId as Id<Ruin>);
+      }
+
+      if (!source) {
+        return this.switchState(TransportState.FINISHED, '未找到源对象');
       }
 
       const result = this.pickupResource(creep, source, params.resourceType);
@@ -108,9 +120,15 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
     if (params.sourcePos) {
       const targetPos = new RoomPosition(params.sourcePos.x, params.sourcePos.y, params.sourcePos.roomName);
 
-      // 优先尝试拾取目标位置的资源
+      // 优先尝试拾取目标位置的资源（包括地面资源、Tombstone、Ruin）
       const targetResources = creep.room.lookForAt(LOOK_RESOURCES, targetPos)
         .filter(r => r.resourceType === params.resourceType);
+
+      const targetTombstones = creep.room.lookForAt(LOOK_TOMBSTONES, targetPos)
+        .filter(t => t.store.getUsedCapacity(params.resourceType) > 0);
+
+      const targetRuins = creep.room.lookForAt(LOOK_RUINS, targetPos)
+        .filter(r => r.store.getUsedCapacity(params.resourceType) > 0);
 
       if (targetResources.length > 0) {
         const distance = creep.pos.getRangeTo(targetPos);
@@ -127,6 +145,32 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
           // 不在拾取范围内，移动到目标位置
           this.service.moveService.moveTo(creep, targetPos);
           return this.switchState(TransportState.PICKUP, '移动到目标位置');
+        }
+      } else if (targetTombstones.length > 0) {
+        const distance = creep.pos.getRangeTo(targetPos);
+        if (distance <= 1) {
+          const result = this.pickupResource(creep, targetTombstones[0], params.resourceType);
+          if (result.success) {
+            this.setInterruptible(false);
+            return this.switchState(TransportState.DELIVER, '从墓碑拾取成功');
+          }
+          return this.switchState(TransportState.PICKUP, '从墓碑拾取失败');
+        } else {
+          this.service.moveService.moveTo(creep, targetPos);
+          return this.switchState(TransportState.PICKUP, '移动到墓碑');
+        }
+      } else if (targetRuins.length > 0) {
+        const distance = creep.pos.getRangeTo(targetPos);
+        if (distance <= 1) {
+          const result = this.pickupResource(creep, targetRuins[0], params.resourceType);
+          if (result.success) {
+            this.setInterruptible(false);
+            return this.switchState(TransportState.DELIVER, '从废墟拾取成功');
+          }
+          return this.switchState(TransportState.PICKUP, '从废墟拾取失败');
+        } else {
+          this.service.moveService.moveTo(creep, targetPos);
+          return this.switchState(TransportState.PICKUP, '移动到废墟');
         }
       } else {
         // 目标位置没有资源，在附近寻找相同类型的资源
@@ -204,14 +248,15 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
 
     // console.log(`[TransportFSMExecutor] task.params.targetId: ${params.targetId}`);
 
-    // 优先传输到指定建筑
+    // 优先传输到指定目标（Structure 或 Creep）
     if (params.targetId) {
-      const target = Game.getObjectById<Structure>(params.targetId as Id<Structure>);
+      let target: Structure | Creep | null = Game.getObjectById<Structure>(params.targetId as Id<Structure>) || Game.getObjectById<Creep>(params.targetId as Id<Creep>);
+
       // console.log(`[TransportFSMExecutor] target: ${JSON.stringify(target)}`);
       if (!target) {
         // 目标不存在，解除中断保护
         this.setInterruptible(true);
-        return this.switchState(TransportState.FINISHED, '未找到目标建筑');
+        return this.switchState(TransportState.FINISHED, '未找到目标对象');
       }
 
       // console.log(`[TransportFSMExecutor] creep.pos.getRangeTo(target.pos): ${creep.pos.getRangeTo(target.pos)}`);
@@ -302,9 +347,9 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
   }
 
   /**
-   * 拾取资源
+   * 拾取资源（支持从 Resource、Structure、Source、Tombstone、Ruin 等对象获取）
    */
-  private pickupResource(creep: Creep, target: Resource | Structure | Source, resourceType: ResourceConstant): { success: boolean; completed: boolean } {
+  private pickupResource(creep: Creep, target: Resource | Structure | Source | Tombstone | Ruin, resourceType: ResourceConstant): { success: boolean; completed: boolean } {
     // 检查目标类型并执行相应的拾取操作
     if (target instanceof Resource) {
       // 地面资源
@@ -335,20 +380,36 @@ export class TransportFSMExecutor extends TaskStateMachine<TransportState> {
 
       const harvestResult = creep.harvest(target);
       return this.handleHarvestResult(harvestResult);
+    } else if ('store' in target) {
+      // 带 store 属性的其他对象（如 Tombstone、Ruin）
+      const storeObject = target as any;
+      if (storeObject.store.getUsedCapacity(resourceType) === 0) {
+        return { success: false, completed: false };
+      }
+
+      const withdrawResult = creep.withdraw(target as any, resourceType);
+      return this.handleWithdrawResult(withdrawResult);
     }
 
     return { success: false, completed: false };
   }
 
   /**
-   * 传输资源
+   * 传输资源（支持向 Structure 或 Creep 交付）
    */
-  private transferResource(creep: Creep, target: Structure, resourceType: ResourceConstant): { success: boolean; completed: boolean } {
-    if (!('store' in target)) {
+  private transferResource(creep: Creep, target: Structure | Creep, resourceType: ResourceConstant): { success: boolean; completed: boolean } {
+    // 检查目标是否有 store 属性（Structure 或 Creep 都有）
+    if (!target || !('store' in target)) {
       return { success: false, completed: false };
     }
 
-    const transferResult = creep.transfer(target, resourceType);
+    const storeTarget = target as any;
+    // 检查目标是否有足够空间接收资源
+    if (storeTarget.store.getFreeCapacity(resourceType) === 0) {
+      return { success: false, completed: true }; // 目标已满，任务完成
+    }
+
+    const transferResult = creep.transfer(target as any, resourceType);
     return this.handleTransferResult(transferResult);
   }
 
