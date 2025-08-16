@@ -9,6 +9,7 @@ import { TaskManager } from "../managers/TaskManager";
 import { VisualManager } from "../managers/VisualManager";
 import { ConstructionManager } from "../managers/ConstructionManager";
 import { LogisticsManager } from "../managers/LogisticsManager";
+import { CommandManager } from "../managers/CommandManager";
 
 const ManagerConfig = {
   // 核心服务，需要最先初始化
@@ -74,6 +75,9 @@ export class ManagerContainer {
 
     // 注册可视化管理器和服务
     this.registerSingleton('visualManager', () => new VisualManager(this.get('eventBus'), this));
+
+    // 注册命令管理器
+    this.registerSingleton('commandManager', () => new CommandManager(this.get('eventBus'), this));
 
   }
 

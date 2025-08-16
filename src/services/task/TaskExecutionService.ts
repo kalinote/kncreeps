@@ -10,6 +10,7 @@ import { CreepMoveService } from "../creep/CreepMoveService";
 import { EnergyService } from "../logistics/EnergyService";
 import { TransportService } from "../logistics/TransportService";
 import { SupplyService } from "../logistics/SupplyService";
+import { registerCommand } from "../../command/registerCommand";
 
 /**
  * 任务执行服务 - 负责驱动所有Creep执行其分配到的任务

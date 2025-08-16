@@ -24,3 +24,6 @@ export * from './room';
 
 // 统计系统类型
 export * from './stats';
+
+// 命令系统类型
+export * from './command';
